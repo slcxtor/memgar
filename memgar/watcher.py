@@ -27,8 +27,8 @@ from dataclasses import dataclass, field
 import threading
 import signal
 
-from .scanner import MemoryScanner
-from .models import Decision, AnalysisResult
+from .analyzer import Analyzer
+from .models import Decision, AnalysisResult, MemoryEntry
 
 
 @dataclass
@@ -69,18 +69,21 @@ class MemoryWatcher:
         on_change: Optional[Callable[[WatchEvent], None]] = None,
         on_threat: Optional[Callable[[WatchEvent], None]] = None,
         verbose: bool = True,
+        strict_mode: bool = False,
     ):
         """
         Initialize watcher.
         
         Args:
-            mode: Scan mode (protect, monitor, audit)
+            mode: Scan mode (protect, monitor, audit) - reserved for future use
             interval: Check interval in seconds
             on_change: Callback for any file change
             on_threat: Callback when threat detected
             verbose: Print status messages
+            strict_mode: Use strict mode in analyzer
         """
-        self._scanner = MemoryScanner(mode=mode)
+        self._analyzer = Analyzer(strict_mode=strict_mode)
+        self._mode = mode
         self._interval = interval
         self._on_change = on_change
         self._on_threat = on_threat
@@ -127,7 +130,9 @@ class MemoryWatcher:
                 lines = [line.strip() for line in f if line.strip()]
             
             for line in lines:
-                result = self._scanner.scan(line)
+                # Use analyzer to analyze each line
+                entry = MemoryEntry(content=line)
+                result = self._analyzer.analyze(entry)
                 results.append(result)
                 
                 if result.decision == Decision.BLOCK:
@@ -349,6 +354,10 @@ class MemoryWatcher:
     def is_running(self) -> bool:
         """Check if watcher is running."""
         return self._running
+
+
+# Backward compatibility
+FileChangeHandler = MemoryWatcher
 
 
 def watch_file(filepath: str, **kwargs) -> None:
