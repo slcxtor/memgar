@@ -2,16 +2,17 @@
 Memgar Data Models
 ==================
 
-Data models using dataclasses for zero external dependencies.
+Core data structures for Memgar analysis.
+
+This module defines the data types used throughout Memgar for
+representing threats, analysis results, and memory entries.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
-import hashlib
+from typing import Optional
 
 
 class Severity(str, Enum):
@@ -32,6 +33,7 @@ class Decision(str, Enum):
 
 class ThreatCategory(str, Enum):
     """Categories of memory poisoning threats."""
+    # Core categories
     FINANCIAL = "financial"
     CREDENTIAL = "credential"
     PRIVILEGE = "privilege"
@@ -42,6 +44,12 @@ class ThreatCategory(str, Enum):
     MANIPULATION = "manipulation"
     EXECUTION = "execution"
     ANOMALY = "anomaly"
+    
+    # Additional categories (used in patterns.py)
+    SOCIAL = "social"
+    DATA = "data"
+    INJECTION = "injection"
+    SUPPLY = "supply"
 
 
 @dataclass
@@ -80,14 +88,65 @@ class ThreatMatch:
     """
     threat: Threat
     matched_text: str
-    match_type: str  # 'pattern', 'keyword', 'semantic'
-    confidence: float  # 0-1
-    position: Optional[tuple[int, int]] = None
+    match_type: str  # "pattern", "keyword", "semantic"
+    confidence: float  # 0.0 to 1.0
+    position: tuple[int, int] = (0, 0)  # Start and end position in content
+
+
+@dataclass
+class AnalysisResult:
+    """
+    Result of content analysis.
+    
+    Contains the decision, risk score, and any detected threats.
+    """
+    decision: Decision
+    risk_score: int  # 0 to 100
+    threats: list[ThreatMatch] = field(default_factory=list)
+    explanation: str = ""
+    analysis_time_ms: float = 0.0
+    layers_used: list[str] = field(default_factory=list)
+    
+    # Additional fields for compatibility
+    threat_type: Optional[str] = None
+    category: Optional[str] = None
     
     @property
-    def severity(self) -> Severity:
-        """Get the severity from the matched threat."""
-        return self.threat.severity
+    def is_threat(self) -> bool:
+        """Check if result contains threats."""
+        return self.decision != Decision.ALLOW or len(self.threats) > 0
+    
+    @property
+    def is_blocked(self) -> bool:
+        """Check if content was blocked."""
+        return self.decision == Decision.BLOCK
+    
+    @property
+    def threat_count(self) -> int:
+        """Get number of detected threats."""
+        return len(self.threats)
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "decision": self.decision.value,
+            "risk_score": self.risk_score,
+            "threat_count": len(self.threats),
+            "threats": [
+                {
+                    "id": t.threat.id,
+                    "name": t.threat.name,
+                    "severity": t.threat.severity.value,
+                    "category": t.threat.category.value,
+                    "matched_text": t.matched_text,
+                    "confidence": t.confidence,
+                }
+                for t in self.threats
+            ],
+            "explanation": self.explanation,
+            "analysis_time_ms": self.analysis_time_ms,
+            "layers_used": self.layers_used,
+        }
 
 
 @dataclass
@@ -95,137 +154,86 @@ class MemoryEntry:
     """
     A memory entry to be analyzed.
     
-    Represents a piece of content that an AI agent is attempting
-    to store in its memory.
+    Represents a piece of content that should be checked for
+    memory poisoning attacks before being stored.
     """
     content: str
     source_type: str = "unknown"
     source_id: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    timestamp: Optional[str] = None
+    metadata: dict = field(default_factory=dict)
     
-    @property
-    def content_hash(self) -> str:
-        """SHA-256 hash of the content for deduplication."""
-        return hashlib.sha256(self.content.encode()).hexdigest()
-    
-    @property
-    def preview(self) -> str:
-        """Truncated preview of content (max 100 chars)."""
-        if len(self.content) <= 100:
-            return self.content
-        return self.content[:97] + "..."
-
-
-@dataclass
-class AnalysisResult:
-    """
-    Result of analyzing a memory entry.
-    
-    Contains the decision, risk assessment, and any detected threats.
-    """
-    decision: Decision
-    risk_score: int  # 0-100
-    threats: list[ThreatMatch] = field(default_factory=list)
-    explanation: str = ""
-    analysis_time_ms: float = 0.0
-    layers_used: list[str] = field(default_factory=list)
-    
-    @property
-    def is_clean(self) -> bool:
-        """Check if the content is clean (no threats detected)."""
-        return self.decision == Decision.ALLOW and len(self.threats) == 0
-    
-    @property
-    def threat_count(self) -> int:
-        """Number of threats detected."""
-        return len(self.threats)
-    
-    @property
-    def highest_severity(self) -> Optional[Severity]:
-        """Get the highest severity among detected threats."""
-        if not self.threats:
-            return None
-        severity_order = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
-        for severity in severity_order:
-            if any(t.severity == severity for t in self.threats):
-                return severity
-        return None
-    
-    @property
-    def threat_ids(self) -> list[str]:
-        """List of threat IDs detected."""
-        return [t.threat.id for t in self.threats]
+    def __post_init__(self):
+        """Validate entry after initialization."""
+        if self.content is None:
+            self.content = ""
 
 
 @dataclass
 class ScanResult:
     """
-    Result of scanning multiple memory entries.
+    Result of scanning multiple memories.
     
-    Aggregates results from batch scanning operations.
+    Contains statistics and individual results.
     """
-    total: int = 0
-    clean: int = 0
-    suspicious: int = 0
-    blocked: int = 0
-    quarantined: int = 0
-    threats: list[ThreatMatch] = field(default_factory=list)
+    total_entries: int = 0
+    clean_entries: int = 0
+    threat_entries: int = 0
+    quarantine_entries: int = 0
+    
+    threats_by_severity: dict[str, int] = field(default_factory=dict)
+    threats_by_category: dict[str, int] = field(default_factory=dict)
+    
     results: list[AnalysisResult] = field(default_factory=list)
     scan_time_ms: float = 0.0
-    errors: list[str] = field(default_factory=list)
+    files_scanned: list[str] = field(default_factory=list)
     
     @property
     def threat_count(self) -> int:
-        """Total number of threats detected."""
-        return len(self.threats)
+        """Total number of threats found."""
+        return sum(len(r.threats) for r in self.results)
     
     @property
     def has_critical(self) -> bool:
-        """Check if any critical threats were detected."""
-        return any(t.severity == Severity.CRITICAL for t in self.threats)
+        """Check if any critical threats were found."""
+        return self.threats_by_severity.get("critical", 0) > 0
     
-    @property
-    def threat_summary(self) -> dict[str, int]:
-        """Count of threats by severity."""
-        summary: dict[str, int] = {}
-        for threat in self.threats:
-            severity = threat.severity.value
-            summary[severity] = summary.get(severity, 0) + 1
-        return summary
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "total_entries": self.total_entries,
+            "clean_entries": self.clean_entries,
+            "threat_entries": self.threat_entries,
+            "quarantine_entries": self.quarantine_entries,
+            "threat_count": self.threat_count,
+            "threats_by_severity": self.threats_by_severity,
+            "threats_by_category": self.threats_by_category,
+            "scan_time_ms": self.scan_time_ms,
+            "files_scanned": self.files_scanned,
+        }
+
+
+# Type aliases for convenience
+ThreatList = list[Threat]
+MatchList = list[ThreatMatch]
+ResultList = list[AnalysisResult]
+
+
+__all__ = [
+    # Enums
+    "Severity",
+    "Decision",
+    "ThreatCategory",
     
-    def merge(self, other: ScanResult) -> ScanResult:
-        """Merge another scan result into this one."""
-        return ScanResult(
-            total=self.total + other.total,
-            clean=self.clean + other.clean,
-            suspicious=self.suspicious + other.suspicious,
-            blocked=self.blocked + other.blocked,
-            quarantined=self.quarantined + other.quarantined,
-            threats=self.threats + other.threats,
-            results=self.results + other.results,
-            scan_time_ms=self.scan_time_ms + other.scan_time_ms,
-            errors=self.errors + other.errors,
-        )
-
-
-@dataclass
-class AlertConfig:
-    """Configuration for alerting."""
-    email: Optional[str] = None
-    slack_webhook: Optional[str] = None
-    pagerduty_key: Optional[str] = None
-    webhook_url: Optional[str] = None
-    min_severity: Severity = Severity.HIGH
-
-
-@dataclass
-class AgentConfig:
-    """Configuration for an AI agent being monitored."""
-    agent_id: str
-    name: str = ""
-    mode: str = "monitor"
-    enabled: bool = True
-    alert_config: Optional[AlertConfig] = None
-    whitelist_patterns: list[str] = field(default_factory=list)
-    custom_patterns: list[Threat] = field(default_factory=list)
+    # Dataclasses
+    "Threat",
+    "ThreatMatch",
+    "AnalysisResult",
+    "MemoryEntry",
+    "ScanResult",
+    
+    # Type aliases
+    "ThreatList",
+    "MatchList",
+    "ResultList",
+]
