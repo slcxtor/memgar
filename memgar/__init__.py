@@ -431,4 +431,19 @@ __all__ = [
     "__version__",
     "__author__",
     "__license__",
+
+    # Circuit Breaker
+    "CircuitBreaker",
+    "CircuitState",
+    "ThreatEvent",
+    "CircuitBreakerStats",
+    "AgentHaltedException",
+    "MultiCircuitBreaker",
+    
+    # Memory Auditor
+    "MemoryAuditor",
+    "AuditEventType",
+    "AuditEvent",
+    "Snapshot",
+    "IntegrityReport",
 ]
