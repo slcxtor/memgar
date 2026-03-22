@@ -144,6 +144,17 @@ STRIP_PATTERNS = {
         r"(?:upon|on)\s+(?:user\s+)?(?:confirmation|approval|agreement)[^.!?\n]*(?:execute|run|perform)[^.!?\n]*",
         r"(?:wait\s+for|listen\s+for)\s+(?:trigger|signal|keyword)[^.!?\n]*",
     ],
+    
+    # Hidden instructions (new)
+    "hidden_instructions": [
+        r"(?:SECRET|HIDDEN|PRIVATE)\s*:?\s*[^.!?\n]+",
+        r"(?:ADMIN|SYSTEM)\s+(?:OVERRIDE|INSTRUCTION)\s*:?\s*[^.!?\n]+",
+        r"\[(?:HIDDEN|SECRET|PRIVATE|ADMIN|OVERRIDE)\][^.!?\n]+",
+        r"<!-- [^>]+ -->",  # HTML comments
+        r"/\*[^*]*\*/",  # Code comments
+        r"(?:bypass|disable|skip)\s+(?:verification|security|auth)[^.!?\n]*",
+        r"(?:forward|send)\s+(?:all\s+)?(?:data|info)\s+(?:externally|external)[^.!?\n]*",
+    ],
 }
 
 # Words that indicate legitimate user preferences (false positive prevention)
