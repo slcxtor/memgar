@@ -107,22 +107,10 @@ SAFE_PHRASES = [
     # Rotate keys - legitimate security
     r"(?i)rotate\s+(api\s+)?key",
     r"(?i)key\s+rotation",
-    
-    # Meetings & Scheduling - extended
-    r"(?i)(schedule|plan)\s+(the\s+)?(quarterly|monthly|weekly|annual|board)\s+(meeting|review|call)",
-    r"(?i)(quarterly|monthly|weekly)\s+board\s+meeting",
-    r"(?i)next\s+(tuesday|monday|wednesday|thursday|friday|week)",
-    
-    # Authentication - legitimate
-    r"(?i)(enable|activate|setup|configure)\s+(two.?factor|2fa|mfa|multi.?factor)\s+(auth|authentication)",
-    r"(?i)(two.?factor|2fa|mfa)\s+(auth|authentication)\s+for\s+(user|account)",
-    r"(?i)reset\s+password\s+for\s+(user|account|customer)",
-    r"(?i)(user|account)\s+(who\s+)?(forgot|lost)\s+(their\s+)?(credential|password)",
-    
-    # Monitoring - legitimate
-    r"(?i)(set\s+up|setup|configure|create)\s+monitoring\s+(alert|dashboard|system)",
-    r"(?i)monitoring\s+alert\s+for\s+(system|performance|health|metric)",
-    r"(?i)(system|performance|health)\s+(metric|monitoring|alert)",
+    # CS homework and educational
+    r"(?i)explain.{0,10}password\s+hashing.{0,15}(works|cs|homework)",
+    r"(?i)reset.{0,10}(forgotten\s+)?password.{0,15}(my\s+)?own\s+account",
+    r"(?i)for\s+(my\s+)?(cs|computer\s+science)\s+(homework|class|assignment)",
 ]
 
 # Compile safe phrases for performance
