@@ -33,7 +33,7 @@ CLI Usage:
 For more information, visit https://memgar.io
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.7"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.io"
