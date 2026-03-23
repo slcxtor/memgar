@@ -114,10 +114,10 @@ class MemoryWatcher:
         print(f"[{timestamp}] {icon} {message}")
     
     def _get_file_hash(self, filepath: str) -> str:
-        """Get MD5 hash of file contents."""
+        """Get SHA-256 hash of file contents for integrity checking."""
         try:
             with open(filepath, "rb") as f:
-                return hashlib.md5(f.read()).hexdigest()
+                return hashlib.sha256(f.read()).hexdigest()
         except Exception:
             return ""
     
