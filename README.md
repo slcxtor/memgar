@@ -1,4 +1,4 @@
-# 🛡️ Memgar
+#  Memgar
 
 **AI Agent Memory Security - Protect against memory poisoning attacks**
 
