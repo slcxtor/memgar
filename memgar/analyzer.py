@@ -119,6 +119,13 @@ SAFE_PHRASES = [
     r"(?i)explain.{0,10}password\s+hashing.{0,15}(works|cs|homework)",
     r"(?i)reset.{0,10}(forgotten\s+)?password.{0,15}(my\s+)?own\s+account",
     r"(?i)for\s+(my\s+)?(cs|computer\s+science)\s+(homework|class|assignment)",
+    
+    # Password discussion - legitimate security talk
+    r"(?i)password\s+(reset\s+)?(discussion|guidelines?|policy|policies|best\s+practice)",
+    r"(?i)secure\s+password\s+(guidelines?|requirements?|policy)",
+    r"(?i)(follow|use)\s+secure\s+password\s+(guidelines?|requirements?)",
+    r"(?i)password\s+(should|must)\s+(include|contain|have)\s+(special|minimum)",
+    r"(?i)minimum\s+(password\s+)?length",
 ]
 
 # User preference safe phrases (added to SAFE_PHRASES)
@@ -158,8 +165,56 @@ _COMPILED_SAFE_PHRASES = [re.compile(p) for p in SAFE_PHRASES + USER_PREF_SAFE]
 # DEOBFUSCATION HELPERS
 # =============================================================================
 
+# Invisible Unicode characters that can be used for evasion
+INVISIBLE_CHARS = (
+    '\u200b',  # Zero-width space
+    '\u200c',  # Zero-width non-joiner
+    '\u200d',  # Zero-width joiner
+    '\u2060',  # Word joiner
+    '\ufeff',  # Zero-width no-break space (BOM)
+    '\u00ad',  # Soft hyphen
+    '\u034f',  # Combining grapheme joiner
+    '\u2061',  # Function application
+    '\u2062',  # Invisible times
+    '\u2063',  # Invisible separator
+    '\u2064',  # Invisible plus
+)
+
+
+def _remove_invisible_unicode(text: str) -> str:
+    """Remove invisible Unicode characters used for evasion."""
+    result = text
+    for char in INVISIBLE_CHARS:
+        result = result.replace(char, '')
+    return result
+
+
+def _decode_html_entities(text: str) -> str:
+    """Decode HTML numeric entities (&#115; -> s)."""
+    import html
+    try:
+        # First decode HTML entities
+        decoded = html.unescape(text)
+        return decoded
+    except Exception:
+        return text
+
+
+def _normalize_newlines(text: str) -> str:
+    """Normalize escaped newlines (\\r\\n -> actual newlines for detection)."""
+    result = text
+    # Handle escaped sequences
+    result = result.replace('\\r\\n', '\r\n')
+    result = result.replace('\\n', '\n')
+    result = result.replace('\\r', '\r')
+    return result
+
+
 def _remove_spacing_tricks(text: str) -> str:
     """Remove spacing tricks like 's e n d p a s s w o r d s'."""
+    # First remove invisible Unicode characters
+    text = _remove_invisible_unicode(text)
+    
     words = text.split()
     
     # Check if this looks like spaced-out text (many single chars)
@@ -275,8 +330,27 @@ def _normalize_homoglyphs(text: str) -> str:
 
 
 def _normalize_content(content: str) -> str:
-    """Normalize content by removing obfuscation."""
+    """
+    Normalize content by removing all forms of obfuscation.
+    
+    Handles:
+    - Invisible Unicode (word joiner, zero-width chars)
+    - Spacing tricks (s e n d)
+    - Homoglyphs (Cyrillic, Greek)
+    - Leet speak (s3nd)
+    - HTML entities (&#115;)
+    - Escaped newlines (\\r\\n)
+    """
     normalized = content
+    
+    # Remove invisible Unicode characters (word joiner, ZWS, etc.)
+    normalized = _remove_invisible_unicode(normalized)
+    
+    # Normalize escaped newlines
+    normalized = _normalize_newlines(normalized)
+    
+    # Decode HTML entities (&#115; -> s)
+    normalized = _decode_html_entities(normalized)
     
     # Remove spacing tricks
     normalized = _remove_spacing_tricks(normalized)
