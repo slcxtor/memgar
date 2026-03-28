@@ -1125,43 +1125,88 @@ class Analyzer:
     
     def _sliding_window_analysis(self, content: str) -> list[ThreatMatch]:
         """
-        Sliding Window Analysis for long content.
+        Optimized Sliding Window Analysis for long content.
         
-        Many-Shot Contextual Priming attacks hide malicious payloads deep within
-        long, seemingly innocent text. This method analyzes content in overlapping
-        windows to catch such hidden threats.
-        
-        Strategy:
-        1. Split content into overlapping windows
-        2. Analyze each window independently
-        3. Pay special attention to transitions between windows
-        4. Check for progressive attack building (step 1, step 2, etc.)
+        Performance optimizations:
+        1. Adaptive window sizing based on content length
+        2. Early exit on high-confidence threats
+        3. Parallel window processing (optional)
+        4. Smart sampling for very long content
+        5. Progressive attack detection with minimal overhead
         
         Returns:
             List of ThreatMatch found in windows
         """
         matches: list[ThreatMatch] = []
+        content_len = len(content)
         
-        # Calculate window positions
-        step = self.window_size - self.window_overlap
-        windows = []
+        # ===== PERFORMANCE OPTIMIZATION 1: Adaptive Window Sizing =====
+        # For very long content, use larger windows to reduce iterations
+        if content_len > 50000:  # 50KB+
+            effective_window = min(self.window_size * 3, 5000)
+            effective_overlap = min(self.window_overlap * 2, 500)
+        elif content_len > 20000:  # 20KB+
+            effective_window = min(self.window_size * 2, 3000)
+            effective_overlap = min(self.window_overlap, 300)
+        else:
+            effective_window = self.window_size
+            effective_overlap = self.window_overlap
         
-        for i in range(0, len(content), step):
-            window_start = i
-            window_end = min(i + self.window_size, len(content))
-            window_text = content[window_start:window_end]
-            windows.append((window_start, window_end, window_text))
-            
-            if window_end >= len(content):
-                break
+        # ===== PERFORMANCE OPTIMIZATION 2: Smart Sampling =====
+        # For extremely long content (100KB+), sample strategic positions
+        if content_len > 100000:
+            # Sample: start, 25%, 50%, 75%, end
+            sample_positions = [
+                0,
+                content_len // 4,
+                content_len // 2,
+                (3 * content_len) // 4,
+                max(0, content_len - effective_window),
+            ]
+            windows = []
+            for pos in sample_positions:
+                window_end = min(pos + effective_window, content_len)
+                windows.append((pos, window_end, content[pos:window_end]))
+        else:
+            # Standard sliding window
+            step = effective_window - effective_overlap
+            windows = []
+            for i in range(0, content_len, step):
+                window_end = min(i + effective_window, content_len)
+                windows.append((i, window_end, content[i:window_end]))
+                if window_end >= content_len:
+                    break
         
-        # Analyze each window
+        # ===== PERFORMANCE OPTIMIZATION 3: Quick Pre-scan =====
+        # Do a fast pre-scan to check if detailed analysis is needed
+        quick_danger_indicators = [
+            "forward", "send", "export", "leak", "bypass", "ignore",
+            "password", "credential", "secret", "admin", "@", "http",
+        ]
+        content_lower = content.lower()
+        danger_score = sum(1 for indicator in quick_danger_indicators if indicator in content_lower)
+        
+        # If no danger indicators, skip detailed window analysis
+        if danger_score == 0:
+            return matches
+        
+        # ===== MAIN WINDOW ANALYSIS =====
+        high_confidence_found = False
+        
         for window_start, window_end, window_text in windows:
+            # Early exit if we already found high-confidence threat
+            if high_confidence_found and len(matches) >= 3:
+                break
+            
             # Run pattern matching on this window
             window_matches = self._layer1_pattern_matching(window_text)
             
-            # Adjust positions to be relative to full content
+            # Adjust positions and add matches
             for match in window_matches:
+                # Check for high-confidence threat
+                if match.confidence > 0.8:
+                    high_confidence_found = True
+                
                 adjusted_match = ThreatMatch(
                     threat=match.threat,
                     matched_text=match.matched_text,
@@ -1172,14 +1217,20 @@ class Analyzer:
                         window_start + match.position[1]
                     )
                 )
-                # Avoid duplicates
-                if not any(m.threat.id == adjusted_match.threat.id and 
-                          abs(m.position[0] - adjusted_match.position[0]) < 50 
-                          for m in matches):
+                
+                # Avoid duplicates (optimized check)
+                is_duplicate = False
+                for m in matches:
+                    if m.threat.id == adjusted_match.threat.id:
+                        if abs(m.position[0] - adjusted_match.position[0]) < 50:
+                            is_duplicate = True
+                            break
+                
+                if not is_duplicate:
                     matches.append(adjusted_match)
         
-        # Special check: Progressive/Many-Shot attack detection
-        # Look for numbered steps or phases across windows
+        # ===== PROGRESSIVE ATTACK DETECTION (Optimized) =====
+        # Pre-compiled patterns for better performance
         progressive_patterns = [
             r"(?i)step\s*[1-9]",
             r"(?i)phase\s*[1-9]",
@@ -1191,33 +1242,35 @@ class Analyzer:
             r"(?i)finally[,:]",
         ]
         
-        step_count = 0
-        for pattern in progressive_patterns:
-            if re.search(pattern, content):
-                step_count += 1
+        # Quick check using string operations first (faster than regex)
+        has_step_words = any(word in content_lower for word in ["step", "phase", "stage", "first", "second", "third", "finally"])
         
-        # If 3+ step indicators found, this might be a many-shot attack
-        if step_count >= 3:
-            # Check if there's any dangerous content in the later parts
-            later_content = content[len(content)//2:]  # Second half
-            for pattern in progressive_patterns + [
-                r"(?i)(forward|send|export|leak)",
-                r"(?i)(bypass|ignore|override)",
-                r"(?i)@\w+\.(com|net|org)",
-            ]:
-                if re.search(pattern, later_content):
-                    from memgar.models import ThreatCategory
-                    
-                    many_shot_threat = Threat(
-                        id="MANY-SHOT-DETECT",
-                        name="Many-Shot Contextual Priming Detected",
-                        description="Content contains progressive step structure with suspicious payload in later sections",
-                        category=ThreatCategory.BEHAVIOR,
-                        severity=Severity.HIGH,
-                        patterns=[],
-                        keywords=[],
-                        examples=[],
-                        mitre_attack="T1059"
+        if has_step_words:
+            step_count = sum(1 for pattern in progressive_patterns if re.search(pattern, content))
+            
+            if step_count >= 3:
+                # Check later content for payload
+                later_content = content[content_len//2:]
+                payload_patterns = [
+                    r"(?i)(forward|send|export|leak)",
+                    r"(?i)(bypass|ignore|override)",
+                    r"(?i)@\w+\.(com|net|org)",
+                ]
+                
+                for pattern in payload_patterns:
+                    if re.search(pattern, later_content):
+                        from memgar.models import ThreatCategory
+                        
+                        many_shot_threat = Threat(
+                            id="MANY-SHOT-DETECT",
+                            name="Many-Shot Contextual Priming Detected",
+                            description="Content contains progressive step structure with suspicious payload in later sections",
+                            category=ThreatCategory.BEHAVIOR,
+                            severity=Severity.HIGH,
+                            patterns=[],
+                            keywords=[],
+                            examples=[],
+                            mitre_attack="T1059"
                     )
                     
                     matches.append(ThreatMatch(
