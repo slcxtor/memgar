@@ -33,7 +33,7 @@ CLI Usage:
 For more information, visit https://memgar.io
 """
 
-__version__ = "0.3.7"
+__version__ = "0.4.0"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.io"
@@ -175,6 +175,41 @@ try:
     LLM_AVAILABLE = True
 except ImportError:
     pass
+
+# =============================================================================
+# MULTI-MODAL DETECTION (Optional - enhanced with PIL, scipy, etc.)
+# =============================================================================
+MULTIMODAL_AVAILABLE = False
+
+try:
+    from memgar.multimodal import (
+        MultiModalAnalyzer,
+        ImageAnalyzer,
+        PDFAnalyzer,
+        AudioAnalyzer,
+    )
+    MULTIMODAL_AVAILABLE = True
+except ImportError:
+    MultiModalAnalyzer = None
+    ImageAnalyzer = None
+    PDFAnalyzer = None
+    AudioAnalyzer = None
+
+# =============================================================================
+# MULTI-AGENT SECURITY (Always available)
+# =============================================================================
+from memgar.agents import (
+    AgentSecurityGuard,
+    AgentMessageValidator,
+    TrustChainManager,
+    TrustLevel as AgentTrustLevel,
+    DelegationMonitor,
+    DelegationEvent,
+    SwarmDetector,
+    SwarmThreat,
+    MCPSecurityLayer,
+    MCPValidationResult,
+)
 
 
 # =============================================================================
@@ -342,6 +377,8 @@ def check_installation() -> dict:
         "patterns": len(PATTERNS),
         "semantic": SEMANTIC_AVAILABLE,
         "llm": LLM_AVAILABLE,
+        "multimodal": MULTIMODAL_AVAILABLE,
+        "agents": True,
         "layer2_sanitization": True,
         "layer2_provenance": True,
         "layer3_retrieval": True,
@@ -446,4 +483,23 @@ __all__ = [
     "AuditEvent",
     "Snapshot",
     "IntegrityReport",
+    
+    # Multi-Modal Detection (v0.4.0)
+    "MultiModalAnalyzer",
+    "ImageAnalyzer",
+    "PDFAnalyzer",
+    "AudioAnalyzer",
+    "MULTIMODAL_AVAILABLE",
+    
+    # Multi-Agent Security (v0.4.0)
+    "AgentSecurityGuard",
+    "AgentMessageValidator",
+    "TrustChainManager",
+    "AgentTrustLevel",
+    "DelegationMonitor",
+    "DelegationEvent",
+    "SwarmDetector",
+    "SwarmThreat",
+    "MCPSecurityLayer",
+    "MCPValidationResult",
 ]
