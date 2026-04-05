@@ -1,0 +1,57 @@
+memgar-enterprise/
+├── backend/                    # FastAPI Backend
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py            # FastAPI app
+│   │   ├── config.py          # Settings & environment
+│   │   ├── auth/              # RBAC & Authentication
+│   │   │   ├── __init__.py
+│   │   │   ├── models.py      # User, Role, Permission models
+│   │   │   ├── jwt.py         # JWT token handling
+│   │   │   └── rbac.py        # Role-based access control
+│   │   ├── api/               # API endpoints
+│   │   │   ├── __init__.py
+│   │   │   ├── v1/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── analysis.py    # Analysis endpoints
+│   │   │   │   ├── dashboard.py   # Dashboard data
+│   │   │   │   ├── reports.py     # Report generation
+│   │   │   │   ├── audit.py       # Audit logs
+│   │   │   │   └── admin.py       # Admin endpoints
+│   │   ├── database/          # Database models & migrations
+│   │   │   ├── __init__.py
+│   │   │   ├── models.py      # SQLAlchemy models
+│   │   │   └── session.py     # DB session management
+│   │   └── services/          # Business logic
+│   │       ├── __init__.py
+│   │       ├── analysis_service.py
+│   │       ├── report_service.py
+│   │       └── audit_service.py
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── frontend/                   # React Dashboard
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Dashboard/
+│   │   │   ├── Analytics/
+│   │   │   ├── Reports/
+│   │   │   └── Settings/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   └── App.tsx
+│   ├── package.json
+│   └── Dockerfile
+│
+├── landing/                    # Landing Page (Next.js)
+│   ├── public/
+│   ├── src/
+│   │   ├── app/
+│   │   ├── components/
+│   │   └── styles/
+│   ├── package.json
+│   └── Dockerfile
+│
+├── docker-compose.yml          # Multi-service orchestration
+└── README.md
