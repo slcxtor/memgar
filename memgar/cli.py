@@ -1213,21 +1213,117 @@ def server(host: str, port: int, mode: str) -> None:
         console.print("[dim]MCP server support is in development[/dim]")
         raise SystemExit(1)
     
+    from memgar.integrations.mcp_server import MemgarMCPServer, run_stdio_server
+
     console.print()
     console.print(Panel(
         f"[bold]Memgar MCP Server[/bold]\n\n"
-        f"Host: {host}\n"
-        f"Port: {port}\n"
-        f"Mode: {mode}",
-        title="🚀 Starting Server",
+        f"Mode:  {mode}\n"
+        f"Host:  {host}:{port}\n\n"
+        f"[dim]Tools: memgar_scan, memgar_scan_batch,\n"
+        f"       memgar_patterns, memgar_stats, memgar_check_threat[/dim]",
+        title="🚀 Memgar MCP Server",
         border_style="green",
     ))
-    
-    console.print("\n[yellow]MCP Server is starting...[/yellow]")
-    console.print("[dim]Press Ctrl+C to stop[/dim]\n")
-    
-    # TODO: Implement actual server start
-    console.print("[red]MCP Server not yet fully implemented[/red]")
+
+    if mode == "stdio":
+        console.print("[green]Starting stdio server — waiting for JSON-RPC input...[/green]")
+        console.print("[dim]Press Ctrl+C to stop[/dim]\n")
+        try:
+            run_stdio_server()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Server stopped.[/yellow]")
+
+    elif mode == "sse":
+        # HTTP + SSE server using built-in http.server
+        import threading
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        import json as _json
+
+        mcp_server = MemgarMCPServer()
+
+        class MCPHTTPHandler(BaseHTTPRequestHandler):
+            def log_message(self, format, *args):
+                pass  # suppress default logs
+
+            def do_GET(self):
+                if self.path == "/health":
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(_json.dumps({"status": "ok", "version": "0.5.3"}).encode())
+                elif self.path == "/tools":
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(_json.dumps({"tools": mcp_server.get_tools()}).encode())
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length)
+                try:
+                    request = _json.loads(body)
+                    method = request.get("method", "")
+                    params = request.get("params", {})
+                    req_id = request.get("id")
+
+                    if method == "initialize":
+                        result = {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {"tools": {}},
+                            "serverInfo": {"name": "memgar", "version": "0.5.3"}
+                        }
+                    elif method == "tools/list":
+                        result = {"tools": mcp_server.get_tools()}
+                    elif method == "tools/call":
+                        tool_name = params.get("name", "")
+                        tool_args = params.get("arguments", {})
+                        resp = mcp_server.handle_tool(tool_name, tool_args)
+                        result = {"content": resp.content, "isError": resp.is_error}
+                    else:
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        err = _json.dumps({"jsonrpc": "2.0", "id": req_id,
+                                          "error": {"code": -32601, "message": f"Method not found: {method}"}})
+                        self.wfile.write(err.encode())
+                        return
+
+                    response = _json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result})
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(response.encode())
+
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(_json.dumps({"error": str(e)}).encode())
+
+            def do_OPTIONS(self):
+                self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type")
+                self.end_headers()
+
+        httpd = HTTPServer((host, port), MCPHTTPHandler)
+        console.print(f"[green]✅ HTTP server listening on http://{host}:{port}[/green]")
+        console.print(f"[dim]  GET  /health  — health check[/dim]")
+        console.print(f"[dim]  GET  /tools   — list MCP tools[/dim]")
+        console.print(f"[dim]  POST /        — JSON-RPC 2.0 endpoint[/dim]")
+        console.print("[dim]Press Ctrl+C to stop[/dim]\n")
+
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            httpd.shutdown()
+            console.print("\n[yellow]Server stopped.[/yellow]")
 
 
 # =============================================================================
