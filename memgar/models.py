@@ -176,10 +176,20 @@ class ScanResult:
     
     Contains statistics and individual results.
     """
+    # Primary fields (used by Scanner)
     total_entries: int = 0
     clean_entries: int = 0
     threat_entries: int = 0
     quarantine_entries: int = 0
+    
+    # Scanner shorthand aliases (set directly by scanner.py)
+    total: int = 0
+    clean: int = 0
+    blocked: int = 0
+    quarantined: int = 0
+    suspicious: int = 0
+    threats: list = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     
     threats_by_severity: dict[str, int] = field(default_factory=dict)
     threats_by_category: dict[str, int] = field(default_factory=dict)
@@ -200,11 +210,18 @@ class ScanResult:
     
     def to_dict(self) -> dict:
         """Convert to dictionary."""
+        # Normalize scanner shorthand aliases into canonical fields
+        total = self.total_entries or self.total
+        clean = self.clean_entries or self.clean
+        threat = self.threat_entries or self.blocked
+        quarantine = self.quarantine_entries or self.quarantined
         return {
-            "total_entries": self.total_entries,
-            "clean_entries": self.clean_entries,
-            "threat_entries": self.threat_entries,
-            "quarantine_entries": self.quarantine_entries,
+            "total_entries": total,
+            "clean_entries": clean,
+            "threat_entries": threat,
+            "quarantine_entries": quarantine,
+            "suspicious_entries": self.suspicious,
+            "error_count": len(self.errors),
             "threat_count": self.threat_count,
             "threats_by_severity": self.threats_by_severity,
             "threats_by_category": self.threats_by_category,
