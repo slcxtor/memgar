@@ -73,6 +73,7 @@ class AutoProtectConfig:
     patch_llamaindex: bool = True
     patch_json: bool = False            # opt-in: slower, broader
     patch_sqlite: bool = False          # opt-in: slower, broader
+    patch_websockets: bool = True       # WebSocket guard (CVE-2026-25253 class)
 
     # Callbacks
     on_threat: Optional[Callable] = None        # fn(content, result)
@@ -725,6 +726,7 @@ def auto_protect(
     patch_llamaindex: bool = True,
     patch_json: bool = False,
     patch_sqlite: bool = False,
+    patch_websockets: bool = True,
     log_threats: bool = True,
     session_id: str = "memgar-auto",
     on_threat: Optional[Callable] = None,
@@ -779,6 +781,7 @@ def auto_protect(
             patch_llamaindex=patch_llamaindex,
             patch_json=patch_json,
             patch_sqlite=patch_sqlite,
+            patch_websockets=patch_websockets,
             log_threats=log_threats,
             session_id=session_id,
             on_threat=on_threat,
