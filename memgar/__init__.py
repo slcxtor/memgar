@@ -33,7 +33,7 @@ CLI Usage:
 For more information, visit https://memgar.io
 """
 
-__version__ = "0.5.9"
+__version__ = "0.5.10"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.io"
@@ -279,6 +279,23 @@ try:
 except ImportError:
     _FRAMEWORKS_AVAILABLE = False
 
+
+# SIEM Integration (v0.5.10)
+from memgar.siem import (
+    SIEMRouter,
+    SIEMEvent,
+    SIEMSink,
+    SplunkHECSink,
+    DatadogSink,
+    ElasticSink,
+    SyslogSink,
+    WebhookSink,
+    FileSink,
+    EventCategory,
+    OCSFClass,
+    OCSFSeverity,
+    create_router as create_siem_router,
+)
 
 # Per-Agent Identity (v0.5.9)
 from memgar.identity import (
