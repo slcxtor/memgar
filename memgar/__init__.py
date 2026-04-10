@@ -33,7 +33,7 @@ CLI Usage:
 For more information, visit https://memgar.io
 """
 
-__version__ = "0.5.8"
+__version__ = "0.5.9"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.io"
@@ -279,6 +279,21 @@ try:
 except ImportError:
     _FRAMEWORKS_AVAILABLE = False
 
+
+# Per-Agent Identity (v0.5.9)
+from memgar.identity import (
+    AgentRegistry,
+    AgentIdentity,
+    AgentToken,
+    AgentContext,
+    AgentStatus,
+    PermissionScope,
+    DelegationLink,
+    AuditEvent as IdentityAuditEvent,
+    HIGH_RISK_SCOPES,
+    create_registry,
+    get_registry,
+)
 
 # Supply Chain Scanner (v0.5.8)
 from memgar.supply import (
