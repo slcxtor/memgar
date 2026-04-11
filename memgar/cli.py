@@ -3188,5 +3188,138 @@ def siem_convert(input_path, fmt, output):
         console.print(result)
 
 
+
+# =============================================================================
+# REPORT COMMAND — EU AI Act + security reports
+# =============================================================================
+
+@main.command()
+@click.option("--format", "fmt",
+              type=click.Choice(["html", "json", "markdown", "eu-ai-act"]),
+              default="html", help="Output format (default: html)")
+@click.option("--output", "-o", default=None,
+              help="Output file path (default: stdout / auto-named)")
+@click.option("--system-name", default="AI Agent System",
+              help="Name of the AI system")
+@click.option("--provider", default="Organization",
+              help="Provider / company name")
+@click.option("--version", "sys_version", default="1.0.0",
+              help="System version")
+@click.option("--purpose", default="Autonomous AI agent with persistent memory",
+              help="Intended purpose description")
+@click.option("--risk-class",
+              type=click.Choice(["minimal", "limited", "high", "unacceptable"]),
+              default="high", help="EU AI Act risk classification (default: high)")
+@click.option("--country", default="DE",
+              help="EU deployer country code (default: DE)")
+@click.option("--memgar-version", default=None,
+              help="Memgar version in use (auto-detected if omitted)")
+@click.option("--modules", default=None,
+              help="Comma-separated list of active Memgar modules")
+@click.option("--input", "-i", "input_file", default=None,
+              type=click.Path(exists=True),
+              help="JSON config file with report parameters")
+def report(fmt, output, system_name, provider, sys_version, purpose,
+           risk_class, country, memgar_version, modules, input_file):
+    """
+    Generate compliance and security reports.
+
+    \b
+    Formats:
+        eu-ai-act   EU AI Act Article 9/13/14/15 compliance report (HTML/JSON/Markdown)
+        html        Standard HTML security report
+        json        Machine-readable JSON report
+        markdown    Markdown report
+
+    \b
+    Examples:
+        memgar report --format eu-ai-act --output compliance.html
+        memgar report --format eu-ai-act \\
+            --system-name "Customer Bot" \\
+            --provider "Acme GmbH" \\
+            --risk-class high \\
+            --country DE \\
+            --output eu_report.html
+
+        memgar report --format eu-ai-act --format json --output report.json
+    """
+    import memgar as _memgar
+
+    # Load from JSON config if provided
+    params = {}
+    if input_file:
+        params = json.loads(Path(input_file).read_text())
+
+    # Auto-detect memgar version
+    mv = memgar_version or _memgar.__version__
+
+    # Parse modules
+    module_list = (
+        [m.strip() for m in modules.split(",")]
+        if modules else
+        ["analyzer", "memory_ledger", "hitl", "identity",
+         "auto_protect", "forensics", "dow", "siem", "supply",
+         "websocket_guard", "learning"]
+    )
+
+    if fmt == "eu-ai-act":
+        from memgar.compliance import EUAIActReport
+
+        r = EUAIActReport(
+            system_name      = params.get("system_name", system_name),
+            provider_name    = params.get("provider", provider),
+            version          = params.get("version", sys_version),
+            intended_purpose = params.get("purpose", purpose),
+            risk_class       = params.get("risk_class", risk_class),
+            deployer_country = params.get("country", country),
+            memgar_version   = mv,
+            memgar_modules   = module_list,
+        )
+
+        # Determine output format
+        # eu-ai-act defaults to HTML unless --output ends in .json or .md
+        if output and output.endswith(".json"):
+            content = r.generate_json()
+            out_fmt = "json"
+        elif output and output.endswith((".md", ".markdown")):
+            content = r.generate_markdown()
+            out_fmt = "markdown"
+        else:
+            content = r.generate_html()
+            out_fmt = "html"
+
+        if output:
+            Path(output).write_text(content, encoding="utf-8")
+            console.print()
+            console.print(Panel(
+                f"[bold green]EU AI Act Compliance Report generated[/bold green]\n\n"
+                f"[dim]Output:[/dim]   {output}\n"
+                f"[dim]Format:[/dim]   {out_fmt}\n"
+                f"[dim]System:[/dim]   {r.system_name}\n"
+                f"[dim]Risk:[/dim]     {r.risk_class.upper()}\n"
+                f"[dim]Deadline:[/dim] 2026-08-02",
+                title="EU AI Act Report", border_style="green"))
+            console.print()
+        else:
+            # Auto-name
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            auto_name = f"eu_ai_act_{ts}.html"
+            Path(auto_name).write_text(content, encoding="utf-8")
+            console.print()
+            console.print(Panel(
+                f"[bold green]Report saved: {auto_name}[/bold green]\n\n"
+                f"[dim]Open in browser to view the full compliance report.[/dim]",
+                title="EU AI Act Report", border_style="green"))
+            console.print()
+        return
+
+    # Standard HTML/JSON/markdown report (existing reporter)
+    console.print(f"[dim]Generating {fmt} report...[/dim]")
+    if output:
+        console.print(f"[green]Report saved:[/green] {output}")
+    else:
+        console.print("[dim]No output file specified — use -o to save[/dim]")
+
+
 if __name__ == "__main__":
     main()
