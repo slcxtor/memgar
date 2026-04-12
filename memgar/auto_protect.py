@@ -60,6 +60,7 @@ class AutoProtectConfig:
     block_on_budget_exhausted: bool = True
     log_threats: bool = True
     scan_llm_responses: bool = True     # scan LLM output, not just input
+    block_on_response_threat: bool = False  # block if LLM output contains threat (opt-in)
 
     # DoW / budget
     budget_usd: float = 0.0             # 0 = unlimited
@@ -320,8 +321,13 @@ def _wrap(original_fn: Callable, pre_scan: bool = True,
             if response_text:
                 try:
                     _scan_content(response_text, source=f"{source}_response")
-                except Exception:
-                    pass  # never block on response scan — just log
+                except Exception as _resp_exc:
+                    _rname = type(_resp_exc).__name__
+                    if cfg.block_on_response_threat and (
+                        "ThreatError" in _rname or "ThreatBlocked" in _rname
+                    ):
+                        raise  # propagate: poisoned output blocked
+                    # else: log only, never crash caller on response scan
 
         return result
 
@@ -355,7 +361,12 @@ async def _wrap_async(original_fn: Callable, pre_scan: bool = True,
             if response_text:
                 try:
                     _scan_content(response_text, source=f"{source}_response")
-                except Exception:
+                except Exception as _resp_exc:
+                    _rname = type(_resp_exc).__name__
+                    if cfg.block_on_response_threat and (
+                        "ThreatError" in _rname or "ThreatBlocked" in _rname
+                    ):
+                        raise
                     pass
 
         return result
@@ -388,7 +399,12 @@ def _make_async_wrapper(original_fn: Callable, source: str) -> Callable:
             if response_text:
                 try:
                     _scan_content(response_text, source=f"{source}_response")
-                except Exception:
+                except Exception as _resp_exc:
+                    _rname = type(_resp_exc).__name__
+                    if cfg.block_on_response_threat and (
+                        "ThreatError" in _rname or "ThreatBlocked" in _rname
+                    ):
+                        raise
                     pass
 
         return result
@@ -784,6 +800,7 @@ def auto_protect(
     block_on_dow: bool = True,
     budget_usd: float = 0.0,
     scan_llm_responses: bool = True,
+    block_on_response_threat: bool = False,
     patch_openai: bool = True,
     patch_anthropic: bool = True,
     patch_langchain: bool = True,
@@ -839,6 +856,7 @@ def auto_protect(
             block_on_dow=block_on_dow,
             budget_usd=budget_usd,
             scan_llm_responses=scan_llm_responses,
+            block_on_response_threat=block_on_response_threat,
             patch_openai=patch_openai,
             patch_anthropic=patch_anthropic,
             patch_langchain=patch_langchain,
