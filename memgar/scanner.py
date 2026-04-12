@@ -419,3 +419,76 @@ class FileWatcher:
             self.callback(path, result)
         
         return result
+
+
+class MemoryScanner:
+    """
+    Compatibility shim for integration modules (langchain, crewai, autogen, openai_assistants).
+
+    Wraps Analyzer with a simple scan(content) interface and a mode parameter
+    that controls response behavior:
+
+        protect  — block on threat (raises or returns blocked result)
+        monitor  — log threat, return result without blocking
+        audit    — record only, never block
+
+    Args:
+        mode:      Scan mode: "protect", "monitor", or "audit" (default: "protect")
+        analyzer:  Optional pre-built Analyzer instance (shared for performance)
+    """
+
+    MODES = ("protect", "monitor", "audit")
+
+    def __init__(
+        self,
+        mode: str = "protect",
+        analyzer: "Analyzer | None" = None,
+    ) -> None:
+        if mode not in self.MODES:
+            raise ValueError(f"Invalid mode '{mode}'. Choose from: {self.MODES}")
+        self.mode = mode
+        self._analyzer = analyzer or Analyzer()
+
+    def scan(self, content: str) -> "AnalysisResult":
+        """
+        Scan a single string and return an AnalysisResult.
+
+        In "protect" mode the result carries decision=BLOCK for threats.
+        In "monitor" and "audit" modes the result is returned unchanged
+        regardless of decision — the caller decides what to do.
+
+        Returns:
+            AnalysisResult with .decision, .risk_score, .threats
+        """
+        if not content or not isinstance(content, str):
+            from memgar.models import Decision, AnalysisResult as AR
+            return AR(decision=Decision.ALLOW, risk_score=0, threats=[])
+
+        entry = MemoryEntry(content=content)
+        result = self._analyzer.analyze(entry)
+
+        # Populate threat_type from the dominant threat (used by integration wrappers)
+        if result.threats and result.threat_type is None:
+            from dataclasses import replace
+            dominant = result.threats[0]
+            threat_cat = (
+                dominant.threat.category.value
+                if hasattr(dominant.threat, "category") and hasattr(dominant.threat.category, "value")
+                else str(getattr(dominant.threat, "category", "unknown"))
+            )
+            result = replace(result, threat_type=threat_cat)
+
+        if self.mode == "audit":
+            from memgar.models import Decision
+            from dataclasses import replace
+            return replace(result, decision=Decision.ALLOW)
+
+        return result
+
+    def scan_batch(self, contents: "list[str]") -> "list[AnalysisResult]":
+        """Scan multiple strings. Returns one AnalysisResult per input."""
+        return [self.scan(c) for c in contents]
+
+    @property
+    def is_blocking(self) -> bool:
+        return self.mode == "protect"
