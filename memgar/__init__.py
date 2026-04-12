@@ -280,6 +280,16 @@ except ImportError:
     _FRAMEWORKS_AVAILABLE = False
 
 
+# Domain-Aware Anomaly Detection (v0.5.16)
+from memgar.domain_detector import (
+    DomainAnomalyDetector,
+    AgentDomainProfile,
+    DomainClassifier,
+    DomainAnomalyResult,
+    build_detector,
+    mismatch_to_trust_penalty,
+)
+
 # Behavioral Baseline Engine (v0.5.15)
 from memgar.behavioral_baseline import (
     BehavioralBaseline,
