@@ -33,7 +33,7 @@ CLI Usage:
 For more information, visit https://memgar.io
 """
 
-__version__ = "0.5.15"
+__version__ = "0.5.16"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.io"
@@ -292,6 +292,17 @@ from memgar.behavioral_baseline import (
     BehaviorSnapshot,
     SIGNAL_REGISTRY,
     create_baseline,
+)
+
+# Semantic Embedding Layer (v0.5.16)
+from memgar.secure_embeddings import (
+    EmbeddingBackend,
+    AnthropicEmbedding,
+    SklearnTFIDF,
+    KeywordFallback,
+    LedgerEmbeddingIndex,
+    build_similarity_fn,
+    get_best_backend,
 )
 
 # Secure Retrieval Layer (v0.5.14)
