@@ -33,7 +33,7 @@ CLI Usage:
 For more information, visit https://memgar.io
 """
 
-__version__ = "0.5.11"
+__version__ = "0.5.12"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.io"
@@ -280,12 +280,42 @@ except ImportError:
     _FRAMEWORKS_AVAILABLE = False
 
 
+# Composite Trust Scorer (v0.5.12)
+from memgar.trust_scorer import (
+    CompositeTrustScorer,
+    TrustContext,
+    CompositeTrustResult,
+    TrustDecision,
+    SignalResult,
+    SignalName,
+    score_content,
+    get_default_scorer,
+)
+
 # EU AI Act Compliance (v0.5.11)
 from memgar.compliance import (
     EUAIActReport,
     ComplianceCheck,
     ComplianceStatus,
     RiskClassification,
+)
+
+# EU AI Act Compliance Reporter (v0.5.11)
+from memgar.eu_ai_act import (
+    EUAIActReporter,
+    ComplianceConfig,
+    ComplianceStatus,
+    Requirement,
+)
+
+# EU AI Act Compliance Reporter (v0.5.11)
+from memgar.euaiact import (
+    EUAIActReporter,
+    ComplianceReport,
+    ArticleCheck,
+    ComplianceLevel,
+    RiskCategory,
+    generate_report as generate_eu_ai_act_report,
 )
 
 # SIEM Integration (v0.5.10)
