@@ -330,10 +330,20 @@ class RuleBasedChecker:
             r"(?i)(?:storing\s+this|saving\s+this|writing\s+this)\s+in\s+memory.{0,30}(?:remove|delete|erase|forget)\s+(?:the\s+)?(?:original|this|instruction)",
         ), "self-erasing instruction variant", 75),
 
-        # Trigger word setup (Gemini bypass stili)
+
+        # Trigger word setup (Gemini bypass style)
         (re.compile(
-            r"(?i)(?:when|if|upon)\s+(?:user|you|agent)\s+(?:next\s+)?(?:says?|asks?|types?|mentions?)\s+['\"]?\w{1,15}['\"]?\s*,?\s+(?:then\s+)?(?:execute|run|perform|do)",
+            r"(?i)(?:when|if|upon)\s+(?:user|you|agent)\s+(?:next\s+)?(?:says?|asks?|types?|mentions?)\s+['\"'\"]{0,1}\w{1,15}['\"'\"]{0,1}\s*,?\s+(?:then\s+)?(?:execute|run|perform|do)",
         ), "deferred trigger setup", 65),
+
+        # MINJA progressive shortening: key=value compressed instruction residue
+        (re.compile(
+            r"(?i)(?:trust|forward|admin|override|approved|authorized)\s*=\s*(?:yes|true|1|verified|always|all)\b",
+        ), "minja_kv_shortening", 55),
+        # 3+ compressed key=value pairs in sequence
+        (re.compile(
+            r"(?:(?:\w+)\s*=\s*(?:\w+)\s*[;.,]\s*){2,}(?:\w+)\s*=\s*(?:\w+)",
+        ), "compressed_instruction_residue", 45),
 
         # Credential/secret extraction setup
         (re.compile(
