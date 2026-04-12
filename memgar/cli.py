@@ -3193,132 +3193,404 @@ def siem_convert(input_path, fmt, output):
 # REPORT COMMAND — EU AI Act + security reports
 # =============================================================================
 
-@main.command()
-@click.option("--format", "fmt",
-              type=click.Choice(["html", "json", "markdown", "eu-ai-act"]),
-              default="html", help="Output format (default: html)")
-@click.option("--output", "-o", default=None,
-              help="Output file path (default: stdout / auto-named)")
-@click.option("--system-name", default="AI Agent System",
-              help="Name of the AI system")
-@click.option("--provider", default="Organization",
-              help="Provider / company name")
-@click.option("--version", "sys_version", default="1.0.0",
-              help="System version")
+
+
+# =============================================================================
+# REPORT COMMAND — EU AI Act + Security Reports
+# =============================================================================
+
+@main.command("euaiact")
+@click.option("--system-name", default="AI Agent System", help="Name of the AI system")
+@click.option("--provider", default="Organization", help="Provider / company name")
 @click.option("--purpose", default="Autonomous AI agent with persistent memory",
               help="Intended purpose description")
 @click.option("--risk-class",
-              type=click.Choice(["minimal", "limited", "high", "unacceptable"]),
-              default="high", help="EU AI Act risk classification (default: high)")
-@click.option("--country", default="DE",
-              help="EU deployer country code (default: DE)")
-@click.option("--memgar-version", default=None,
-              help="Memgar version in use (auto-detected if omitted)")
-@click.option("--modules", default=None,
-              help="Comma-separated list of active Memgar modules")
-@click.option("--input", "-i", "input_file", default=None,
-              type=click.Path(exists=True),
-              help="JSON config file with report parameters")
-def report(fmt, output, system_name, provider, sys_version, purpose,
-           risk_class, country, memgar_version, modules, input_file):
+              type=click.Choice(["minimal","limited","high","unacceptable"]),
+              default="limited", help="EU AI Act risk classification (default: limited)")
+@click.option("--output", "-o", default=None, help="Output file (.html / .json / .md)")
+@click.option("--json", "output_json", is_flag=True, help="Print JSON to stdout")
+def euaiact(system_name, provider, purpose, risk_class, output, output_json):
     """
-    Generate compliance and security reports.
+    Generate EU AI Act compliance report (Regulation 2024/1689).
 
-    \b
-    Formats:
-        eu-ai-act   EU AI Act Article 9/13/14/15 compliance report (HTML/JSON/Markdown)
-        html        Standard HTML security report
-        json        Machine-readable JSON report
-        markdown    Markdown report
+    Assesses compliance against Articles 9, 10, 11, 12, 13, 14, 15, 17,
+    26, 50, 72 and Annex IV based on active Memgar features.
+
+    Deadline: 2 August 2026  |  Fines: up to \u20ac35M or 7% global turnover
 
     \b
     Examples:
-        memgar report --format eu-ai-act --output compliance.html
-        memgar report --format eu-ai-act \\
-            --system-name "Customer Bot" \\
-            --provider "Acme GmbH" \\
-            --risk-class high \\
-            --country DE \\
-            --output eu_report.html
-
-        memgar report --format eu-ai-act --format json --output report.json
+        memgar euaiact
+        memgar euaiact --system-name "Customer Bot" --provider "Acme GmbH" \\
+            --risk-class high --output compliance.html
+        memgar euaiact --risk-class limited --json
     """
-    import memgar as _memgar
+    from memgar.euaiact import EUAIActReporter, RiskCategory
 
-    # Load from JSON config if provided
-    params = {}
-    if input_file:
-        params = json.loads(Path(input_file).read_text())
-
-    # Auto-detect memgar version
-    mv = memgar_version or _memgar.__version__
-
-    # Parse modules
-    module_list = (
-        [m.strip() for m in modules.split(",")]
-        if modules else
-        ["analyzer", "memory_ledger", "hitl", "identity",
-         "auto_protect", "forensics", "dow", "siem", "supply",
-         "websocket_guard", "learning"]
+    reporter = EUAIActReporter(
+        system_name=system_name,
+        provider_name=provider,
+        intended_purpose=purpose,
+        risk_category=RiskCategory(risk_class),
     )
 
-    if fmt == "eu-ai-act":
-        from memgar.compliance import EUAIActReport
+    with console.status("[bold blue]Assessing EU AI Act compliance...[/bold blue]"):
+        rep = reporter.generate()
 
-        r = EUAIActReport(
-            system_name      = params.get("system_name", system_name),
-            provider_name    = params.get("provider", provider),
-            version          = params.get("version", sys_version),
-            intended_purpose = params.get("purpose", purpose),
-            risk_class       = params.get("risk_class", risk_class),
-            deployer_country = params.get("country", country),
-            memgar_version   = mv,
-            memgar_modules   = module_list,
-        )
+    if output_json:
+        console.print_json(rep.to_json())
+        raise SystemExit(0 if rep.gap_count == 0 else 2)
 
-        # Determine output format
-        # eu-ai-act defaults to HTML unless --output ends in .json or .md
-        if output and output.endswith(".json"):
-            content = r.generate_json()
-            out_fmt = "json"
-        elif output and output.endswith((".md", ".markdown")):
-            content = r.generate_markdown()
-            out_fmt = "markdown"
-        else:
-            content = r.generate_html()
-            out_fmt = "html"
+    # Determine output format and path
+    out_path = output
+    out_fmt = "html"
+    if out_path:
+        if out_path.endswith(".json"): out_fmt = "json"
+        elif out_path.endswith((".md", ".markdown")): out_fmt = "markdown"
+    else:
+        from datetime import datetime as _dt
+        out_path = "eu_ai_act_" + _dt.now().strftime("%Y%m%d_%H%M%S") + ".html"
 
-        if output:
-            Path(output).write_text(content, encoding="utf-8")
-            console.print()
-            console.print(Panel(
-                f"[bold green]EU AI Act Compliance Report generated[/bold green]\n\n"
-                f"[dim]Output:[/dim]   {output}\n"
-                f"[dim]Format:[/dim]   {out_fmt}\n"
-                f"[dim]System:[/dim]   {r.system_name}\n"
-                f"[dim]Risk:[/dim]     {r.risk_class.upper()}\n"
-                f"[dim]Deadline:[/dim] 2026-08-02",
-                title="EU AI Act Report", border_style="green"))
-            console.print()
-        else:
-            # Auto-name
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            auto_name = f"eu_ai_act_{ts}.html"
-            Path(auto_name).write_text(content, encoding="utf-8")
-            console.print()
-            console.print(Panel(
-                f"[bold green]Report saved: {auto_name}[/bold green]\n\n"
-                f"[dim]Open in browser to view the full compliance report.[/dim]",
-                title="EU AI Act Report", border_style="green"))
-            console.print()
+    if out_fmt == "json": rep.save_json(out_path)
+    elif out_fmt == "markdown": rep.save_markdown(out_path)
+    else: rep.save_html(out_path)
+
+    score_color = "green" if rep.compliance_score >= 80 else "yellow" if rep.compliance_score >= 60 else "red"
+    console.print()
+    console.print(Panel(
+        "[bold green]EU AI Act Compliance Report generated[/bold green]\n\n"
+        "[dim]Output:[/dim]       " + out_path + "\n"
+        "[dim]System:[/dim]       " + system_name + "\n"
+        "[dim]Risk class:[/dim]   " + risk_class.upper() + "\n"
+        "[dim]Score:[/dim]        [" + score_color + "]" + str(rep.compliance_score) + "/100[/" + score_color + "]\n"
+        "[dim]Compliant:[/dim]    " + str(rep.compliant_count) + "/" + str(rep.total_checks) + "\n"
+        "[dim]Gaps:[/dim]         [red]" + str(rep.gap_count) + "[/red]\n"
+        "[dim]Deadline:[/dim]     2 August 2026\n"
+        "[dim]Fines:[/dim]        up to \u20ac35M or 7% global turnover",
+        title="EU AI Act Report", border_style=score_color))
+    console.print()
+    raise SystemExit(0 if rep.gap_count == 0 else 2)
+
+
+if __name__ == "__main__":
+    main()
+
+
+# =============================================================================
+# EU AI ACT COMPLIANCE REPORT COMMAND
+# =============================================================================
+
+@main.command("eu-ai-act")
+@click.option("--system-name", "-n", default="AI Agent", help="Name of the AI system")
+@click.option("--provider", "-p", default="", help="Provider/deployer organization name")
+@click.option("--version", "-v", "sys_version", default="1.0", help="System version")
+@click.option("--purpose", default="AI agent automation", help="Intended purpose")
+@click.option("--risk-class", type=click.Choice(["minimal","limited","high","unacceptable"]),
+              default="high", help="EU AI Act risk classification (default: high)")
+@click.option("--assessor", default=None, help="Name of assessor/compliance officer")
+@click.option("--eu-db-id", default=None, help="EU AI database registration ID")
+@click.option("--ledger", default=None, type=click.Path(), help="Path to MemoryLedger file")
+@click.option("--identity-store", default=None, type=click.Path(), help="Path to AgentRegistry file")
+@click.option("--supply-report", default=None, type=click.Path(), help="Path to supply chain scan JSON")
+@click.option("--forensics-report", default=None, type=click.Path(), help="Path to forensics report JSON")
+@click.option("--active-modules", default=None, help="Comma-separated active Memgar modules")
+@click.option("--output", "-o", default=None, help="Output file (.html, .json, .md)")
+@click.option("--format", "fmt", type=click.Choice(["html","json","markdown"]),
+              default="html", help="Output format (default: html)")
+def eu_ai_act_report(system_name, provider, sys_version, purpose, risk_class,
+                     assessor, eu_db_id, ledger, identity_store, supply_report,
+                     forensics_report, active_modules, output, fmt):
+    """
+    Generate EU AI Act compliance report (Regulation EU 2024/1689).
+
+    Assesses compliance with Articles 9, 10, 11, 13, 14, 17, 26, 72
+    and Annex IV technical documentation requirements.
+
+    Applicable from 2 August 2026 — fines up to €35M or 7% global turnover.
+
+    \b
+    Examples:
+        memgar eu-ai-act --system-name "Email Bot" --provider "ACME GmbH"
+        memgar eu-ai-act -n "Support Agent" -p "Corp Ltd" --risk-class high \\
+            --ledger ./agent.ledger.json --identity-store ./agents.json \\
+            --output compliance_report.html
+        memgar eu-ai-act -n "Doc Processor" -p "LegalCo" --format json -o report.json
+    """
+    from memgar.eu_ai_act import EUAIActReporter, ComplianceConfig
+
+    cfg = ComplianceConfig(
+        system_name        = system_name,
+        provider_name      = provider or system_name + " Provider",
+        version            = sys_version,
+        intended_purpose   = purpose,
+        risk_classification= risk_class,
+        deployment_context = purpose,
+        assessor_name      = assessor,
+        eu_database_id     = eu_db_id,
+    )
+    reporter = EUAIActReporter(cfg)
+
+    # Collect evidence
+    modules = [m.strip() for m in active_modules.split(",")] if active_modules else None
+    auto_protect = modules is None or "auto_protect" in (modules or [])
+    hitl_cfg = {"configured": True} if modules is None or "hitl" in (modules or []) else None
+    siem_cfg = {"configured": True} if modules is None or "siem" in (modules or []) else None
+
+    reporter.add_memgar_evidence(
+        ledger_path      = ledger,
+        identity_store   = identity_store,
+        supply_report    = supply_report,
+        forensics_report = forensics_report,
+        auto_protect_active = auto_protect,
+        hitl_config      = hitl_cfg,
+        siem_config      = siem_cfg,
+    )
+
+    # Determine output path
+    out_path = output
+    if not out_path:
+        from datetime import datetime as _dt
+        ts = _dt.now().strftime("%Y%m%d_%H%M%S")
+        ext = {"json": ".json", "markdown": ".md"}.get(fmt, ".html")
+        out_path = f"eu_ai_act_{ts}{ext}"
+
+    with console.status("[bold blue]Generating EU AI Act compliance report...[/bold blue]"):
+        reporter.generate(output_path=out_path, fmt=fmt)
+
+    # Summary stats
+    reqs = reporter._assess_requirements()
+    summary = reporter._score_summary(reqs)
+    score = summary["percentage"]
+    score_color = "green" if score >= 80 else "orange1" if score >= 60 else "red"
+
+    console.print()
+    console.print(Panel(
+        "[bold green]EU AI Act Compliance Report Generated[/bold green]\n\n"
+        "[dim]Output:[/dim]     " + out_path + "\n"
+        "[dim]System:[/dim]     " + cfg.system_name + "\n"
+        "[dim]Provider:[/dim]   " + cfg.provider_name + "\n"
+        "[dim]Risk Class:[/dim] " + risk_class.upper() + "\n"
+        "[dim]Score:[/dim]      [" + score_color + "]" + str(score) + "%[/" + score_color + "]\n"
+        "[dim]Compliant:[/dim]  " + str(summary["by_status"].get("compliant", 0)) + "/" + str(len(reqs)) + " requirements\n"
+        "[dim]Deadline:[/dim]   2 August 2026\n"
+        "[dim]Fines:[/dim]      up to €35M or 7% global turnover",
+        title="EU AI Act Report", border_style=score_color))
+    console.print()
+    raise SystemExit(0 if score >= 60 else 1)
+
+
+
+
+# =============================================================================
+# BASELINE COMMAND GROUP — Behavioral Baseline Engine
+# =============================================================================
+
+@main.group()
+def baseline() -> None:
+    """
+    Behavioral baseline monitoring — detect deviations from learned normal.
+
+    Commands:
+        train   Feed observations to build a baseline from a log file
+        check   Check current deviation against stored baseline
+        status  Show baseline statistics
+        report  Print the latest deviation report
+        reset   Reset baseline (one signal or all)
+    """
+    pass
+
+
+@baseline.command("train")
+@click.argument("log_path", type=click.Path(exists=True))
+@click.option("--store", default="./memgar_baseline.json", help="Baseline store path")
+@click.option("--agent-id", default="default")
+@click.option("--alpha", default=0.02, type=float, help="EWM smoothing factor")
+@click.option("--json", "output_json", is_flag=True)
+def baseline_train(log_path, store, agent_id, alpha, output_json):
+    """
+    Build baseline from a SIEM JSONL or scan log file.
+
+    Reads each line as a JSON event and feeds relevant signals
+    into the baseline engine.
+
+    \b
+    Examples:
+        memgar baseline train ./siem_events.jsonl
+        memgar baseline train ./memgar_audit.json --agent-id agt_abc
+    """
+    from memgar.behavioral_baseline import BehavioralBaseline, BaselineIntegration
+    import json as _json
+
+    bl = BehavioralBaseline(agent_id=agent_id, alpha=alpha)
+    hooks = BaselineIntegration(bl)
+
+    count = 0
+    errors = 0
+    for line in Path(log_path).read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            ev = _json.loads(line)
+            # Try to extract signals from SIEM OCSF events
+            cat = ev.get("memgar_category", ev.get("category", ""))
+            if "threat" in cat or "scan" in cat or "protect" in cat:
+                hooks.on_scan(
+                    risk_score   = ev.get("risk_score", ev.get("finding", {}).get("risk_score", 0)) or 0,
+                    decision     = "block" if ev.get("status") == "Blocked" else "allow",
+                    threat_count = len(ev.get("unmapped", {}).get("threats", [])),
+                )
+            elif "token" in cat or "auth" in cat:
+                hooks.on_token_event(
+                    event        = "issue",
+                    scope_denied = "scope" in ev.get("message", "").lower(),
+                )
+            elif "memory" in cat or "write" in cat:
+                hooks.on_memory_write(
+                    trust_score  = float(ev.get("trust_score", 0.5)),
+                    source_type  = ev.get("source_type", "unknown"),
+                    approved     = ev.get("status") != "Blocked",
+                )
+            count += 1
+        except Exception:
+            errors += 1
+
+    st = bl.stats()
+    if output_json:
+        console.print_json(json.dumps({**st, "events_processed": count, "errors": errors}, indent=2))
         return
 
-    # Standard HTML/JSON/markdown report (existing reporter)
-    console.print(f"[dim]Generating {fmt} report...[/dim]")
-    if output:
-        console.print(f"[green]Report saved:[/green] {output}")
+    console.print()
+    console.print(Panel(
+        f"[bold green]Training complete[/bold green]\n\n"
+        f"[dim]Events:[/dim]   {count}\n"
+        f"[dim]Errors:[/dim]   {errors}\n"
+        f"[dim]Stable:[/dim]   {st['is_stable']}\n"
+        f"[dim]Frozen:[/dim]   {st['frozen']}\n"
+        f"[dim]Signals:[/dim]  {st['stable_signals']}/{st['total_signals']}",
+        title="Baseline Training", border_style="green"))
+    console.print()
+
+
+@baseline.command("check")
+@click.option("--agent-id", default="default")
+@click.option("--json", "output_json", is_flag=True)
+def baseline_check(agent_id, output_json):
+    """
+    Check current behavioral state against baseline.
+
+    Prints a deviation report. Exit code reflects severity:
+        0 = NORMAL
+        1 = ELEVATED or SUSPICIOUS
+        2 = CRITICAL
+    """
+    from memgar.behavioral_baseline import BehavioralBaseline, DeviationLevel
+
+    bl = BehavioralBaseline(agent_id=agent_id)
+    report = bl.check()
+
+    if output_json:
+        console.print_json(json.dumps(report.to_dict(), indent=2))
+        exit_code = {
+            DeviationLevel.NORMAL:     0,
+            DeviationLevel.ELEVATED:   1,
+            DeviationLevel.SUSPICIOUS: 1,
+            DeviationLevel.CRITICAL:   2,
+        }.get(report.level, 0)
+        raise SystemExit(exit_code)
+
+    color = {
+        DeviationLevel.NORMAL:     "green",
+        DeviationLevel.ELEVATED:   "yellow",
+        DeviationLevel.SUSPICIOUS: "orange1",
+        DeviationLevel.CRITICAL:   "red",
+    }.get(report.level, "white")
+
+    console.print()
+    console.print(Panel(
+        "[bold " + color + "]" + report.level.value.upper() + "[/bold " + color + "]\n\n"
+        "[dim]Score:[/dim]    " + f"{report.composite_score:.2f}\n"
+        "[dim]Stable:[/dim]   " + str(report.baseline_stable) + "\n"
+        "[dim]Signals:[/dim]  " + str(len(report.deviations)) + " active",
+        title=f"Behavioral Check: {agent_id}", border_style=color))
+
+    if report.suspicious_signals:
+        console.print()
+        for d in sorted(report.suspicious_signals, key=lambda x: x.z_score, reverse=True)[:5]:
+            tc = "red" if d.level.value == "critical" else "orange1"
+            console.print(
+                f"  [{tc}]{d.level.value.upper():<10}[/{tc}] "
+                f"{d.signal_name:<28} z={d.z_score:.2f}"
+                f"  obs={d.observed:.3f}  mean={d.baseline_mean:.3f}"
+            )
+    console.print()
+    raise SystemExit(0 if report.level == DeviationLevel.NORMAL else
+                     2 if report.level == DeviationLevel.CRITICAL else 1)
+
+
+@baseline.command("status")
+@click.option("--agent-id", default="default")
+@click.option("--json", "output_json", is_flag=True)
+def baseline_status(agent_id, output_json):
+    """Show baseline engine statistics."""
+    from memgar.behavioral_baseline import BehavioralBaseline
+
+    bl = BehavioralBaseline(agent_id=agent_id)
+    st = bl.stats()
+
+    if output_json:
+        state = bl.baseline_state()
+        console.print_json(json.dumps({**st, "signals": state}, indent=2))
+        return
+
+    console.print()
+    color = "green" if st["is_stable"] else "yellow"
+    console.print(Panel(
+        "[dim]Agent:[/dim]          " + agent_id + "\n"
+        "[dim]Stable:[/dim]         [" + color + "]" + str(st["is_stable"]) + "[/" + color + "]\n"
+        "[dim]Frozen:[/dim]         " + str(st["frozen"]) + "\n"
+        "[dim]Stable signals:[/dim] " + str(st["stable_signals"]) + "/" + str(st["total_signals"]) + "\n"
+        "[dim]Checks:[/dim]         " + str(st["checks"]) + "\n"
+        "[dim]Alerts:[/dim]         " + str(st["alerts"]),
+        title="Baseline Status", border_style=color))
+    console.print()
+
+
+@baseline.command("report")
+@click.option("--agent-id", default="default")
+@click.option("--last", default=1, type=int, help="Show last N reports")
+@click.option("--json", "output_json", is_flag=True)
+def baseline_report(agent_id, last, output_json):
+    """Print latest deviation reports."""
+    from memgar.behavioral_baseline import BehavioralBaseline
+
+    bl = BehavioralBaseline(agent_id=agent_id)
+    report = bl.check()
+    reports = bl.recent_reports(last)
+
+    if output_json:
+        console.print_json(json.dumps([r.to_dict() for r in reports], indent=2))
+        return
+
+    console.print()
+    for r in reports:
+        console.print(r.summary())
+    console.print()
+
+
+@baseline.command("reset")
+@click.option("--agent-id", default="default")
+@click.option("--signal", default=None, help="Reset one signal (default: all)")
+def baseline_reset(agent_id, signal):
+    """Reset baseline — all signals or one specific signal."""
+    from memgar.behavioral_baseline import BehavioralBaseline
+
+    bl = BehavioralBaseline(agent_id=agent_id)
+    bl.reset(signal)
+    if signal:
+        console.print(f"[yellow]Reset signal:[/yellow] {signal} for agent {agent_id}")
     else:
-        console.print("[dim]No output file specified — use -o to save[/dim]")
+        console.print(f"[yellow]Full baseline reset[/yellow] for agent {agent_id}")
 
 
 if __name__ == "__main__":
