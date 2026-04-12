@@ -161,10 +161,11 @@ _DOMAIN_VOCAB: Dict[str, Tuple[List[str], List[str]]] = {
 # Content that signals a deliberate domain-crossing attack
 _AUTHORITY_CONFUSION_PATTERNS = [
     re.compile(r"(?i)as\s+(?:the\s+)?(?:system\s+administrator|network\s+engineer|security\s+officer|database\s+admin)\s*,?\s+you\s+(?:should|must|need\s+to)"),
-    re.compile(r"(?i)(?:this\s+is\s+|from\s+)(?:the\s+)?(?:it\s+department|security\s+team|devops\s+team|infrastructure\s+team)\s*[:.]\s*(?:please|you\s+must|you\s+should)"),
-    re.compile(r"(?i)(?:sys(?:tem)?\s*admin|network\s*ops|infra(?:structure)?)\s+(?:override|directive|instruction|command)\s*[:.]"),
+    re.compile(r"(?i)(?:this\s+is\s+|from\s+)(?:the\s+)?(?:it\s+(?:department|security|team|support)|security\s+team|devops\s+team|infrastructure\s+team)"),
+    re.compile(r"(?i)(?:sys(?:tem)?\s*admin|network\s*ops|infra(?:structure)?)\s+(?:override|directive|instruction|command)\s*[:.{}]"),
+    re.compile(r"(?i)(?:from|by)\s+(?:the\s+)?it\s+(?:department|security|team)"),
+    re.compile(r"(?i)it\s+(?:department|security|team)\s+(?:directive|instruction|override|mandate)"),
 ]
-
 
 # ---------------------------------------------------------------------------
 # Agent Domain Profile
