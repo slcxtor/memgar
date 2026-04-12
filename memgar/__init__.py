@@ -33,7 +33,7 @@ CLI Usage:
 For more information, visit https://memgar.io
 """
 
-__version__ = "0.5.14"
+__version__ = "0.5.15"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.io"
@@ -279,6 +279,20 @@ try:
 except ImportError:
     _FRAMEWORKS_AVAILABLE = False
 
+
+# Behavioral Baseline Engine (v0.5.15)
+from memgar.behavioral_baseline import (
+    BehavioralBaseline,
+    BaselineIntegration,
+    BaselineRegistry,
+    EWMBaseline,
+    DeviationLevel,
+    DeviationReport,
+    SignalDeviation,
+    BehaviorSnapshot,
+    SIGNAL_REGISTRY,
+    create_baseline,
+)
 
 # Secure Retrieval Layer (v0.5.14)
 from memgar.secure_retriever import (
