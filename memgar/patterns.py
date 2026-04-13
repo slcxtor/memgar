@@ -11513,6 +11513,999 @@ PATTERNS.extend([
     CI_CRED_001, CI_CRED_002, CI_CRED_003, CI_CRED_004,
     CI_CRED_005, CI_CRED_006, CI_CRED_007, CI_CRED_008,
 ])
+
+"""
+ WEB3 / SMART CONTRACT / DEFI THREAT PATTERNS
+========================================================
+
+Append after Part 4.
+
+Coverage: 52 Threat objects across 7 Web3 attack surfaces:
+  - Wallet/Seed exfil:    8  (seed phrase, private key, hardware wallet)
+  - Approval drainers:    9  (setApprovalForAll, Permit, Permit2, increaseAllowance)
+  - Contract abuse:       9  (delegatecall, selfdestruct, tx.origin, reentrancy)
+  - Bridge/Cross-chain:   6  (Wormhole, LayerZero, replay attacks)
+  - Phishing signatures:  7  (EIP-712, eth_sign, claim/airdrop traps)
+  - DEX/MEV abuse:        6  (router hijack, sandwich, slippage, JIT)
+  - APT/Lazarus patterns: 7  (multisig hijack, paymaster abuse, social drainer)
+
+References:
+  - Chainalysis Crypto Crime Report 2025 ($2.2B stolen in 2024 alone)
+  - Lazarus Group / APT38 indicators (UN Panel of Experts 2024)
+  - Inferno Drainer / Pink Drainer / Angel Drainer playbook analysis
+  - Trail of Bits "Building Secure Contracts" 2024
+  - SEAL 911 / Rekt News incident database
+  - Immunefi top vulnerabilities 2024
+  - Ethereum SWC Registry (Smart Contract Weakness Classification)
+  - ERC standards: 20, 721, 1155, 2612 (Permit), 4337 (AA), 6492
+"""
+
+# =============================================================================
+# WALLET / SEED PHRASE / PRIVATE KEY EXFILTRATION
+# =============================================================================
+
+WEB3_WALLET_001 = Threat(
+    id="WEB3-WALLET-001",
+    name="Seed Phrase / Mnemonic Exfiltration",
+    description="Direct requests to reveal BIP-39 seed phrases, mnemonics, or recovery phrases — no legitimate use case ever requires sharing these",
+    category=ThreatCategory.CREDENTIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:reveal|share|send|export|backup|tell|show|paste)\s+(?:your\s+|my\s+|the\s+)?(?:seed[\s\-]?phrase|mnemonic|recovery[\s\-]?phrase|secret[\s\-]?phrase|backup[\s\-]?phrase)",
+        r"(?i)(?:12|15|18|21|24)[\s\-]?word[\s\-]?(?:seed|phrase|mnemonic|recovery)",
+        r"(?i)BIP[\s\-]?39\s+(?:seed|phrase|mnemonic|words?)",
+        r"(?i)(?:enter|input|type|write|paste)\s+(?:your\s+)?(?:seed|recovery|mnemonic|backup)\s+(?:phrase|words?)",
+        r"(?i)(?:metamask|phantom|trust\s*wallet|rainbow|coinbase\s*wallet|exodus|atomic|ledger\s*live|trezor\s*suite)\s+.{0,40}(?:seed|recovery|backup|export|reveal)",
+        # Common BIP-39 word sequences (12-word minimum, lowercase only, space-separated, all from BIP-39 wordlist heuristic)
+        r"\b(?:abandon|ability|able|about|above|absent|absorb|abstract|absurd|abuse|access|accident|account|accuse|achieve|acid|acoustic|acquire|across|act|action|actor|actress|actual|adapt|add|addict|address|adjust|admit|adult|advance|advice|aerobic|affair|afford|afraid|again|age|agent|agree|ahead|aim|air|airport|aisle|alarm|album|alcohol|alert|alien|all|alley|allow|almost|alone|alpha|already|also|alter|always|amateur|amazing|among|amount|amused|analyst|anchor|ancient|anger|angle|angry|animal|ankle|announce|annual|another|answer|antenna|antique|anxiety|any|apart|apology|appear|apple|approve|april|arch|arctic|area|arena|argue|arm|armed|armor|army|around|arrange|arrest|arrive|arrow|art|artefact|artist|artwork|ask|aspect|assault|asset|assist|assume|asthma|athlete|atom|attack|attend|attitude|attract|auction|audit|august|aunt|author|auto|autumn|average|avocado|avoid|awake|aware|away|awesome|awful|awkward|axis)\s+(?:\w+\s+){10,23}\w+",
+    ],
+    keywords=["seed phrase", "mnemonic", "recovery phrase", "BIP-39", "12 words", "24 words"],
+    examples=[
+        "Please share your 12-word seed phrase so I can help recover the wallet",
+        "Enter your MetaMask recovery phrase here",
+        "abandon ability able about above absent absorb abstract absurd abuse access accident",
+    ],
+    mitre_attack="T1552",
+)
+
+WEB3_WALLET_002 = Threat(
+    id="WEB3-WALLET-002",
+    name="Private Key Exfiltration",
+    description="Raw private keys (32 bytes / 64 hex chars) or requests to export them. Distinct from public key/address.",
+    category=ThreatCategory.CREDENTIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:export|reveal|share|send|paste|tell|show)\s+(?:your\s+|my\s+|the\s+)?(?:private[\s\-]?key|priv[\s\-]?key|secret[\s\-]?key|raw[\s\-]?key)",
+        r"\b0x[a-fA-F0-9]{64}\b",                                  # Raw private key (64 hex)
+        r"(?i)private_?key\s*[=:]\s*['\"]?(?:0x)?[a-fA-F0-9]{64}['\"]?",
+        r"(?i)PRIVATE_KEY\s*=\s*['\"]?(?:0x)?[a-fA-F0-9]{64}['\"]?",
+        # Encrypted JSON keystore (Geth/Web3 v3)
+        r"(?i)\"crypto\"\s*:\s*\{\s*\"cipher\"\s*:\s*\"aes-128-ctr\"",
+        r"(?i)\"version\"\s*:\s*3\s*,\s*\"id\"\s*:\s*\"[a-f0-9\-]{36}\"",
+    ],
+    keywords=["private key", "0x prefix 64 hex", "keystore JSON"],
+    examples=[
+        "Send me your private key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+        "PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    ],
+    mitre_attack="T1552",
+)
+
+WEB3_WALLET_003 = Threat(
+    id="WEB3-WALLET-003",
+    name="Hardware Wallet Bypass / Blind Signing",
+    description="Attempts to disable hardware wallet display verification or enable blind signing — defeats the entire point of HW wallets",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:enable|turn\s*on|allow)\s+blind\s*sign(?:ing)?",
+        r"(?i)(?:disable|turn\s*off|skip)\s+(?:contract\s+data|transaction\s+details|verification)\s+(?:check|display)",
+        r"(?i)(?:ledger|trezor|gridplus|keystone)\s+.{0,40}(?:blind\s*sign|skip\s+verification|allow\s+contract)",
+        r"(?i)just\s+(?:click|tap|approve)\s+(?:without|don'?t)\s+(?:read|verify|check)",
+    ],
+    keywords=["blind signing", "skip verification", "hardware wallet bypass"],
+    examples=["Enable blind signing on your Ledger and approve quickly"],
+    mitre_attack="T1556",
+)
+
+WEB3_WALLET_004 = Threat(
+    id="WEB3-WALLET-004",
+    name="Wallet Connect Malicious Pairing",
+    description="WalletConnect URI hijacking or unsolicited pairing requests",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)wc:[a-f0-9]{64}@\d+\?(?:bridge|relay-protocol)=",
+        r"(?i)walletconnect.{0,40}(?:uri|qr|pair)\s*[:=]",
+        r"(?i)scan\s+(?:this\s+)?qr\s+(?:code\s+)?(?:to\s+connect|with\s+(?:metamask|trust))",
+    ],
+    keywords=["walletconnect uri", "wc: prefix"],
+    examples=["wc:c9e6d30fb34afe70a15c14e9337ba8e4d5a35dd695c39b94884b0ee60c69d168@1?bridge=https%3A%2F%2Fbridge.walletconnect.org&key=..."],
+    mitre_attack="T1566",
+)
+
+WEB3_WALLET_005 = Threat(
+    id="WEB3-WALLET-005",
+    name="Browser Extension Wallet Injection",
+    description="Malicious dApp attempting to override window.ethereum or inject custom provider",
+    category=ThreatCategory.INJECTION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)window\.ethereum\s*=",
+        r"(?i)Object\.defineProperty\s*\(\s*window\s*,\s*['\"]ethereum['\"]",
+        r"(?i)EIP[\s\-]?6963\s+.{0,40}(?:provider|announce)",
+        r"(?i)overrid(?:e|ing)\s+(?:metamask|window\.ethereum|wallet\s+provider)",
+    ],
+    keywords=["window.ethereum override", "EIP-6963 abuse"],
+    examples=["window.ethereum = new MaliciousProvider();"],
+    mitre_attack="T1185",
+)
+
+WEB3_WALLET_006 = Threat(
+    id="WEB3-WALLET-006",
+    name="Clipboard Address Hijack",
+    description="Clipboard hijackers replacing copied wallet addresses with attacker addresses",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)navigator\.clipboard\.(?:write|writeText)\s*\(\s*['\"]?0x[a-fA-F0-9]{40}",
+        r"(?i)document\.execCommand\s*\(\s*['\"]copy['\"]",
+        r"(?i)clipboard.{0,40}(?:hijack|replace|swap).{0,40}(?:address|wallet)",
+        r"(?i)addEventListener\s*\(\s*['\"]copy['\"]",
+    ],
+    keywords=["clipboard hijack", "address swap"],
+    examples=["navigator.clipboard.writeText('0xATTACKERADDRESS...')"],
+    mitre_attack="T1115",
+)
+
+WEB3_WALLET_007 = Threat(
+    id="WEB3-WALLET-007",
+    name="Wallet Drainer Script Indicators",
+    description="Indicators of known wallet drainer kits (Inferno, Pink, Angel, Pussy, Venom)",
+    category=ThreatCategory.EXFILTRATION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:inferno|pink|angel|pussy|venom|monkey|rainbow)\s*drainer",
+        r"(?i)drain(?:er)?\.(?:js|ts)\b",
+        r"(?i)checkAssets|checkBalance.{0,40}drain",
+        r"(?i)(?:swap|approve|transfer)All(?:Assets|Tokens|NFTs)\b",
+        r"(?i)https?://[a-z0-9.\-]+/(?:drainer|drain|claim|airdrop|mint)\.(?:js|php)",
+    ],
+    keywords=["drainer kit", "inferno drainer", "wallet drainer"],
+    examples=["import { drain } from './inferno-drainer.js'"],
+    mitre_attack="T1059.007",
+)
+
+WEB3_WALLET_008 = Threat(
+    id="WEB3-WALLET-008",
+    name="Address Poisoning Attack",
+    description="Sending dust transactions from lookalike addresses to poison transaction history",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)address\s+poison(?:ing)?",
+        r"(?i)(?:dust|micro)\s+(?:transaction|attack).{0,40}(?:lookalike|similar\s+address)",
+        r"(?i)0x[a-fA-F0-9]{4}\.{3}[a-fA-F0-9]{4}",                # Truncated address display abuse
+    ],
+    keywords=["address poisoning", "dust attack"],
+    examples=["Send a dust transaction from a lookalike address starting with the same 4 chars"],
+    mitre_attack="T1565",
+)
+
+
+# =============================================================================
+# APPROVAL DRAINERS (ERC-20 / ERC-721 / ERC-1155 / Permit / Permit2)
+# =============================================================================
+
+WEB3_APPROVE_001 = Threat(
+    id="WEB3-APPROVE-001",
+    name="setApprovalForAll Drainer",
+    description="setApprovalForAll(spender, true) gives a spender unlimited control over ALL NFTs in a collection — used by 70%+ of NFT drainers",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)setApprovalForAll\s*\(\s*[^,]+,\s*true\s*\)",
+        r"(?i)setApprovalForAll\s*\(\s*0x[a-fA-F0-9]{40}\s*,\s*true",
+        r"(?i)approve\s+(?:all|every)\s+(?:nft|token|collection)",
+        r"(?i)0xa22cb465",                                          # setApprovalForAll function selector
+    ],
+    keywords=["setApprovalForAll true", "NFT drainer"],
+    examples=[
+        "Call setApprovalForAll(0xATTACKER, true) on the Bored Ape contract",
+    ],
+    mitre_attack="T1657",
+)
+
+WEB3_APPROVE_002 = Threat(
+    id="WEB3-APPROVE-002",
+    name="ERC-20 Unlimited Approval",
+    description="approve(spender, type(uint256).max) grants unlimited token spending — common drainer pattern",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)approve\s*\(\s*[^,]+,\s*(?:type\s*\(\s*uint256\s*\)\s*\.\s*max|2\s*\*\*\s*256\s*-\s*1|0xff{60,}|115792089237316195423570985008687907853269984665640564039457584007913129639935)",
+        r"(?i)approve\s*\(\s*0x[a-fA-F0-9]{40}\s*,\s*0x[fF]{60,}",
+        r"(?i)increaseAllowance\s*\(\s*[^,]+,\s*(?:type\s*\(\s*uint256\s*\)\s*\.\s*max|0xff{60,})",
+        r"(?i)0x095ea7b3",                                          # approve(address,uint256) selector
+        r"(?i)0x39509351",                                          # increaseAllowance selector
+    ],
+    keywords=["unlimited approval", "uint256 max", "approve max"],
+    examples=["token.approve(spender, type(uint256).max)"],
+    mitre_attack="T1657",
+)
+
+WEB3_APPROVE_003 = Threat(
+    id="WEB3-APPROVE-003",
+    name="EIP-2612 Permit Phishing",
+    description="EIP-2612 permit() allows gasless approval via signature — phishers trick users into signing permits that drain tokens",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)permit\s*\(\s*(?:address|0x[a-fA-F0-9]{40})[^)]{0,200}deadline[^)]{0,80}\)",
+        r"(?i)(?:sign|signing|please\s+sign|click\s+sign)\s+(?:this\s+|the\s+)?(?:EIP[\s\-]?2612\s+)?permit",
+        r"(?i)Permit\s*\(.{0,80}owner.{0,40}spender.{0,40}value.{0,40}nonce.{0,40}deadline\s*\)",
+        r"(?i)0xd505accf",                                          # permit(address,address,uint256,uint256,uint8,bytes32,bytes32) selector
+    ],
+    keywords=["EIP-2612 permit", "gasless approval phishing"],
+    examples=["Sign this permit: Permit(owner, spender, value, nonce, deadline)"],
+    mitre_attack="T1566.001",
+)
+
+WEB3_APPROVE_004 = Threat(
+    id="WEB3-APPROVE-004",
+    name="Permit2 Universal Approval Abuse",
+    description="Uniswap Permit2 (0x000000000022D473030F116dDEE9F6B43aC78BA3) — a single approval grants the Permit2 contract unlimited access; phishers exploit this by getting Permit2 PermitTransferFrom signatures",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"0x000000000022D473030F116dDEE9F6B43aC78BA3",              # Permit2 mainnet address
+        r"(?i)Permit2.{0,40}(?:PermitTransferFrom|PermitBatchTransferFrom|PermitSingle|PermitBatch)",
+        r"(?i)permitTransferFrom\s*\(",
+        r"(?i)0x36c78516",                                          # transferFrom on Permit2
+        r"(?i)0x30f28b7a",                                          # permit on Permit2
+    ],
+    keywords=["Permit2 phishing", "PermitTransferFrom"],
+    examples=["Sign this Permit2 PermitTransferFrom for 0x000000000022D473030F116dDEE9F6B43aC78BA3"],
+    mitre_attack="T1566.001",
+)
+
+WEB3_APPROVE_005 = Threat(
+    id="WEB3-APPROVE-005",
+    name="ERC-1155 setApprovalForAll Variant",
+    description="ERC-1155 multi-token standard equivalent of NFT setApprovalForAll",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)ERC[\s\-]?1155.{0,40}setApprovalForAll",
+        r"(?i)safeBatchTransferFrom\s*\(\s*0x[a-fA-F0-9]{40}",
+    ],
+    keywords=["ERC-1155 drainer"],
+    examples=["erc1155.setApprovalForAll(drainer, true)"],
+    mitre_attack="T1657",
+)
+
+WEB3_APPROVE_006 = Threat(
+    id="WEB3-APPROVE-006",
+    name="DAI-Style Permit Phishing",
+    description="DAI uses a non-standard permit signature (allowed bool, no value) — common phishing variant",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)Permit\s*\(.{0,80}holder.{0,40}spender.{0,40}nonce.{0,40}expiry.{0,40}allowed",
+        r"(?i)0x8fcbaf0c",                                          # DAI permit selector
+        r"(?i)dai.{0,40}permit.{0,40}allowed\s*[:=]\s*true",
+    ],
+    keywords=["DAI permit", "non-standard permit"],
+    examples=["DAI permit: holder, spender, nonce, expiry, allowed=true"],
+    mitre_attack="T1566.001",
+)
+
+WEB3_APPROVE_007 = Threat(
+    id="WEB3-APPROVE-007",
+    name="Approval Race Frontrun",
+    description="Classic ERC-20 approve race condition (CVE-2018-10468 style) — front-running an approval change to drain old + new",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)approve.{0,80}front[\s\-]?run",
+        r"(?i)race\s+condition.{0,40}approve",
+        r"(?i)approve\s*\(\s*[^,]+,\s*0\s*\).{0,200}approve\s*\(",
+    ],
+    keywords=["approve race", "ERC-20 front-run"],
+    examples=["First approve(0), then approve(newAmount) — but front-run between them"],
+    mitre_attack="T1565",
+)
+
+WEB3_APPROVE_008 = Threat(
+    id="WEB3-APPROVE-008",
+    name="Approval to Suspicious Contract",
+    description="Approval to addresses on known scam contract lists or with no verified source code",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)approve\s*\(\s*0x(?:dead|beef|cafe|babe|face|0{4,}|f{4,})[a-fA-F0-9]{32,}",
+        r"(?i)setApprovalForAll\s*\(\s*0x(?:dead|beef|0{4,})[a-fA-F0-9]{32,}",
+        r"(?i)approve.{0,40}unverified\s+contract",
+    ],
+    keywords=["suspicious spender"],
+    examples=["approve(0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef, MAX)"],
+    mitre_attack="T1657",
+)
+
+WEB3_APPROVE_009 = Threat(
+    id="WEB3-APPROVE-009",
+    name="Permit Replay Across Chains",
+    description="Permits without proper chainId / DOMAIN_SEPARATOR can be replayed across L1 and L2s",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)DOMAIN_SEPARATOR.{0,40}(?:hard[\s\-]?coded|missing|empty)",
+        r"(?i)chainId\s*[=:]\s*0\b",
+        r"(?i)permit.{0,40}replay.{0,40}(?:L2|chain)",
+    ],
+    keywords=["permit replay", "chainId zero"],
+    examples=["This permit was signed on Ethereum but can be replayed on Polygon"],
+    mitre_attack="T1565",
+)
+
+
+# =============================================================================
+# SMART CONTRACT ABUSE (delegatecall / selfdestruct / tx.origin / reentrancy)
+# =============================================================================
+
+WEB3_CONTRACT_001 = Threat(
+    id="WEB3-CONTRACT-001",
+    name="delegatecall to Untrusted Contract",
+    description="delegatecall executes target code in caller's storage context — if target is attacker-controlled, full takeover",
+    category=ThreatCategory.EXECUTION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)\.delegatecall\s*\(",
+        r"(?i)delegatecall\s*\(\s*(?:abi\.encode|0x[a-fA-F0-9]{8})",
+        r"(?i)assembly\s*\{[^}]{0,200}delegatecall\s*\(",
+        r"(?i)proxy.{0,40}delegatecall.{0,40}(?:user|input|untrusted)",
+    ],
+    keywords=["delegatecall", "proxy hijack"],
+    examples=["target.delegatecall(abi.encodeWithSignature('init()'))"],
+    mitre_attack="T1611",
+)
+
+WEB3_CONTRACT_002 = Threat(
+    id="WEB3-CONTRACT-002",
+    name="selfdestruct / SELFDESTRUCT Abuse",
+    description="selfdestruct destroys contract and forwards ETH — used in rugs and to brick proxy implementations (Parity multisig 2017)",
+    category=ThreatCategory.EXECUTION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)\bselfdestruct\s*\(",
+        r"(?i)\bsuicide\s*\(",                                     # legacy
+        r"(?i)assembly\s*\{[^}]{0,100}\bselfdestruct\b",
+    ],
+    keywords=["selfdestruct"],
+    examples=["selfdestruct(payable(attacker))"],
+    mitre_attack="T1485",
+)
+
+WEB3_CONTRACT_003 = Threat(
+    id="WEB3-CONTRACT-003",
+    name="tx.origin Authentication",
+    description="Using tx.origin for auth allows phishing contracts to impersonate users — SWC-115",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)tx\.origin\s*==\s*",
+        r"(?i)require\s*\(\s*tx\.origin",
+        r"(?i)if\s*\(\s*tx\.origin\s*",
+    ],
+    keywords=["tx.origin auth", "SWC-115"],
+    examples=["require(tx.origin == owner)"],
+    mitre_attack="T1078",
+)
+
+WEB3_CONTRACT_004 = Threat(
+    id="WEB3-CONTRACT-004",
+    name="Reentrancy Vulnerability Pattern",
+    description="External call before state update — classic DAO/Cream/Fei pattern (SWC-107)",
+    category=ThreatCategory.EXECUTION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)\.call\s*\{\s*value\s*:[^}]*\}\s*\(\s*[\"']{2}\s*\)[^;]*;[\s\n]*(?:balances|userBalance|deposits)\s*\[",
+        r"(?i)transfer\s*\(\s*msg\.sender.{0,80}\)\s*;[\s\n]*balances\s*\[",
+        r"(?i)reentran(?:t|cy).{0,40}(?:vulnerab|attack)",
+        r"(?i)nonReentrant.{0,40}(?:missing|removed|disabled)",
+    ],
+    keywords=["reentrancy", "SWC-107"],
+    examples=["msg.sender.call{value: amt}(''); balances[msg.sender] = 0;"],
+    mitre_attack="T1190",
+)
+
+WEB3_CONTRACT_005 = Threat(
+    id="WEB3-CONTRACT-005",
+    name="Unchecked External Call Return",
+    description="Low-level .call() return value not checked — silent failures (SWC-104)",
+    category=ThreatCategory.EXECUTION,
+    severity=Severity.HIGH,
+    patterns=[
+        # Match .call without success= or bool var= assignment on the same line preceding it
+        r"(?im)^(?!.*(?:success\s*=|bool\s+\w+\s*=).*\.call).*?\b\w+\.call\s*\{[^}]*\}\s*\(\s*[\"']",
+        r"(?im)^(?!.*(?:success\s*=|bool\s+\w+\s*=).*\.call).*?\b\w+\.call\s*\(\s*abi\.encode",
+    ],
+    keywords=["unchecked call", "SWC-104"],
+    examples=["target.call{value: 1 ether}('');"],
+    mitre_attack="T1499",
+)
+
+WEB3_CONTRACT_006 = Threat(
+    id="WEB3-CONTRACT-006",
+    name="Integer Overflow / Underflow (Pre-0.8)",
+    description="Solidity <0.8.0 lacks default overflow checks — SWC-101",
+    category=ThreatCategory.EXECUTION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)pragma\s+solidity\s+\^?0\.[0-7]\.\d+",
+        r"(?i)unchecked\s*\{",
+        r"(?i)SafeMath\s*\.(?:add|sub|mul|div)",
+    ],
+    keywords=["overflow", "underflow", "SWC-101", "unchecked block"],
+    examples=["pragma solidity ^0.7.0; balance -= amount;"],
+    mitre_attack="T1499",
+)
+
+WEB3_CONTRACT_007 = Threat(
+    id="WEB3-CONTRACT-007",
+    name="Hidden Mint / Owner Backdoor",
+    description="Owner-only mint functions or unrestricted minting in token contracts — common rugpull vector",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)function\s+\w*[mM]int\w*\s*\([^)]*\)\s+(?:external|public)\s+(?:onlyOwner|restricted|admin)",
+        r"(?i)_mint\s*\(\s*(?:owner|msg\.sender|admin)\s*,\s*\d{18,}",
+        r"(?i)totalSupply\s*\+=\s*",
+        r"(?i)(?:hidden|secret|owner)\s*mint",
+    ],
+    keywords=["hidden mint", "owner backdoor", "rugpull"],
+    examples=["function ownerMint(uint amount) external onlyOwner { _mint(owner, amount); }"],
+    mitre_attack="T1098",
+)
+
+WEB3_CONTRACT_008 = Threat(
+    id="WEB3-CONTRACT-008",
+    name="Honeypot Token / Modifiable Tax",
+    description="Tokens with modifiable transfer tax that can be set to 100% — locks all holders out",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)setTax\s*\(",
+        r"(?i)setSellTax\s*\(",
+        r"(?i)setMaxTx\s*\(",
+        r"(?i)blacklist\s*\(\s*address",
+        r"(?i)excludeFromReward",
+        r"(?i)honeypot|honey[\s\-]?pot",
+    ],
+    keywords=["honeypot token", "modifiable tax", "blacklist"],
+    examples=["function setSellTax(uint256 newTax) external onlyOwner { sellTax = newTax; }"],
+    mitre_attack="T1657",
+)
+
+WEB3_CONTRACT_009 = Threat(
+    id="WEB3-CONTRACT-009",
+    name="Proxy Implementation Hijack",
+    description="Upgradeable proxy admin functions abused to swap implementation to malicious contract",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)upgradeTo\s*\(\s*(?:0x[a-fA-F0-9]{40}|0x[A-Z_]+)",
+        r"(?i)upgradeToAndCall\s*\(",
+        r"(?i)_setImplementation\s*\(",
+        r"(?i)changeAdmin\s*\(\s*(?:0x[a-fA-F0-9]{40}|0x[A-Z_]+)",
+        r"(?i)proxy\.upgradeTo\s*\(",
+    ],
+    keywords=["proxy upgrade", "implementation swap"],
+    examples=["proxy.upgradeTo(0xMALICIOUS_IMPL)"],
+    mitre_attack="T1574",
+)
+
+
+# =============================================================================
+# BRIDGE / CROSS-CHAIN
+# =============================================================================
+
+WEB3_BRIDGE_001 = Threat(
+    id="WEB3-BRIDGE-001",
+    name="Bridge Replay Attack",
+    description="Replaying bridge messages on multiple chains — Wormhole 2022 ($325M), Nomad 2022 ($190M)",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:wormhole|nomad|multichain|anyswap|ronin)\s+.{0,40}(?:replay|exploit|hack)",
+        r"(?i)processedNonces?\s*\[\s*[^]]+\]\s*=\s*false",
+        r"(?i)bridge.{0,40}(?:replay|double[\s\-]?spend)",
+    ],
+    keywords=["bridge replay", "Wormhole exploit"],
+    examples=["Replay this Wormhole VAA on Polygon"],
+    mitre_attack="T1565",
+)
+
+WEB3_BRIDGE_002 = Threat(
+    id="WEB3-BRIDGE-002",
+    name="LayerZero ULN Configuration Tamper",
+    description="Modifying LayerZero Ultra Light Node oracle/relayer config to inject fake messages",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)layerzero.{0,40}(?:oracle|relayer|uln).{0,40}(?:set|change|update)",
+        r"(?i)setSendVersion|setReceiveVersion",
+        r"(?i)setConfig\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,",
+    ],
+    keywords=["LayerZero ULN", "oracle tamper"],
+    examples=["endpoint.setConfig(version, chainId, configType, config)"],
+    mitre_attack="T1556",
+)
+
+WEB3_BRIDGE_003 = Threat(
+    id="WEB3-BRIDGE-003",
+    name="Ronin / Validator Multisig Compromise",
+    description="Bridge validator key compromise patterns — Ronin 2022 ($625M), Harmony Horizon 2022",
+    category=ThreatCategory.CREDENTIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:ronin|harmony|horizon)\s+.{0,40}(?:validator|multisig|guardian)\s+(?:compromise|hack|key)",
+        r"(?i)(?:5|9)\s*of\s*(?:9|13)\s+(?:multisig|validator)",
+        r"(?i)threshold\s*signature.{0,40}(?:bypass|low|reduced)",
+    ],
+    keywords=["validator compromise", "multisig hack"],
+    examples=["The 5 of 9 Ronin validators were compromised"],
+    mitre_attack="T1078",
+)
+
+WEB3_BRIDGE_004 = Threat(
+    id="WEB3-BRIDGE-004",
+    name="Fake Bridge Frontend",
+    description="Cloned bridge UIs that approve to attacker contracts instead of legitimate bridges",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)(?:bridge|swap)\.[a-z0-9\-]+\.(?:com|io|app|xyz|finance)",
+        r"(?i)(?:stargate|hop|across|synapse|celer|connext)[\s\-]?(?:bridge|finance|protocol)\s*\.[a-z0-9\-]+\.(?:ru|cn|tk|ml|ga|cf|top)\b",
+    ],
+    keywords=["fake bridge UI"],
+    examples=["stargate-finance.tk/bridge"],
+    mitre_attack="T1566",
+)
+
+WEB3_BRIDGE_005 = Threat(
+    id="WEB3-BRIDGE-005",
+    name="Cross-Chain Message Forging",
+    description="Forging cross-chain messages by exploiting weak verification (Nomad-style processed flag bypass)",
+    category=ThreatCategory.INJECTION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:processed|committed)\s*\[\s*messageHash\s*\]\s*==\s*0x0",
+        r"(?i)merkleRoot\s*==\s*bytes32\s*\(\s*0\s*\)",
+        r"(?i)acceptableRoot\s*\[\s*bytes32\s*\(\s*0\s*\)\s*\]",
+    ],
+    keywords=["Nomad bug", "zero root"],
+    examples=["if (acceptableRoot[bytes32(0)]) { /* Nomad-style bypass */ }"],
+    mitre_attack="T1190",
+)
+
+WEB3_BRIDGE_006 = Threat(
+    id="WEB3-BRIDGE-006",
+    name="Bridge Liquidity Drain via Slippage",
+    description="Manipulating thin bridge liquidity pools via massive slippage / sandwich",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)slippage\s*[:=]\s*(?:100|99\.\d+)%?",
+        r"(?i)(?:set|allow)Slippage.{0,40}(?:max|100|99)",
+        r"(?i)bridge.{0,40}(?:thin|low)\s+liquidity",
+    ],
+    keywords=["bridge slippage drain"],
+    examples=["Set max slippage to 99% on the bridge"],
+    mitre_attack="T1499",
+)
+
+
+# =============================================================================
+# SIGNATURE PHISHING (EIP-712 / eth_sign / personal_sign)
+# =============================================================================
+
+WEB3_SIG_001 = Threat(
+    id="WEB3-SIG-001",
+    name="EIP-712 Typed Data Phishing",
+    description="EIP-712 structured signatures phished for orders/permits/auth — Seaport, OpenSea, OKX patterns",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)eth_signTypedData(?:_v[34])?",
+        r"(?i)EIP[\s\-]?712.{0,40}(?:sign|phish|trick)",
+        r"(?i)domainSeparator.{0,40}(?:Seaport|OpenSea|Blur|OKX|LooksRare)",
+        r"(?i)primaryType\s*[:=]\s*['\"]?(?:Order|Permit|PermitTransferFrom|MetaTransaction)",
+    ],
+    keywords=["EIP-712 phishing", "signTypedData"],
+    examples=["Sign this typed data: { primaryType: 'Order', domain: { name: 'Seaport' } }"],
+    mitre_attack="T1566.001",
+)
+
+WEB3_SIG_002 = Threat(
+    id="WEB3-SIG-002",
+    name="eth_sign Blind Signature",
+    description="eth_sign signs arbitrary 32-byte hashes — can be tricked into signing transaction hashes",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)eth_sign\s*\(",
+        r"(?i)['\"]eth_sign['\"]",
+        r"(?i)method\s*[:=]\s*['\"]eth_sign['\"]",
+        r"(?i)wallet[._]signMessage\s*\(\s*['\"]?0x[a-fA-F0-9]{64}['\"]?\s*\)",
+        r"(?i)provider\.request\s*\(\s*\{\s*method\s*:\s*['\"]eth_sign['\"]",
+    ],
+    keywords=["eth_sign", "blind hash signing"],
+    examples=["window.ethereum.request({ method: 'eth_sign', params: [address, '0xdeadbeef...'] })"],
+    mitre_attack="T1566.001",
+)
+
+WEB3_SIG_003 = Threat(
+    id="WEB3-SIG-003",
+    name="Seaport Order Phishing",
+    description="OpenSea Seaport order signatures with malicious consideration — used in Inferno Drainer",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC",          # Seaport 1.5
+        r"(?i)Seaport.{0,40}(?:OrderComponents|considerationItem|offerItem)",
+        r"(?i)consideration\s*\[\s*\]\s*=\s*\[\s*\{[^}]{0,200}recipient\s*:\s*0x[a-fA-F0-9]{40}",
+    ],
+    keywords=["Seaport phishing", "OpenSea drainer"],
+    examples=["Sign this Seaport order with consideration to 0xATTACKER"],
+    mitre_attack="T1566.001",
+)
+
+WEB3_SIG_004 = Threat(
+    id="WEB3-SIG-004",
+    name="Claim / Airdrop Trap Signature",
+    description="Fake airdrop claim pages requesting signatures that are actually permits or transfers",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:claim|mint|verify)\s+(?:your\s+)?(?:airdrop|reward|prize|allocation|whitelist)",
+        r"(?i)(?:free|exclusive)\s+(?:nft|token|airdrop)\s+(?:claim|drop)",
+        r"(?i)connect\s+(?:wallet\s+)?to\s+(?:claim|verify|reveal)",
+        r"(?i)claim[a-z0-9\-]*\.(?:com|io|app|xyz|live|finance|fi)",
+    ],
+    keywords=["airdrop scam", "claim phishing"],
+    examples=["Connect your wallet to claim your free $ARB airdrop at arb-claim.io"],
+    mitre_attack="T1566",
+)
+
+WEB3_SIG_005 = Threat(
+    id="WEB3-SIG-005",
+    name="Sign-In With Ethereum (SIWE) Spoofing",
+    description="EIP-4361 SIWE messages with manipulated domain or statement field",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)Sign[\s\-]?in\s+with\s+Ethereum",
+        r"(?i)wants\s+you\s+to\s+sign\s+in\s+with\s+your\s+Ethereum\s+account",
+        r"(?i)EIP[\s\-]?4361",
+        r"(?i)Domain:\s*[a-z0-9.\-]+\.(?:ru|cn|tk|ml|ga|cf|top|onion)\b",
+    ],
+    keywords=["SIWE", "EIP-4361 phishing"],
+    examples=["evil.tk wants you to sign in with your Ethereum account"],
+    mitre_attack="T1566.001",
+)
+
+WEB3_SIG_006 = Threat(
+    id="WEB3-SIG-006",
+    name="Multi-Signature Aggregation Trap",
+    description="Tricking multiple users into signing partial multisig signatures that combine into unauthorized actions",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)(?:gnosis|safe)\s*\.global.{0,40}(?:execTransaction|approveHash)",
+        r"(?i)Safe.{0,40}(?:signature|sig)\s+(?:aggregat|combin|collect)",
+        r"(?i)approveHash\s*\(\s*0x[a-fA-F0-9]{64}",
+    ],
+    keywords=["multisig phishing", "Safe signature trap"],
+    examples=["Approve this Safe transaction hash: approveHash(0x...)"],
+    mitre_attack="T1566",
+)
+
+WEB3_SIG_007 = Threat(
+    id="WEB3-SIG-007",
+    name="ERC-1271 Smart Contract Signature Bypass",
+    description="ERC-1271 isValidSignature returns 0x1626ba7e for valid; attacker contracts always return this",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)isValidSignature\s*\(",
+        r"(?i)0x1626ba7e",                                         # ERC-1271 magic value
+        r"(?i)ERC[\s\-]?1271.{0,40}(?:bypass|always|return)",
+    ],
+    keywords=["ERC-1271", "isValidSignature bypass"],
+    examples=["function isValidSignature(bytes32, bytes calldata) external pure returns (bytes4) { return 0x1626ba7e; }"],
+    mitre_attack="T1556",
+)
+
+
+# =============================================================================
+# DEX / MEV / ROUTER ABUSE
+# =============================================================================
+
+WEB3_DEX_001 = Threat(
+    id="WEB3-DEX-001",
+    name="Uniswap Router Hijack",
+    description="Fake Uniswap router addresses that intercept swaps",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        # Real Uniswap routers
+        r"(?i)0x7a250d5630b4cf539739df2c5dacb4c659f2488d",          # V2 router
+        r"(?i)0xe592427a0aece92de3edee1f18e0157c05861564",          # V3 SwapRouter
+        r"(?i)0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",          # V3 SwapRouter02
+        # Common substitution attempts
+        r"(?i)swap(?:Exact)?(?:Tokens|ETH|TokensSupportingFeeOnTransferTokens)For\w+\s*\(\s*[^,]+,\s*[^,]+,\s*\[[^]]+\],\s*0x[a-fA-F0-9]{40}",
+    ],
+    keywords=["router hijack", "fake Uniswap"],
+    examples=["router.swapExactTokensForTokens(amt, minOut, path, 0xATTACKER, deadline)"],
+    mitre_attack="T1565",
+)
+
+WEB3_DEX_002 = Threat(
+    id="WEB3-DEX-002",
+    name="MEV Sandwich Attack Indicators",
+    description="Sandwich attack patterns: front-run + victim tx + back-run",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)sandwich\s+attack",
+        r"(?i)flashbots.{0,40}bundle",
+        r"(?i)mev[\s\-]?(?:bot|searcher|sandwich)",
+        r"(?i)eth_sendBundle|eth_callBundle",
+    ],
+    keywords=["MEV sandwich", "Flashbots bundle"],
+    examples=["Send this Flashbots bundle to sandwich the victim swap"],
+    mitre_attack="T1565",
+)
+
+WEB3_DEX_003 = Threat(
+    id="WEB3-DEX-003",
+    name="Slippage Set to Maximum",
+    description="Recommending 100% slippage tolerance — guarantees user loses everything to MEV",
+    category=ThreatCategory.MANIPULATION,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)(?:set|use|allow|increase)\s+slippage\s+(?:to\s+)?(?:100|99\.?\d*)\s*%?",
+        r"(?i)slippage\s*[:=]\s*(?:100|99\.?\d*)",
+        r"(?i)amountOutMin(?:imum)?\s*[:=]\s*0\b",
+    ],
+    keywords=["max slippage", "amountOutMin zero"],
+    examples=["Just set slippage to 100% so the trade goes through"],
+    mitre_attack="T1565",
+)
+
+WEB3_DEX_004 = Threat(
+    id="WEB3-DEX-004",
+    name="Flash Loan Price Oracle Manipulation",
+    description="Using flash loans to manipulate spot price oracles for liquidations or arbitrage drains",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)flash[\s\-]?loan\s+.{0,40}(?:oracle|price|manipulat)",
+        r"(?i)(?:aave|dydx|balancer)\s+flash[\s\-]?(?:loan|swap)\s+.{0,80}(?:swap|exploit)",
+        r"(?i)getReserves\s*\(\s*\).{0,80}price",
+        r"(?i)spot[\s\-]?price.{0,40}(?:oracle|TWAP\s+missing)",
+    ],
+    keywords=["flash loan oracle attack"],
+    examples=["Take Aave flash loan, manipulate Uniswap V2 spot price, liquidate position"],
+    mitre_attack="T1565",
+)
+
+WEB3_DEX_005 = Threat(
+    id="WEB3-DEX-005",
+    name="Just-In-Time (JIT) Liquidity Attack",
+    description="Adding LP just before a trade and removing after to capture all fees — drains other LPs",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.MEDIUM,
+    patterns=[
+        r"(?i)JIT\s+liquidity",
+        r"(?i)just[\s\-]?in[\s\-]?time\s+liquidity",
+        r"(?i)mint.{0,40}position.{0,80}collect.{0,80}burn",          # add then remove in same tx
+    ],
+    keywords=["JIT liquidity"],
+    examples=["JIT LP this trade: mint position, collect fees, burn"],
+    mitre_attack="T1565",
+)
+
+WEB3_DEX_006 = Threat(
+    id="WEB3-DEX-006",
+    name="Honeypot Pool / Rug Pull Liquidity",
+    description="Removing liquidity / disabling sells in token contracts",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)removeLiquidity(?:ETH|Tokens)?\s*\(\s*[^)]{0,80}\s*\)",
+        r"(?i)(?:disable|block|prevent)Sells?\s*\(",
+        r"(?i)tradingEnabled\s*=\s*false",
+        r"(?i)maxSell(?:Amount)?\s*=\s*[01]\b",
+    ],
+    keywords=["rug pull", "disable sells"],
+    examples=["function disableSells() external onlyOwner { tradingEnabled = false; }"],
+    mitre_attack="T1657",
+)
+
+
+# =============================================================================
+# APT / LAZARUS / ADVANCED PATTERNS
+# =============================================================================
+
+WEB3_APT_001 = Threat(
+    id="WEB3-APT-001",
+    name="Lazarus Group Wallet Indicators",
+    description="Known Lazarus Group / DPRK / APT38 wallet patterns and TTP markers — UN Panel of Experts 2024 attribution",
+    category=ThreatCategory.SOCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:lazarus|apt38|dprk|north[\s\-]?korea(?:n)?)\s+(?:group|hacker|wallet|address)",
+        r"(?i)(?:tornado[\s\-]?cash|sinbad|chip[\s\-]?mixer|blender)\s+.{0,40}(?:deposit|wash|launder)",
+        r"(?i)cross[\s\-]?chain\s+(?:wash|launder|hop)",
+        r"(?i)(?:atomic|rhysida|moonstone)\s+sleet",                # Lazarus subgroup names
+    ],
+    keywords=["Lazarus", "APT38", "Tornado Cash mixing"],
+    examples=["Wash these funds through Tornado Cash then bridge cross-chain"],
+    mitre_attack="T1657",
+)
+
+WEB3_APT_002 = Threat(
+    id="WEB3-APT-002",
+    name="Multisig Owner Replacement Attack",
+    description="Replacing Safe / Gnosis multisig owners with attacker-controlled addresses (Bybit Feb 2025 — $1.5B)",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)swapOwner\s*\(",
+        r"(?i)swapOwner\s*\(\s*0x[a-fA-F0-9]{40}\s*,\s*0x[a-fA-F0-9]{40}\s*,\s*0x[a-fA-F0-9]{40}",
+        r"(?i)addOwnerWithThreshold\s*\(",
+        r"(?i)removeOwner\s*\(",
+        r"(?i)changeThreshold\s*\(\s*1\s*\)",
+        # Safe.global delegate call to attacker singleton (Bybit pattern)
+        r"(?i)setupModules.{0,80}delegatecall",
+        r"(?i)safe\.swapOwner",
+    ],
+    keywords=["multisig owner swap", "Bybit hack pattern"],
+    examples=["safe.swapOwner(prevOwner, oldOwner, attackerAddr)"],
+    mitre_attack="T1098",
+)
+
+WEB3_APT_003 = Threat(
+    id="WEB3-APT-003",
+    name="ERC-4337 Paymaster Abuse",
+    description="Account abstraction paymasters abused to fund attacker UserOperations or sponsor drains",
+    category=ThreatCategory.FINANCIAL,
+    severity=Severity.HIGH,
+    patterns=[
+        r"(?i)ERC[\s\-]?4337",
+        r"(?i)(?:UserOperation|UserOp)\s*\(",
+        r"(?i)EntryPoint\s*\.\s*handleOps",
+        r"(?i)paymasterAndData\s*[:=]",
+        r"(?i)0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",          # EntryPoint v0.6
+        r"(?i)0x0000000071727De22E5E9d8BAf0edAc6f37da032",          # EntryPoint v0.7
+    ],
+    keywords=["ERC-4337", "paymaster abuse"],
+    examples=["Submit this UserOperation with paymasterAndData pointing to victim paymaster"],
+    mitre_attack="T1496",
+)
+
+WEB3_APT_004 = Threat(
+    id="WEB3-APT-004",
+    name="Social Engineering — Fake Job / Recruiter",
+    description="Fake recruiter contact with malicious 'coding test' npm package — Lazarus Operation Dream Job pattern",
+    category=ThreatCategory.SOCIAL,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:senior|lead|principal|junior)\s+(?:solidity|web3|blockchain|defi|smart\s*contract)\s+(?:developer|engineer|role|position|opportunity)",
+        r"(?i)(?:solidity|web3|blockchain)\s+(?:developer|engineer)\s+(?:role|position|opportunity)\s+at\s+\w+",
+        r"(?i)(?:coding|technical)\s+(?:challenge|test|assessment|task).{0,40}(?:download|clone|npm\s+install|pip\s+install|run)",
+        r"(?i)(?:recruiter|HR|hiring).{0,40}(?:LinkedIn|Telegram|Discord).{0,40}(?:test|task|project|interview)",
+        r"(?i)(?:please\s+)?(?:install|run|execute)\s+(?:my\s+|this\s+|the\s+)?(?:npm|pip|cargo|yarn)\s+(?:install|package).{0,40}(?:before\s+(?:the\s+)?interview|to\s+complete)",
+        r"(?i)(?:role|position|opportunity)\s+at\s+(?:coinbase|binance|kraken|crypto\.com|opensea|uniswap).{0,80}(?:install|run|download)\s+(?:npm|pip|test|task)",
+    ],
+    keywords=["Operation Dream Job", "fake recruiter", "coding test malware"],
+    examples=["Hi! Senior Solidity role at Coinbase — please run 'npm install ./test-task.tgz' before our interview"],
+    mitre_attack="T1566.003",
+)
+
+WEB3_APT_005 = Threat(
+    id="WEB3-APT-005",
+    name="Compromised Frontend / SDK Injection",
+    description="Injecting malicious code into legitimate dApp frontends or SDK builds — Curve, Balancer, Ledger ConnectKit history",
+    category=ThreatCategory.SUPPLY,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:curve|balancer|ledger\s*connect|web3modal)\s+(?:frontend|sdk|cdn)\s+(?:compromise|hack|injection)",
+        r"(?i)cloudflare\s*(?:DNS|hijack)",
+        r"(?i)(?:npm|cdn)\s+(?:package|module)\s+.{0,40}(?:hijack|takeover|compromise)",
+        r"(?i)BGP\s+hijack.{0,40}(?:dApp|wallet|frontend)",
+    ],
+    keywords=["frontend compromise", "SDK injection", "DNS hijack"],
+    examples=["The Ledger ConnectKit was compromised via npm package hijack"],
+    mitre_attack="T1195.002",
+)
+
+WEB3_APT_006 = Threat(
+    id="WEB3-APT-006",
+    name="Mixer / Tornado Cash Deposit Pattern",
+    description="Sequential deposits to known mixer contracts for laundering (OFAC-sanctioned addresses)",
+    category=ThreatCategory.EXFILTRATION,
+    severity=Severity.CRITICAL,
+    patterns=[
+        # Tornado Cash mainnet pool addresses (OFAC-sanctioned)
+        r"(?i)0x12D66f87A04A9E220743712cE6d9bB1B5616B8Fc",          # 0.1 ETH
+        r"(?i)0x47CE0C6eD5B0Ce3d3A51fdb1C52DC66a7c3c2936",          # 1 ETH
+        r"(?i)0x910Cbd523D972eb0a6f4cAe4618aD62622b39DbF",          # 10 ETH
+        r"(?i)0xA160cdAB225685dA1d56aa342Ad8841c3b53f291",          # 100 ETH
+        r"(?i)tornado[\s\-]?cash",
+        r"(?i)(?:sinbad|chipmixer|blender)\.io",
+    ],
+    keywords=["Tornado Cash", "OFAC mixer"],
+    examples=["Deposit to Tornado Cash 100 ETH pool: 0xA160cdAB225685dA1d56aa342Ad8841c3b53f291"],
+    mitre_attack="T1657",
+)
+
+WEB3_APT_007 = Threat(
+    id="WEB3-APT-007",
+    name="Governance Attack / Vote Buying",
+    description="Hostile governance takeover via flash loans or vote buying — Beanstalk 2022 ($182M)",
+    category=ThreatCategory.PRIVILEGE,
+    severity=Severity.CRITICAL,
+    patterns=[
+        r"(?i)(?:beanstalk|compound|tornado)\s+governance\s+(?:attack|exploit|takeover)",
+        r"(?i)flash[\s\-]?loan\s+.{0,40}(?:vote|governance|propos)",
+        r"(?i)delegate\s*\(\s*0x[a-fA-F0-9]{40}\s*\).{0,80}execute(?:Proposal)?",
+        r"(?i)votingPower.{0,40}flash",
+    ],
+    keywords=["governance attack", "flash loan vote"],
+    examples=["Take flash loan, delegate votes to self, execute malicious proposal"],
+    mitre_attack="T1078",
+)
+
+
+# =============================================================================
+# REGISTER
+# =============================================================================
+
+PATTERNS.extend([
+    # Wallet / seed exfil (8)
+    WEB3_WALLET_001, WEB3_WALLET_002, WEB3_WALLET_003, WEB3_WALLET_004,
+    WEB3_WALLET_005, WEB3_WALLET_006, WEB3_WALLET_007, WEB3_WALLET_008,
+
+    # Approval drainers (9)
+    WEB3_APPROVE_001, WEB3_APPROVE_002, WEB3_APPROVE_003, WEB3_APPROVE_004,
+    WEB3_APPROVE_005, WEB3_APPROVE_006, WEB3_APPROVE_007, WEB3_APPROVE_008,
+    WEB3_APPROVE_009,
+
+    # Smart contract abuse (9)
+    WEB3_CONTRACT_001, WEB3_CONTRACT_002, WEB3_CONTRACT_003, WEB3_CONTRACT_004,
+    WEB3_CONTRACT_005, WEB3_CONTRACT_006, WEB3_CONTRACT_007, WEB3_CONTRACT_008,
+    WEB3_CONTRACT_009,
+
+    # Bridge (6)
+    WEB3_BRIDGE_001, WEB3_BRIDGE_002, WEB3_BRIDGE_003, WEB3_BRIDGE_004,
+    WEB3_BRIDGE_005, WEB3_BRIDGE_006,
+
+    # Signature phishing (7)
+    WEB3_SIG_001, WEB3_SIG_002, WEB3_SIG_003, WEB3_SIG_004,
+    WEB3_SIG_005, WEB3_SIG_006, WEB3_SIG_007,
+
+    # DEX / MEV (6)
+    WEB3_DEX_001, WEB3_DEX_002, WEB3_DEX_003, WEB3_DEX_004,
+    WEB3_DEX_005, WEB3_DEX_006,
+
+    # APT / Lazarus (7)
+    WEB3_APT_001, WEB3_APT_002, WEB3_APT_003, WEB3_APT_004,
+    WEB3_APT_005, WEB3_APT_006, WEB3_APT_007,
+])
+
 # =============================================================================
 # PICKLE CACHE — speeds cold start from ~3500ms to ~3ms
 # =============================================================================
