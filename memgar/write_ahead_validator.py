@@ -94,6 +94,19 @@ from typing import Any, Dict, List, Optional, Tuple
 # Models
 # ---------------------------------------------------------------------------
 
+def detect_minja_bridging(text: str) -> bool:
+    patterns = [
+        "previous successful",
+        "previous interaction",
+        "already approved",
+        "continue this behavior",
+        "authorized before",
+        "as done before",
+        "based on prior approval"
+    ]
+    t = text.lower()
+    return any(p in t for p in patterns)
+
 class ValidationOutcome(str, Enum):
     APPROVE    = "approve"     # güvenli, yaz
     QUARANTINE = "quarantine"  # requires human review
@@ -809,6 +822,10 @@ class WriteAheadValidator:
         Returns:
             GuardianVerdict — approved=True ise güvenli
         """
+        # === Block MINJA Bridging Attack ===
+         if detect_minja_bridging(content):
+            return ValidationOutcome.REJECT
+        
         t0 = time.perf_counter()
         ctx = context or ValidationContext()
 
