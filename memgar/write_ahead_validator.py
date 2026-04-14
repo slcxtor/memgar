@@ -822,13 +822,15 @@ class WriteAheadValidator:
         Returns:
             GuardianVerdict — approved=True ise güvenli
         """
-        # === Block MINJA Bridging Attack ===
-         if detect_minja_bridging(content):
-            return ValidationOutcome.REJECT
-        
         t0 = time.perf_counter()
         ctx = context or ValidationContext()
 
+        if detect_minja_bridging(content):
+    return GuardianVerdict(
+        outcome=ValidationOutcome.REJECT,
+        reason="MINJA bridging detected",
+        score=1.0,
+    )
         # Sanitizer yoksa içeriği biz sanitize et
         sanitized_content = content
         if sanitize_result is not None:
