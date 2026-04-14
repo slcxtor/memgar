@@ -214,12 +214,18 @@ from memgar.agents import (
 # =============================================================================
 # HIGH-PERFORMANCE CORE (Always available)
 # =============================================================================
-from memgar.core import (
-    AhoCorasick,
-    PatternMatcher,
-    ThreatScanner,
-)
+def get_aho_corasick():
+    from memgar.core.aho_corasick import AhoCorasick
+    return AhoCorasick
 
+def get_pattern_matcher():
+    from memgar.core.pattern_matcher import PatternMatcher
+    return PatternMatcher
+
+def get_threat_scanner():
+    from memgar.core.threat_scanner import ThreatScanner
+    return ThreatScanner
+    
 # Denial of Wallet detection (v0.5.2)
 try:
     from memgar.dow import (
