@@ -1,0 +1,318 @@
+name: Apply retrieval trust budget v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/apply-retrieval-trust-budget-v2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply patch
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import re, subprocess, sys
+          from pathlib import Path
+          root = Path.cwd()
+          def r(p): return (root / p).read_text(encoding='utf-8')
+          def w(p, s): (root / p).write_text(s, encoding='utf-8')
+          def add_after(p, marker, add):
+              s = r(p)
+              if add.strip() not in s:
+                  if marker not in s: raise RuntimeError(f'marker missing: {p}')
+                  s = s.replace(marker, marker + add, 1)
+                  w(p, s)
+          def add_before(p, marker, add):
+              s = r(p)
+              if add.strip() not in s:
+                  if marker not in s: raise RuntimeError(f'marker missing: {p}')
+                  s = s.replace(marker, add + marker, 1)
+                  w(p, s)
+          def rep(p, old, new):
+              s = r(p)
+              if old in s:
+                  w(p, s.replace(old, new, 1))
+              elif new.strip() not in s:
+                  raise RuntimeError(f'text missing: {p}')
+
+          add_after('memgar/secure_memory_store.py', '    strict: bool = False\n', '''    min_retrieval_trust_score: float = 0.0
+              low_trust_retrieval_threshold: float = 0.5
+              max_low_trust_retrievals: Optional[int] = None
+              risk_weighted_retrieval_top_k: bool = True
+              retrieval_trust_weight: float = 0.35
+              retrieval_risk_weight: float = 0.45
+              explain_filtered_retrievals: bool = True
+              audit_context_inclusion: bool = True
+          '''.replace('              ', ''))
+
+          guard = r'''    def guard_retrieval(
+              self,
+              chunks: Sequence[Any],
+              *,
+              query: str = "",
+              agent_id: Optional[str] = None,
+              top_k: Optional[int] = None,
+              include_blocked: Optional[bool] = None,
+          ) -> List[ChunkResult]:
+              """Scan retrieved chunks before they enter model context."""
+
+              include = self.policy.include_blocked_retrievals if include_blocked is None else include_blocked
+              if not self.policy.scan_retrievals:
+                  self._log_boundary_audit(
+                      event="unscanned_retrieval",
+                      action="allow" if self.policy.allow_unscanned_retrievals else "block",
+                      allowed=self.policy.allow_unscanned_retrievals,
+                      boundary="vector_retrieval",
+                      entry_count=len(chunks),
+                      warning="unscanned retrieval chunks can poison model context",
+                  )
+                  if not self.policy.allow_unscanned_retrievals:
+                      raise SecureMemoryBypassError(
+                          "Unscanned retrievals are disabled. Keep scan_retrievals=True or set "
+                          "allow_unscanned_retrievals=True for an audited escape hatch."
+                      )
+              checked = self.enforcer.on_vector_retrieval(
+                  chunks,
+                  query=query,
+                  agent_id=agent_id or self.agent_id,
+                  top_k=None,
+              )
+              returned, budget = self._apply_retrieval_trust_budget(checked, top_k=top_k, include_blocked=include)
+              blocked = len([item for item in checked if not item.allowed])
+              sanitized = len([item for item in checked if item.enforcement.was_sanitized])
+              self._log_boundary_audit(
+                  event="vector_retrieval",
+                  action="allow",
+                  allowed=True,
+                  boundary="vector_retrieval",
+                  entry_count=len(chunks),
+                  returned_count=len(returned),
+                  blocked_count=blocked,
+                  sanitized_count=sanitized,
+                  query_preview=query[:120],
+                  trust_budget=budget,
+              )
+              return returned
+
+              def _dummy(self):
+                  pass
+          '''.replace('              ', '    ')
+          methods = r'''
+              def _apply_retrieval_trust_budget(self, checked: Sequence[ChunkResult], *, top_k: Optional[int], include_blocked: bool) -> tuple[List[ChunkResult], Dict[str, Any]]:
+                  scored: List[tuple[ChunkResult, Dict[str, Any]]] = []
+                  low_trust_included = 0
+                  filtered: List[Dict[str, Any]] = []
+                  for index, item in enumerate(checked):
+                      trust = self._retrieval_trust_score(item)
+                      risk = max(0.0, min(1.0, float(item.enforcement.risk_score) / 100.0))
+                      semantic = self._retrieval_semantic_score(item.chunk, index=index, total=len(checked))
+                      final = self._retrieval_final_score(semantic=semantic, trust=trust, risk=risk)
+                      info = {"index": index, "trust_score": round(trust, 3), "risk_score": item.enforcement.risk_score, "semantic_score": round(semantic, 3), "final_score": round(final, 3), "action": item.enforcement.action.value}
+                      reason = ""
+                      if not item.allowed:
+                          reason = item.enforcement.action.value
+                      elif trust < self.policy.min_retrieval_trust_score:
+                          reason = "below_min_trust_score"
+                      elif self.policy.max_low_trust_retrievals is not None and trust < self.policy.low_trust_retrieval_threshold and low_trust_included >= self.policy.max_low_trust_retrievals:
+                          reason = "low_trust_budget_exceeded"
+                      if reason and not include_blocked:
+                          info["reason"] = reason
+                          info["content_preview"] = item.safe_text[: self.policy.audit_content_preview_chars]
+                          filtered.append(info)
+                          continue
+                      if trust < self.policy.low_trust_retrieval_threshold:
+                          low_trust_included += 1
+                      scored.append((item, info))
+                  if self.policy.risk_weighted_retrieval_top_k:
+                      scored.sort(key=lambda pair: pair[1]["final_score"], reverse=True)
+                  limited = scored[:top_k] if top_k is not None else scored
+                  included = [item for item, _info in limited]
+                  included_info = [info for _item, info in limited] if self.policy.audit_context_inclusion else []
+                  return included, {"min_trust_score": self.policy.min_retrieval_trust_score, "low_trust_threshold": self.policy.low_trust_retrieval_threshold, "max_low_trust_items": self.policy.max_low_trust_retrievals, "risk_weighted_top_k": self.policy.risk_weighted_retrieval_top_k, "filtered_count": len(filtered), "low_trust_included": low_trust_included, "included": included_info, "filtered": filtered if self.policy.explain_filtered_retrievals else []}
+
+              def _retrieval_final_score(self, *, semantic: float, trust: float, risk: float) -> float:
+                  trust_weight = max(0.0, min(1.0, self.policy.retrieval_trust_weight))
+                  risk_weight = max(0.0, self.policy.retrieval_risk_weight)
+                  return semantic * ((1.0 - trust_weight) + (trust_weight * trust)) - (risk * risk_weight)
+
+              @staticmethod
+              def _retrieval_trust_score(item: ChunkResult) -> float:
+                  for candidate in (_nested_lookup(item.chunk, ("trust_score", "trust", "memgar_trust_score")), _nested_lookup(item.chunk, ("metadata.trust_score", "metadata.memgar.trust_score")), item.enforcement.trust_score):
+                      normalized = _normalize_score(candidate)
+                      if normalized is not None:
+                          return normalized
+                  return 1.0
+
+              @staticmethod
+              def _retrieval_semantic_score(chunk: Any, *, index: int, total: int) -> float:
+                  for candidate in (_nested_lookup(chunk, ("score", "similarity_score", "final_score")), _nested_lookup(chunk, ("metadata.score", "metadata.similarity_score", "metadata.final_score", "metadata.trust_adjusted_score")), getattr(chunk, "score", None)):
+                      normalized = _normalize_score(candidate)
+                      if normalized is not None:
+                          return normalized
+                  return 1.0 if total <= 1 else max(0.0, 1.0 - (index / max(total - 1, 1)) * 0.001)
+
+          '''.replace('              ', '    ')
+          guard = guard.replace('\n    def _dummy(self):\n        pass\n', methods)
+          s = r('memgar/secure_memory_store.py')
+          if '_apply_retrieval_trust_budget' not in s:
+              s, n = re.subn(r'    def guard_retrieval\([\s\S]*?\n    def guard_tool_result\(', guard + '\n    def guard_tool_result(', s, count=1)
+              if n != 1: raise RuntimeError('guard_retrieval block not replaced')
+              w('memgar/secure_memory_store.py', s)
+
+          add_before('memgar/secure_memory_store.py', '__all__ = [\n', r'''
+          
+          def _normalize_score(value: Any) -> Optional[float]:
+              if value is None:
+                  return None
+              try:
+                  score = float(value)
+              except (TypeError, ValueError):
+                  return None
+              if score > 1.0:
+                  score = score / 100.0
+              return max(0.0, min(1.0, score))
+          
+          
+          def _nested_lookup(obj: Any, paths: Sequence[str]) -> Any:
+              for path in paths:
+                  current = obj
+                  found = True
+                  for part in path.split("."):
+                      if isinstance(current, dict):
+                          if part not in current:
+                              found = False
+                              break
+                          current = current[part]
+                      else:
+                          current = getattr(current, part, None)
+                          if current is None:
+                              found = False
+                              break
+                  if found:
+                      return current
+              return None
+          
+          
+          '''.replace('          ', ''))
+
+          rep('memgar/integrations/universal.py', '            include_blocked=True,\n', '            include_blocked=self.on_read_threat in self.BLOCK_ACTIONS,\n')
+          rep('memgar/integrations/universal.py', '            guarded.append(self._replace_record_content(item.chunk, result.safe_content))\n', '            guarded.append(result.safe_content)\n')
+          rep('tests/test_universal_agent_memory_adapter.py', 'from memgar.secure_memory_store import SecureMemoryBypassError, SecureMemoryStore\n', 'from memgar.secure_memory_store import SecureMemoryBypassError, SecureMemoryStore, SecureMemoryStorePolicy\n')
+
+          add_before('tests/test_secure_memory_store.py', 'def test_tool_results_are_blocked_before_agent_context():\n', r'''
+          
+          def test_retrieval_trust_budget_filters_low_trust_context_with_explanation():
+              store = SecureMemoryStore(backend=[], analyzer=_Analyzer(), policy=SecureMemoryStorePolicy(min_retrieval_trust_score=0.4, low_trust_retrieval_threshold=0.6, max_low_trust_retrievals=1))
+              chunks = [
+                  {"content": "safe high trust", "metadata": {"trust_score": 0.9}, "score": 0.7},
+                  {"content": "safe low trust kept", "metadata": {"trust_score": 0.5}, "score": 0.95},
+                  {"content": "safe low trust filtered", "metadata": {"trust_score": 0.5}, "score": 0.9},
+                  {"content": "safe below minimum", "metadata": {"trust_score": 0.2}, "score": 0.99},
+              ]
+              returned = store.guard_retrieval(chunks, query="prefs")
+              assert [item.chunk["content"] for item in returned] == ["safe low trust kept", "safe high trust"]
+              budget = store.audit_events[-1]["trust_budget"]
+              assert budget["filtered_count"] == 2
+              assert budget["low_trust_included"] == 1
+              assert {item["reason"] for item in budget["filtered"]} == {"below_min_trust_score", "low_trust_budget_exceeded"}
+          
+          
+          def test_retrieval_risk_weighted_top_k_prefers_safer_memory():
+              store = SecureMemoryStore(backend=[], analyzer=_Analyzer(), policy=SecureMemoryStorePolicy(risk_weighted_retrieval_top_k=True))
+              chunks = [
+                  {"content": "high relevance low trust", "metadata": {"trust_score": 0.1}, "score": 1.0},
+                  {"content": "moderate relevance trusted", "metadata": {"trust_score": 1.0}, "score": 0.9},
+              ]
+              returned = store.guard_retrieval(chunks, query="prefs", top_k=1)
+              assert returned[0].chunk["content"] == "moderate relevance trusted"
+              assert store.audit_events[-1]["trust_budget"]["included"][0]["final_score"] > 0
+          
+          
+          '''.replace('          ', ''))
+          add_before('tests/test_universal_agent_memory_adapter.py', 'def test_default_secure_store_blocks_tool_results():\n', r'''
+          
+          def test_universal_adapter_applies_retrieval_trust_budget():
+              guard = UniversalMemoryGuard(analyzer=AllowAnalyzer(), store_policy=SecureMemoryStorePolicy(min_retrieval_trust_score=0.4, low_trust_retrieval_threshold=0.6, max_low_trust_retrievals=0))
+              records = [
+                  {"content": "trusted memory", "metadata": {"trust_score": 0.9}},
+                  {"content": "low trust memory", "metadata": {"trust_score": 0.5}},
+                  {"content": "below threshold memory", "metadata": {"trust_score": 0.2}},
+              ]
+              guarded = guard.guard_retrieval_results(records, query="prefs")
+              assert [item["content"] for item in guarded] == ["trusted memory"]
+              budget = guard.secure_store.audit_events[-1]["trust_budget"]
+              assert budget["filtered_count"] == 2
+              assert {item["reason"] for item in budget["filtered"]} == {"below_min_trust_score", "low_trust_budget_exceeded"}
+          
+          
+          '''.replace('          ', ''))
+
+          add_after('README.md', 'if tool_verdict.allowed:\n    use_tool_output(tool_verdict.safe_content)\n```\n', r'''
+          
+          For production retrieval, prefer the `SecureMemoryStore` boundary so semantic relevance is balanced with trust and risk before any memory enters context:
+          
+          ```python
+          from memgar.secure_memory_store import SecureMemoryStore, SecureMemoryStorePolicy
+          
+          memory = SecureMemoryStore(
+              analyzer=analyzer,
+              policy=SecureMemoryStorePolicy(
+                  min_retrieval_trust_score=0.4,
+                  low_trust_retrieval_threshold=0.6,
+                  max_low_trust_retrievals=1,
+                  risk_weighted_retrieval_top_k=True,
+                  explain_filtered_retrievals=True,
+                  audit_context_inclusion=True,
+              ),
+          )
+          
+          safe_results = memory.guard_retrieval(vector_results, query=user_query, top_k=5)
+          safe_context = [item.safe_text for item in safe_results]
+          ```
+          
+          The final ranking balances semantic relevance with trust and risk, while filtered records are explained in audit logs.
+          '''.replace('          ', ''))
+          add_after('docs/quickstart.md', '    nodes = secure_retriever.retrieve("What should the agent remember?")\n    ```\n', r'''
+          
+              Retrieval trust budget for production context:
+          
+              ```python
+              from memgar.secure_memory_store import SecureMemoryStorePolicy
+              from memgar.integrations.universal import UniversalMemoryGuard
+          
+              guard = UniversalMemoryGuard(
+                  analyzer=analyzer,
+                  store_policy=SecureMemoryStorePolicy(
+                      min_retrieval_trust_score=0.4,
+                      low_trust_retrieval_threshold=0.6,
+                      max_low_trust_retrievals=1,
+                      risk_weighted_retrieval_top_k=True,
+                      explain_filtered_retrievals=True,
+                      audit_context_inclusion=True,
+                  ),
+              )
+              safe_results = guard.guard_retrieval_results(vector_results, query="What should the agent remember?", top_k=5)
+              ```
+          '''.replace('          ', ''))
+
+          subprocess.run([sys.executable, '-m', 'py_compile', 'memgar/secure_memory_store.py', 'memgar/integrations/universal.py'], check=True)
+          subprocess.run([sys.executable, '-m', 'pytest', 'tests/test_secure_memory_store.py', 'tests/test_universal_agent_memory_adapter.py', 'tests/test_llamaindex_memory_firewall.py', '-q'], check=True)
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'add', 'memgar/secure_memory_store.py', 'memgar/integrations/universal.py', 'tests/test_secure_memory_store.py', 'tests/test_universal_agent_memory_adapter.py', 'README.md', 'docs/quickstart.md'], check=True)
+          subprocess.run(['git', 'commit', '-m', 'feat: add retrieval trust budget guard'], check=True)
+          subprocess.run(['git', 'push', 'origin', 'HEAD:main'], check=True)
+          PY
