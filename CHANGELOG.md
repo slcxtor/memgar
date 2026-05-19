@@ -103,10 +103,18 @@ pipeline. Notable additions:
 
 ### Honest notes
 
-- Recall ≈ 80% and false positive rate ≈ 9% on our internal gold
-  corpus (95 attacks + 49 benign samples). No public benchmark for
-  memory poisoning exists yet — treat any vendor's numbers as
-  preliminary
+- Calibration is reported on **two corpora**:
+  - **Gold** (95 attacks + 49 benign, hand-curated): ≈ 80 % recall,
+    ≈ 9 % FPR. This is the public baseline.
+  - **Expanded** (386 attacks + 78 benign — gold + mined public corpora
+    + memory-context augmented templates): ≈ 79 % recall, ≈ 36 % FPR.
+    The mined and augmented samples are programmatically generated, not
+    hand-reviewed, so the decision boundary is fuzzier. CI's expanded
+    gate currently reports *"no threshold satisfies the constraints —
+    corpus too small or model too weak"* — this is a known regression
+    surface, not a code bug. It tracks broader drift over time.
+- No public benchmark for memory poisoning exists yet; treat all of
+  the above as preliminary
 - Not third-party audited
 - Production deployments: pre-1.0 reach unknown. First PyPI release
   was 2026-05-18; install volume is just starting
