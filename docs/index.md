@@ -46,11 +46,20 @@ session, and the next agent, doesn't inherit the attack.
 </div>
 
 <div class="memgar-honest" markdown>
-**Honest baseline.** On our internal gold corpus (95 attacks + 49 benign
-samples, hand-curated) memgar measures ≈ 80% recall and ≈ 9% false
-positive rate. No public benchmark for memory poisoning exists yet —
-treat numbers like these, ours and anyone else's, as preliminary.
-Memgar is one layer of defense, not a silver bullet.
+**Honest baseline — two corpora, two numbers.**
+
+| Corpus | Size | Recall | FPR |
+|---|---|---|---|
+| **Gold** (hand-curated) | 95 attack + 49 benign | **≈ 80 %** | **≈ 9 %** |
+| **Expanded** (gold + mined public corpora + augmented memory-context templates) | 386 attack + 78 benign | **≈ 79 %** | **≈ 36 %** |
+
+The expanded corpus is harder by design — its mined and augmented
+samples are programmatic, not hand-curated. CI's expanded gate today
+reports *"no threshold satisfies the constraints — corpus too small or
+model too weak."* We keep gold as the public baseline and expanded as
+the **regression-only** signal. Neither is a third-party benchmark;
+no public memory-poisoning benchmark exists yet. Treat both as
+preliminary. Memgar is one layer of defense, not a silver bullet.
 </div>
 
 ---

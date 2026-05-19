@@ -11,7 +11,7 @@ The launch-prep PR (#NN — this one) ships:
 - [x] `pyproject.toml` version `0.5.6 → 1.0.0`
 - [x] `pyproject.toml` classifier `Development Status :: 4 - Beta → 5 - Production/Stable`
 - [x] `CHANGELOG.md` v1.0.0 entry consolidating Tier 1-3 + integrations + cloud foundation
-- [x] `README.md` honest-baseline disclaimer (80% recall / 9% FPR on internal gold corpus, pre-1.0 caveat)
+- [x] `README.md` honest-baseline table (gold + expanded corpus side-by-side, pre-1.0 caveat)
 - [x] `similarity_layer.py` threshold calibration (kills SIM-001 false positive)
 - [x] `examples/quickstart.py` — 60-second end-to-end demo
 - [x] This runbook
@@ -127,9 +127,12 @@ biggest predictor of how the post lands.
 > - Drop-in security wrappers for Mem0, Letta, Pinecone, Chroma, Qdrant,
 >   Weaviate, LangChain, LlamaIndex, CrewAI, AutoGen, OpenAI Assistants, MCP
 > - Ed25519-signed weekly threat feed with automated MITRE/CVE/OWASP sync
-> - On our internal corpus (95 attacks + 49 benign) we measure ~80%
->   recall and ~9% FPR. No public benchmark for memory poisoning exists
->   yet — treat any vendor's number as preliminary, ours included.
+> - Two-corpus calibration: ~80% recall / ~9% FPR on our hand-curated
+>   **gold** corpus (95 + 49), ~79% recall / ~36% FPR on the larger
+>   **expanded** corpus (gold + mined + augmented = 464 samples). The
+>   expanded set is intentionally harder and tracks broader drift.
+>   No public benchmark for memory poisoning exists yet — treat any
+>   vendor's number as preliminary, ours included.
 >
 > Not production-tested at scale. Looking for design partners.
 

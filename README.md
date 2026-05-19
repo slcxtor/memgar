@@ -11,7 +11,14 @@ Memgar helps you inspect, sanitize, quarantine, and block unsafe memory before i
 
 The goal is simple: every memory write, retrieval chunk, tool result, and gateway request should receive a security decision before it reaches the model or long-term memory.
 
-> **Honest baseline.** On our internal gold corpus (95 attacks + 49 benign samples) memgar measures **≈ 80% recall** and **≈ 9% false positive rate**. No public benchmark for memory poisoning exists yet, so treat any vendor's numbers — ours and others' — as preliminary. Memgar is one layer of defense, **not a silver bullet**. Pair it with input-side prompt-injection defenses and your existing observability stack.
+> **Honest baseline.** We publish two calibration numbers, because they tell different stories:
+>
+> | Corpus | Size | Recall | FPR | Notes |
+> |---|---|---|---|---|
+> | **Gold** (hand-curated) | 95 attacks + 49 benign | **≈ 80 %** | **≈ 9 %** | What `Analyzer.analyze()` should hit in a clean workload |
+> | **Expanded** (gold + mined public corpora + memory-context augmented templates) | 386 attacks + 78 benign | **≈ 79 %** | **≈ 36 %** | CI's expanded calibration gate currently reports *"no threshold satisfies the constraints — corpus too small or model too weak"* |
+>
+> The expanded corpus is intentionally harder — its mined and augmented samples are programmatic, not hand-reviewed, so their decision boundary is fuzzier. We keep the gold number as the marketing baseline and the expanded number as the **regression-only** gate that tells us when broader drift is happening. Neither is a public benchmark; no public memory-poisoning benchmark exists yet. Treat both numbers as preliminary. Memgar is one layer of defense, **not a silver bullet** — pair it with input-side prompt-injection defenses and your existing observability stack.
 
 ## What Memgar protects
 
