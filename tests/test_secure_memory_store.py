@@ -188,6 +188,30 @@ def test_raw_backend_escape_hatch_requires_explicit_policy_and_audits():
     assert event["event"] == "raw_backend_access"
     assert event["action"] == "allow"
     assert event["principal"] == "admin"
+    assert event["severity"] == "warning"
+    assert event["risk"] == "memgar_bypass_possible"
+
+
+def test_raw_backend_escape_hatch_can_be_enabled_directly():
+    backend = []
+    store = SecureMemoryStore(
+        backend=backend,
+        analyzer=_Analyzer(),
+        allow_raw_backend_access=True,
+    )
+
+    assert store.unsafe_backend(reason="controlled migration", principal="admin") is backend
+    assert store.audit_events[-1]["action"] == "allow"
+
+
+def test_raw_backend_escape_hatch_is_forbidden_in_strict_mode():
+    with pytest.raises(ValueError, match="strict"):
+        SecureMemoryStore(
+            backend=[],
+            analyzer=_Analyzer(),
+            policy=SecureMemoryStorePolicy(strict=True),
+            allow_raw_backend_access=True,
+        )
 
 
 def test_unscanned_reads_are_blocked_by_default():

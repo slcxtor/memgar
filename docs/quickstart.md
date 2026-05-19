@@ -46,7 +46,9 @@ tool arguments need central enforcement.
 === "Secure Memory Store"
 
     Use this path when an agent writes long-term memory. Direct backend writes
-    bypass Memgar, so keep the raw backend private.
+    bypass Memgar, so keep the raw backend private. Raw backend access is
+    disabled by default; enable it only as an audited `unsafe_backend()` escape
+    hatch for controlled migrations or diagnostics.
 
     ```bash
     pip install "memgar[feed]"
@@ -64,6 +66,14 @@ tool arguments need central enforcement.
         backend=raw_store,
         vault=vault,
     )
+
+    # Advanced only:
+    # memory = SecureMemoryStore(
+    #     backend=raw_store,
+    #     vault=vault,
+    #     allow_raw_backend_access=True,
+    # )
+    # backend = memory.unsafe_backend(reason="one-time migration", principal="admin")
 
     result = memory.write(
         "User prefers dark mode and concise answers.",

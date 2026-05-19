@@ -182,6 +182,18 @@ def test_default_adapter_uses_secure_memory_store():
     assert guard.is_secure_store_backed is True
 
 
+def test_universal_adapter_forwards_raw_backend_escape_hatch():
+    backend = []
+    guard = UniversalMemoryGuard(
+        backend=backend,
+        analyzer=AllowAnalyzer(),
+        allow_raw_backend_access=True,
+    )
+
+    assert guard.secure_store.unsafe_backend(reason="controlled migration") is backend
+    assert guard.secure_store.audit_events[-1]["action"] == "allow"
+
+
 def test_default_secure_store_redacts_dlp_before_writer():
     writes = []
     guard = UniversalMemoryGuard(analyzer=AllowAnalyzer())

@@ -159,6 +159,25 @@ if result.allowed:
     print("Memory stored through Memgar", result.entry_id)
 ```
 
+Raw backend access is disabled by default. Advanced users can enable an audited
+escape hatch for controlled migrations or diagnostics:
+
+```python
+memory = SecureMemoryStore(
+    backend=raw_store,
+    vault=vault,
+    allow_raw_backend_access=True,  # unsafe escape hatch
+)
+
+backend = memory.unsafe_backend(
+    reason="one-time migration",
+    principal="admin@example.com",
+)
+```
+
+Every `unsafe_backend()` call records a warning audit event. In strict
+production policy, keep `allow_raw_backend_access=False`.
+
 The same wrapper can protect a Memgar `MemoryStore`, `PersistentMemoryStore`, `MemoryLedger`, Python `list` or `dict`, or a custom backend that exposes `add()`, `append()`, `save()`, or `write()`.
 
 ## Gateway quickstart

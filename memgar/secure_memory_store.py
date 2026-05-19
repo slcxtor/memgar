@@ -197,6 +197,7 @@ class SecureMemoryStorePolicy:
     allow_unscanned_retrievals: bool = False
     allow_unscanned_tool_results: bool = False
     allow_raw_backend_access: bool = False
+    strict: bool = False
 
 
 @dataclass
@@ -297,10 +298,18 @@ class SecureMemoryStore:
         ledger: Optional[Any] = None,
         quarantine_sink: Optional[Callable[[SecureWriteResult], None]] = None,
         policy: Optional[SecureMemoryStorePolicy] = None,
+        allow_raw_backend_access: Optional[bool] = None,
         agent_id: str = "default",
     ) -> None:
         self._backend = backend
         self.policy = policy or SecureMemoryStorePolicy()
+        if allow_raw_backend_access is not None:
+            self.policy.allow_raw_backend_access = allow_raw_backend_access
+        if self.policy.strict and self.policy.allow_raw_backend_access:
+            raise ValueError(
+                "SecureMemoryStorePolicy(strict=True) forbids raw backend access. "
+                "Disable strict mode or keep allow_raw_backend_access=False."
+            )
         self.enforcer = enforcer or MemoryRuntimeEnforcer(
             analyzer=analyzer,
             policy=runtime_policy or RuntimePolicy(fail_open=False),
@@ -355,6 +364,8 @@ class SecureMemoryStore:
             boundary="unsafe_backend",
             reason=reason or "unspecified",
             principal=principal,
+            severity="warning" if allowed else "error",
+            risk="memgar_bypass_possible",
             warning="raw backend access bypasses Memgar controls",
         )
         if not allowed:

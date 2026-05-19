@@ -103,6 +103,7 @@ class UniversalMemoryGuard:
         dlp_policy: Optional[Any] = None,
         auditor: Optional[Any] = None,
         agent_id: str = "default",
+        allow_raw_backend_access: Optional[bool] = None,
         allow_legacy_guard: bool = False,
         on_write_threat: str = "block",
         on_read_threat: str = "drop",
@@ -127,6 +128,7 @@ class UniversalMemoryGuard:
             and dlp is None
             and dlp_policy is None
             and auditor is None
+            and allow_raw_backend_access is None
         )
         if uses_legacy_guard and not allow_legacy_guard:
             raise SecureMemoryBypassError(
@@ -164,6 +166,7 @@ class UniversalMemoryGuard:
             dlp_policy=dlp_policy,
             auditor=auditor,
             policy=store_policy,
+            allow_raw_backend_access=allow_raw_backend_access,
             agent_id=agent_id,
         )
         self._legacy_guard = None
