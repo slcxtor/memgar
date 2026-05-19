@@ -253,6 +253,53 @@ def test_retrieval_chunks_are_filtered_before_context():
     assert event["returned_count"] == 0
 
 
+
+def test_retrieval_trust_budget_filters_low_trust_context_with_explanation():
+    store = SecureMemoryStore(
+        backend=[],
+        analyzer=_Analyzer(),
+        policy=SecureMemoryStorePolicy(
+            min_retrieval_trust_score=0.4,
+            low_trust_retrieval_threshold=0.6,
+            max_low_trust_retrievals=1,
+        ),
+    )
+    chunks = [
+        {"content": "safe high trust", "metadata": {"trust_score": 0.9}, "score": 0.7},
+        {"content": "safe low trust kept", "metadata": {"trust_score": 0.5}, "score": 0.95},
+        {"content": "safe low trust filtered", "metadata": {"trust_score": 0.5}, "score": 0.9},
+        {"content": "safe below minimum", "metadata": {"trust_score": 0.2}, "score": 0.99},
+    ]
+
+    returned = store.guard_retrieval(chunks, query="prefs")
+
+    assert [item.chunk["content"] for item in returned] == ["safe low trust kept", "safe high trust"]
+    budget = store.audit_events[-1]["trust_budget"]
+    assert budget["filtered_count"] == 2
+    assert budget["low_trust_included"] == 1
+    assert {item["reason"] for item in budget["filtered"]} == {
+        "below_min_trust_score",
+        "low_trust_budget_exceeded",
+    }
+
+
+def test_retrieval_risk_weighted_top_k_prefers_safer_memory():
+    store = SecureMemoryStore(
+        backend=[],
+        analyzer=_Analyzer(),
+        policy=SecureMemoryStorePolicy(risk_weighted_retrieval_top_k=True),
+    )
+    chunks = [
+        {"content": "high relevance low trust", "metadata": {"trust_score": 0.1}, "score": 1.0},
+        {"content": "moderate relevance trusted", "metadata": {"trust_score": 1.0}, "score": 0.9},
+    ]
+
+    returned = store.guard_retrieval(chunks, query="prefs", top_k=1)
+
+    assert returned[0].chunk["content"] == "moderate relevance trusted"
+    assert store.audit_events[-1]["trust_budget"]["included"][0]["final_score"] > 0
+
+
 def test_tool_results_are_blocked_before_agent_context():
     store = SecureMemoryStore(
         backend=[],

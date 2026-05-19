@@ -199,6 +199,15 @@ class SecureMemoryStorePolicy:
     allow_raw_backend_access: bool = False
     strict: bool = False
 
+    min_retrieval_trust_score: float = 0.0
+    low_trust_retrieval_threshold: float = 0.5
+    max_low_trust_retrievals: Optional[int] = None
+    risk_weighted_retrieval_top_k: bool = True
+    retrieval_trust_weight: float = 0.35
+    retrieval_risk_weight: float = 0.45
+    explain_filtered_retrievals: bool = True
+    audit_context_inclusion: bool = True
+
 
 @dataclass
 class SecureWriteResult:
@@ -562,17 +571,9 @@ class SecureMemoryStore:
         )
         return safe_entries
 
-    def guard_retrieval(
-        self,
-        chunks: Sequence[Any],
-        *,
-        query: str = "",
-        agent_id: Optional[str] = None,
-        top_k: Optional[int] = None,
-        include_blocked: Optional[bool] = None,
-    ) -> List[ChunkResult]:
-        """Scan retrieved chunks before they enter model context."""
 
+    def guard_retrieval(self, chunks: Sequence[Any], *, query: str = "", agent_id: Optional[str] = None, top_k: Optional[int] = None, include_blocked: Optional[bool] = None) -> List[ChunkResult]:
+        """Scan retrieved chunks before they enter model context."""
         include = self.policy.include_blocked_retrievals if include_blocked is None else include_blocked
         if not self.policy.scan_retrievals:
             self._log_boundary_audit(
@@ -585,16 +586,11 @@ class SecureMemoryStore:
             )
             if not self.policy.allow_unscanned_retrievals:
                 raise SecureMemoryBypassError(
-                    "Unscanned retrievals are disabled. Keep scan_retrievals=True or set "
-                    "allow_unscanned_retrievals=True for an audited escape hatch."
+                    "Unscanned retrievals are disabled. Keep scan_retrievals=True "
+                    "or set allow_unscanned_retrievals=True for an audited escape hatch."
                 )
-        checked = self.enforcer.on_vector_retrieval(
-            chunks,
-            query=query,
-            agent_id=agent_id or self.agent_id,
-            top_k=top_k,
-        )
-        returned = checked if include else [item for item in checked if item.allowed]
+        checked = self.enforcer.on_vector_retrieval(chunks, query=query, agent_id=agent_id or self.agent_id, top_k=None)
+        returned, budget = self._apply_retrieval_trust_budget(checked, top_k=top_k, include_blocked=include)
         blocked = len([item for item in checked if not item.allowed])
         sanitized = len([item for item in checked if item.enforcement.was_sanitized])
         self._log_boundary_audit(
@@ -607,8 +603,100 @@ class SecureMemoryStore:
             blocked_count=blocked,
             sanitized_count=sanitized,
             query_preview=query[:120],
+            trust_budget=budget,
         )
         return returned
+
+    def _apply_retrieval_trust_budget(
+        self, checked: Sequence[ChunkResult], *, top_k: Optional[int], include_blocked: bool
+    ) -> tuple[List[ChunkResult], Dict[str, Any]]:
+        scored: List[tuple[ChunkResult, Dict[str, Any]]] = []
+        low_trust_included = 0
+        filtered: List[Dict[str, Any]] = []
+        for index, item in enumerate(checked):
+            trust = self._retrieval_trust_score(item)
+            risk = max(0.0, min(1.0, float(item.enforcement.risk_score) / 100.0))
+            semantic = self._retrieval_semantic_score(item.chunk, index=index, total=len(checked))
+            final = self._retrieval_final_score(semantic=semantic, trust=trust, risk=risk)
+            info = {
+                "index": index,
+                "trust_score": round(trust, 3),
+                "risk_score": item.enforcement.risk_score,
+                "semantic_score": round(semantic, 3),
+                "final_score": round(final, 3),
+                "action": item.enforcement.action.value,
+            }
+            reason = ""
+            if not item.allowed:
+                reason = item.enforcement.action.value
+            elif trust < self.policy.min_retrieval_trust_score:
+                reason = "below_min_trust_score"
+            elif (
+                self.policy.max_low_trust_retrievals is not None
+                and trust < self.policy.low_trust_retrieval_threshold
+                and low_trust_included >= self.policy.max_low_trust_retrievals
+            ):
+                reason = "low_trust_budget_exceeded"
+            if reason and not include_blocked:
+                info["reason"] = reason
+                info["content_preview"] = item.safe_text[: self.policy.audit_content_preview_chars]
+                filtered.append(info)
+                continue
+            if trust < self.policy.low_trust_retrieval_threshold:
+                low_trust_included += 1
+            scored.append((item, info))
+        if self.policy.risk_weighted_retrieval_top_k:
+            scored.sort(key=lambda pair: pair[1]["final_score"], reverse=True)
+        limited = scored[:top_k] if top_k is not None else scored
+        included = [item for item, _info in limited]
+        included_info = [info for _item, info in limited] if self.policy.audit_context_inclusion else []
+        return included, {
+            "min_trust_score": self.policy.min_retrieval_trust_score,
+            "low_trust_threshold": self.policy.low_trust_retrieval_threshold,
+            "max_low_trust_items": self.policy.max_low_trust_retrievals,
+            "risk_weighted_top_k": self.policy.risk_weighted_retrieval_top_k,
+            "filtered_count": len(filtered),
+            "low_trust_included": low_trust_included,
+            "included": included_info,
+            "filtered": filtered if self.policy.explain_filtered_retrievals else [],
+        }
+
+    def _retrieval_final_score(self, *, semantic: float, trust: float, risk: float) -> float:
+        trust_weight = max(0.0, min(1.0, self.policy.retrieval_trust_weight))
+        risk_weight = max(0.0, self.policy.retrieval_risk_weight)
+        return semantic * ((1.0 - trust_weight) + (trust_weight * trust)) - (risk * risk_weight)
+
+    @staticmethod
+    def _retrieval_trust_score(item: ChunkResult) -> float:
+        for candidate in (
+            _nested_lookup(item.chunk, ("trust_score", "trust", "memgar_trust_score")),
+            _nested_lookup(item.chunk, ("metadata.trust_score", "metadata.memgar.trust_score")),
+            item.enforcement.trust_score,
+        ):
+            normalized = _normalize_score(candidate)
+            if normalized is not None:
+                return normalized
+        return 1.0
+
+    @staticmethod
+    def _retrieval_semantic_score(chunk: Any, *, index: int, total: int) -> float:
+        for candidate in (
+            _nested_lookup(chunk, ("score", "similarity_score", "final_score")),
+            _nested_lookup(
+                chunk,
+                (
+                    "metadata.score",
+                    "metadata.similarity_score",
+                    "metadata.final_score",
+                    "metadata.trust_adjusted_score",
+                ),
+            ),
+            getattr(chunk, "score", None),
+        ):
+            normalized = _normalize_score(candidate)
+            if normalized is not None:
+                return normalized
+        return 1.0 if total <= 1 else max(0.0, 1.0 - (index / max(total - 1, 1)) * 0.001)
 
     def guard_tool_result(
         self,
@@ -813,6 +901,39 @@ def _coerce_entry(value: Any) -> MemoryEntry:
             metadata=dict(getattr(value, "metadata", {}) or {}),
         )
     return MemoryEntry(content=str(value), source_type="unknown")
+
+
+
+def _normalize_score(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    if score > 1.0:
+        score = score / 100.0
+    return max(0.0, min(1.0, score))
+
+
+def _nested_lookup(obj: Any, paths: Sequence[str]) -> Any:
+    for path in paths:
+        current = obj
+        found = True
+        for part in path.split("."):
+            if isinstance(current, dict):
+                if part not in current:
+                    found = False
+                    break
+                current = current[part]
+            else:
+                current = getattr(current, part, None)
+                if current is None:
+                    found = False
+                    break
+        if found:
+            return current
+    return None
 
 
 __all__ = [

@@ -306,6 +306,29 @@ if tool_verdict.allowed:
     use_tool_output(tool_verdict.safe_content)
 ```
 
+
+For production retrieval, prefer the `SecureMemoryStore` boundary so semantic relevance is balanced with trust and risk before any memory enters context:
+
+```python
+from memgar.secure_memory_store import SecureMemoryStore, SecureMemoryStorePolicy
+
+memory = SecureMemoryStore(
+    analyzer=analyzer,
+    policy=SecureMemoryStorePolicy(
+        min_retrieval_trust_score=0.4,
+        low_trust_retrieval_threshold=0.6,
+        max_low_trust_retrievals=1,
+        risk_weighted_retrieval_top_k=True,
+        explain_filtered_retrievals=True,
+        audit_context_inclusion=True,
+    ),
+)
+safe_results = memory.guard_retrieval(vector_results, query=user_query, top_k=5)
+safe_context = [item.safe_text for item in safe_results]
+```
+
+The final ranking balances semantic relevance with trust and risk, while filtered records are explained in audit logs.
+
 ### Use the policy engine
 
 ```python

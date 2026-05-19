@@ -13,7 +13,7 @@ from memgar.integrations.universal import (
     secure_memory_writer,
 )
 from memgar.models import AnalysisResult, Decision
-from memgar.secure_memory_store import SecureMemoryBypassError, SecureMemoryStore
+from memgar.secure_memory_store import SecureMemoryBypassError, SecureMemoryStore, SecureMemoryStorePolicy
 
 
 @dataclass
@@ -234,6 +234,33 @@ def test_default_secure_store_filters_retrieval_results():
     assert guard.guard_retrieval_results(["poisoned retrieved memory"], query="prefs") == []
     assert guard.secure_store.audit_events[-1]["event"] == "vector_retrieval"
     assert guard.secure_store.audit_events[-1]["blocked_count"] == 1
+
+
+
+def test_universal_adapter_applies_retrieval_trust_budget():
+    guard = UniversalMemoryGuard(
+        analyzer=AllowAnalyzer(),
+        store_policy=SecureMemoryStorePolicy(
+            min_retrieval_trust_score=0.4,
+            low_trust_retrieval_threshold=0.6,
+            max_low_trust_retrievals=0,
+        ),
+    )
+    records = [
+        {"content": "trusted memory", "metadata": {"trust_score": 0.9}},
+        {"content": "low trust memory", "metadata": {"trust_score": 0.5}},
+        {"content": "below threshold memory", "metadata": {"trust_score": 0.2}},
+    ]
+
+    guarded = guard.guard_retrieval_results(records, query="prefs")
+
+    assert [item["content"] for item in guarded] == ["trusted memory"]
+    budget = guard.secure_store.audit_events[-1]["trust_budget"]
+    assert budget["filtered_count"] == 2
+    assert {item["reason"] for item in budget["filtered"]} == {
+        "below_min_trust_score",
+        "low_trust_budget_exceeded",
+    }
 
 
 def test_default_secure_store_blocks_tool_results():

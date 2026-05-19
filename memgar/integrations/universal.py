@@ -347,7 +347,7 @@ class UniversalMemoryGuard:
             query=query,
             agent_id=context.get("agent_id"),
             top_k=top_k,
-            include_blocked=True,
+            include_blocked=self.on_read_threat in self.BLOCK_ACTIONS,
         )
         guarded: list[Any] = []
         for item in checked:
@@ -360,7 +360,7 @@ class UniversalMemoryGuard:
             result = self._apply_threat_action(result, self.on_read_threat)
             if not result.allowed and result.safe_content in ("", None):
                 continue
-            guarded.append(self._replace_record_content(item.chunk, result.safe_content))
+            guarded.append(result.safe_content)
 
         if is_tuple:
             return tuple(guarded)
