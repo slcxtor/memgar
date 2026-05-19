@@ -1,0 +1,37 @@
+name: Apply retrieval trust budget v4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/apply-retrieval-trust-budget-v4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install -e . pytest
+      - name: Apply retrieval trust budget patch
+        run: python .github/scripts/apply_retrieval_trust_budget.py
+      - name: Validate patch
+        run: |
+          python -m py_compile memgar/secure_memory_store.py memgar/integrations/universal.py
+          python -m pytest tests/test_secure_memory_store.py tests/test_universal_agent_memory_adapter.py tests/test_llamaindex_memory_firewall.py -q
+      - name: Commit feature
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add memgar/secure_memory_store.py memgar/integrations/universal.py tests/test_secure_memory_store.py tests/test_universal_agent_memory_adapter.py README.md
+          git commit -m "feat: add retrieval trust budget guard"
+          git push origin HEAD:main
