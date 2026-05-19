@@ -11,6 +11,8 @@ Memgar helps you inspect, sanitize, quarantine, and block unsafe memory before i
 
 The goal is simple: every memory write, retrieval chunk, tool result, and gateway request should receive a security decision before it reaches the model or long-term memory.
 
+> **Honest baseline.** On our internal gold corpus (95 attacks + 49 benign samples) memgar measures **≈ 80% recall** and **≈ 9% false positive rate**. No public benchmark for memory poisoning exists yet, so treat any vendor's numbers — ours and others' — as preliminary. Memgar is one layer of defense, **not a silver bullet**. Pair it with input-side prompt-injection defenses and your existing observability stack.
+
 ## What Memgar protects
 
 - Memory writes from chats, tools, documents, summaries, and external sources.

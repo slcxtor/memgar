@@ -176,4 +176,5 @@ nav:
   - About:
       - Mission: about/mission.md
       - Roadmap: about/roadmap.md
+      - Launch Runbook: about/launch-runbook.md
       - Changelog: changelog.md
