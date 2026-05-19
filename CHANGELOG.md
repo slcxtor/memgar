@@ -4,6 +4,121 @@ All notable changes to Memgar are documented here.
 
 ---
 
+## [1.0.0] — 2026-05-19
+
+First stable release. The API contract under `memgar/` is now considered
+stable; breaking changes will be reserved for major versions.
+
+### Highlights since 0.5.6
+
+This release consolidates ~3 weeks of work across the threat library,
+the memory layer, integrations, observability, and the operational
+pipeline. Notable additions:
+
+**Threat library (746 → 807 patterns, +61)**
+
+- New `XSESS-*` family (12 patterns) — cross-session persistence:
+  survive-restart directives, long-term store implants, anchor tokens,
+  TTL/eviction evasion, embedding-layer stowaways, snapshot rehydration
+  tampering, self-replicating memory worms, scheduled re-injection
+- New `VECNN-*` family (12 patterns) — vector-DB nearest-neighbor
+  attacks: cluster injection, HotFlip/TextFooler/BERT-Attack,
+  top-K saturation, metadata-filter bypass, cross-namespace bleeding,
+  re-ranker override, chunk-boundary smuggling, HyDE hijack
+- New `MAGENT-*` family (12 patterns) — multi-agent contamination:
+  broadcast-to-all, shared-memory implant, A2A message injection,
+  supervisor spoof, handoff hijack, sybil voting, cross-tenant bridging
+
+**Memory layer**
+
+- `MemoryVault` snapshots now ship with a Merkle-tree root and
+  `merkle_proof(entry_id)` method — O(log N) inclusion proofs against
+  the recorded root, suitable for selective disclosure to auditors
+- `MerkleTree` (pure-stdlib) for the integrity backbone
+- `ReplayForensics` — cross-snapshot provenance, lineage, cohorts,
+  session timelines
+- `EmbeddingAnomalyDetector` — Welford-based centroid + k-NN density
+  + cross-cluster collision detection for the `VECNN-*` family
+
+**CLI**
+
+- `memgar memory list / inspect / diff / verify / rollback / replay /
+  trace / cohort` — 8 forensic subcommands. JSON output on every one,
+  consistent exit-code contract (0 ok / 1 user / 2 integrity)
+
+**Integrations (+6 wrappers)**
+
+- `MemgarMem0Guard` — Mem0 memory layer
+- `MemgarLettaGuard` — Letta (formerly MemGPT) memory-centric agents
+- `MemgarPineconeIndex`, `MemgarChromaCollection`, `MemgarQdrantClient`,
+  `MemgarWeaviateCollection` — drop-in security shells for the four
+  leading vector DBs. All four share a `VectorStoreSecurityShell` with
+  consistent BLOCK / SANITIZE / AUDIT_ONLY write policies and
+  consistent `memgar_risk_score` / `memgar_decision` / `memgar_threat_ids`
+  metadata on reads
+
+**Threat-intel pipeline**
+
+- `.github/workflows/feed-publish.yml` — weekly automated signed feed
+  release (Mon 06:00 UTC). Ed25519-signed, verified locally before
+  publish, attached to a GitHub Release for client `feed sync`
+- `.github/workflows/threat-intel-sync.yml` — weekly external-source
+  sync (Thu 04:00 UTC) from MITRE ATT&CK, NVD CVE, OWASP Top-10-LLM,
+  four curated public jailbreak repos, four HuggingFace datasets.
+  Opens a single curator-review PR per run
+- Feed signing key rotated to a fresh Ed25519 pair (PR #63)
+
+**Documentation**
+
+- `docs/threats/kill-chain.md` — seven-phase memory-poisoning TTP
+  framework (Reconnaissance → Preparation → Injection → Persistence
+  → Lateral Movement → Activation → Impact)
+- `docs/architecture/integrity.md` — Merkle + replay + anomaly design
+- `docs/operations/forensics.md` — CLI runbook with incident-response
+  playbook
+- `docs/operations/threat-feed-pipeline.md` — maintainer runbook
+- `docs/operations/threat-intel-pipeline.md` — curator runbook
+- `docs/integration/memory-frameworks.md` — per-vendor quickstart
+- Obsidian-style theme refresh across the whole site
+
+**Code quality + CI**
+
+- `.github/workflows/lint.yml` — ruff (I001 blocking) + bandit
+  (high/high blocking). Bandit High severity: 4 → **0**
+- ruff F401 cleanup: 321 → 23 across 80+ files
+- `_GraphUnpickler` annotated with `# nosec B403` + allowlist docstring
+- API-key placeholders standardised: `sk-ant-...` → `<your-anthropic-key>`
+
+### Fixed
+
+- `SIM-001` false positive: similarity-layer thresholds raised
+  (`threat_threshold` 0.4 → 0.55, `quarantine_threshold` 0.34 → 0.45)
+  so benign phrases like "Customer requested weekly reports" no longer
+  quarantine. Genuine attacks remain blocked by Layer 1 patterns at
+  Severity CRITICAL/HIGH.
+
+### Removed
+
+- Nothing. This release is additive across all surfaces.
+
+### Honest notes
+
+- Recall ≈ 80% and false positive rate ≈ 9% on our internal gold
+  corpus (95 attacks + 49 benign samples). No public benchmark for
+  memory poisoning exists yet — treat any vendor's numbers as
+  preliminary
+- Not third-party audited
+- Production deployments: pre-1.0 reach unknown. First PyPI release
+  was 2026-05-18; install volume is just starting
+
+### Upgrading from 0.5.x
+
+`pip install --upgrade memgar`. No deprecations, no breaking changes
+in the public API surface. The feed signing key was rotated, so the
+first `memgar feed sync` after upgrade pulls a freshly signed bundle.
+
+---
+
 ## [0.5.6] — 2026-05-03
 
 ### Fixed
