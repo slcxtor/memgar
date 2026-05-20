@@ -222,10 +222,12 @@ exclude_lines = [
 ]
 
 [tool.pip-audit]
-# All ignored CVEs are in OPTIONAL extras (`ml`, `ml-train`) used only for
-# offline model fine-tuning via `scripts/train_transformer.py`.  Runtime
-# inference uses ONNX Runtime, NOT torch/transformers.  memgar never
-# deserializes torch/transformers artifacts from untrusted sources.
+# torch + transformers enter the env transitively via `sentence-transformers`
+# (Layer 1.5 SemanticGuard encoder, pulled by `gateway` / `semantic` extras).
+# All ignored CVEs concern pickle/serialization or remote-hub auto-loading —
+# memgar uses these libraries only for forward-pass inference on local model
+# files shipped with the package; never `torch.load()` on untrusted artifacts,
+# never `AutoModel.from_pretrained("hub-id")` for arbitrary remote names.
 # Re-evaluate each ignore on every release; remove once upstream patches ship.
 ignore-vulns = [
     # joblib pickle RCE — scikit-learn parallel backend dep, no fix available.
