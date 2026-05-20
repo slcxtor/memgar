@@ -19,7 +19,7 @@ from .aho_corasick import (
 
 __all__ = [
     "AhoCorasick",
-    "Match", 
+    "Match",
     "PatternInfo",
     "PatternMatcher",
     "ThreatScanner",

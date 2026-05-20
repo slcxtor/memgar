@@ -702,7 +702,7 @@ class _S8_ConfidenceBypass:
     
     This prevents Gemini-style over-confidence bypass attacks.
     """
-    
+
     def __init__(self):
         if not CONFIDENCE_BYPASS_AVAILABLE:
             self.detector = None
@@ -714,7 +714,7 @@ class _S8_ConfidenceBypass:
                 entity_db=EntityDatabase(),
                 confidence_threshold=0.85,
             )
-    
+
     def compute(self, content: str, ctx: TrustContext) -> SignalResult:
         """
         Check if content attempts confidence bypass.
@@ -737,18 +737,18 @@ class _S8_ConfidenceBypass:
                 is_critical=False,
                 detail="Confidence bypass detector not available",
             )
-        
+
         try:
             # Estimate LLM confidence from source provenance
             # (In production, use actual LLM confidence if available)
             llm_confidence = _SOURCE_BASE_TRUST.get(ctx.source_type.lower(), 50) / 100.0
-            
+
             # Detect bypass attempt
             result = self.detector.detect_bypass_attempt(
                 entry=content,
                 llm_confidence=llm_confidence,
             )
-            
+
             if result.risk:
                 # Bypass attempt detected → LOW trust, CRITICAL
                 trust = 0.0
@@ -761,7 +761,7 @@ class _S8_ConfidenceBypass:
                 is_critical = False
                 detail = f"No bypass detected: {result.reason}"
                 evidence = []
-            
+
             return SignalResult(
                 name=SignalName.CONFIDENCE_BYPASS,
                 raw_score=trust,
@@ -771,7 +771,7 @@ class _S8_ConfidenceBypass:
                 detail=detail,
                 evidence=evidence,
             )
-            
+
         except Exception as e:
             # Error in detector → neutral score
             return SignalResult(

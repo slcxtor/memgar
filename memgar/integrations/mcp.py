@@ -51,7 +51,7 @@ class MCPSecurityMiddleware:
         ...     # Content is scanned before this runs
         ...     return await db.save(uri, content)
     """
-    
+
     def __init__(
         self,
         mode: str = "protect",
@@ -81,7 +81,7 @@ class MCPSecurityMiddleware:
         self.blocked_operations: List[Dict[str, Any]] = []
         self._scan_count = 0
         self._block_count = 0
-    
+
     def protect_resource(self, func: F) -> F:
         """
         Decorator to protect resource write operations.
@@ -105,21 +105,21 @@ class MCPSecurityMiddleware:
             # Extract content to scan
             content = self._extract_content(args, kwargs)
             uri = self._extract_uri(args, kwargs)
-            
+
             # Check URI whitelist/blacklist
             if self._is_uri_blocked(uri):
                 raise MCPSecurityError(f"URI is blocked: {uri}")
-            
+
             if self._is_uri_allowed(uri):
                 return await func(*args, **kwargs)
-            
+
             # Scan content
             result = self._scan_content(content, uri, "resource_write")
-            
+
             # Handle based on mode and result
             if result.decision == Decision.BLOCK:
                 self._record_block(uri, content, result)
-                
+
                 if self.mode == "protect":
                     if self.on_block:
                         self.on_block(result, content)
@@ -127,13 +127,13 @@ class MCPSecurityMiddleware:
                         f"Resource write blocked: {result.explanation}",
                         result=result
                     )
-            
+
             return await func(*args, **kwargs)
-        
+
         return wrapper  # type: ignore
-    
+
     def protect_tool(
-        self, 
+        self,
         content_param: str = "content",
         scan_output: bool = False
     ) -> Callable[[F], F]:
@@ -157,7 +157,7 @@ class MCPSecurityMiddleware:
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 # Extract content from specified parameter
                 content = kwargs.get(content_param, "")
-                
+
                 if not content and args:
                     # Try to find content in positional args
                     import inspect
@@ -167,25 +167,25 @@ class MCPSecurityMiddleware:
                         idx = params.index(content_param)
                         if idx < len(args):
                             content = args[idx]
-                
+
                 # Scan input content
                 if content:
                     result = self._scan_content(
-                        str(content), 
-                        func.__name__, 
+                        str(content),
+                        func.__name__,
                         "tool_call"
                     )
-                    
+
                     if result.decision == Decision.BLOCK and self.mode == "protect":
                         self._record_block(func.__name__, str(content), result)
                         raise MCPSecurityError(
                             f"Tool call blocked: {result.explanation}",
                             result=result
                         )
-                
+
                 # Execute tool
                 output = await func(*args, **kwargs)
-                
+
                 # Optionally scan output
                 if scan_output and output:
                     output_result = self._scan_content(
@@ -193,19 +193,19 @@ class MCPSecurityMiddleware:
                         func.__name__,
                         "tool_output"
                     )
-                    
+
                     if output_result.decision == Decision.BLOCK and self.mode == "protect":
                         raise MCPSecurityError(
                             f"Tool output blocked: {output_result.explanation}",
                             result=output_result
                         )
-                
+
                 return output
-            
+
             return wrapper  # type: ignore
-        
+
         return decorator
-    
+
     def scan(self, content: str, source: str = "mcp") -> AnalysisResult:
         """
         Manually scan content.
@@ -218,66 +218,66 @@ class MCPSecurityMiddleware:
             Analysis result
         """
         return self._scan_content(content, source, "manual")
-    
+
     def _scan_content(
-        self, 
-        content: str, 
-        uri: str, 
+        self,
+        content: str,
+        uri: str,
         operation: str
     ) -> AnalysisResult:
         """Internal method to scan content."""
         self._scan_count += 1
-        
+
         entry = MemoryEntry(
             content=content,
             source_type=f"mcp:{operation}",
             source_id=uri,
         )
-        
+
         return self.analyzer.analyze(entry)
-    
+
     def _extract_content(self, args: tuple, kwargs: dict) -> str:
         """Extract content from function arguments."""
         # Try common parameter names
         for name in ["content", "text", "data", "body", "message", "value"]:
             if name in kwargs:
                 return str(kwargs[name])
-        
+
         # Try second positional argument (first is usually uri)
         if len(args) >= 2:
             return str(args[1])
-        
+
         return ""
-    
+
     def _extract_uri(self, args: tuple, kwargs: dict) -> str:
         """Extract URI from function arguments."""
         for name in ["uri", "url", "path", "resource", "id"]:
             if name in kwargs:
                 return str(kwargs[name])
-        
+
         if args:
             return str(args[0])
-        
+
         return "unknown"
-    
+
     def _is_uri_allowed(self, uri: str) -> bool:
         """Check if URI is in whitelist."""
         for pattern in self.allowed_uris:
             if pattern in uri or uri.startswith(pattern):
                 return True
         return False
-    
+
     def _is_uri_blocked(self, uri: str) -> bool:
         """Check if URI is in blacklist."""
         for pattern in self.blocked_uris:
             if pattern in uri or uri.startswith(pattern):
                 return True
         return False
-    
+
     def _record_block(
-        self, 
-        uri: str, 
-        content: str, 
+        self,
+        uri: str,
+        content: str,
         result: AnalysisResult
     ) -> None:
         """Record a blocked operation."""
@@ -290,7 +290,7 @@ class MCPSecurityMiddleware:
             "risk_score": result.risk_score,
             "decision": result.decision.value,
         })
-    
+
     @property
     def stats(self) -> Dict[str, int]:
         """Get middleware statistics."""
@@ -302,7 +302,7 @@ class MCPSecurityMiddleware:
 
 class MCPSecurityError(Exception):
     """Raised when an MCP operation is blocked due to security threats."""
-    
+
     def __init__(self, message: str, result: Optional[AnalysisResult] = None):
         super().__init__(message)
         self.result = result

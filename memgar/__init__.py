@@ -682,7 +682,7 @@ class Memgar:
         >>> scan_result = mg.scan_file("./memories.json")
         >>> print(f"Found {scan_result.threat_count} threats")
     """
-    
+
     # Shared singleton Analyzer — initialized once, reused across all Memgar instances
     # with default settings. Custom settings (use_llm, strict_mode) bypass singleton.
     _default_analyzer: Optional["Analyzer"] = None
@@ -726,11 +726,11 @@ class Memgar:
                     )
             except Exception:
                 pass  # observability must never prevent initialization
-    
+
     def analyze(
-        self, 
-        content: str, 
-        source_type: str = "unknown", 
+        self,
+        content: str,
+        source_type: str = "unknown",
         source_id: Optional[str] = None
     ) -> AnalysisResult:
         """
@@ -796,7 +796,7 @@ class Memgar:
             ScanResult with statistics and detected threats.
         """
         return self.scanner.scan_file(path)
-    
+
     def scan_directory(self, path: str, recursive: bool = True) -> ScanResult:
         """
         Scan a directory for memory poisoning threats.
@@ -809,7 +809,7 @@ class Memgar:
             ScanResult with aggregated statistics.
         """
         return self.scanner.scan_directory(path, recursive=recursive)
-    
+
     def scan_memories(self, memories: list[dict | str]) -> ScanResult:
         """
         Scan a list of memory entries.
@@ -822,7 +822,7 @@ class Memgar:
             ScanResult with analysis of all entries.
         """
         return self.scanner.scan_memories(memories)
-    
+
     def quick_check(self, content: str) -> bool:
         """
         Quick check if content is safe.
@@ -953,40 +953,40 @@ def check_installation() -> dict:
 __all__ = [
     # Main client
     "Memgar",
-    
+
     # Convenience functions
     "analyze",
     "is_safe",
     "get_version",
     "check_installation",
-    
+
     # Core Models
     "AnalysisResult",
-    "ScanResult", 
+    "ScanResult",
     "Threat",
     "ThreatMatch",
     "Severity",
     "Decision",
     "ThreatCategory",
     "MemoryEntry",
-    
+
     # Core Components
     "Analyzer",
     "QuickAnalyzer",
     "Scanner",
     "MemgarConfig",
-    
+
     # Patterns
     "PATTERNS",
     "get_patterns_by_severity",
     "get_pattern_by_id",
     "pattern_stats",
-    
+
     # Layer 2: Sanitization
     "InstructionSanitizer",
     "SanitizeResult",
     "SanitizeAction",
-    
+
     # Layer 2: Provenance
     "ProvenanceTracker",
     "TrackedMemoryEntry",
@@ -995,7 +995,7 @@ __all__ = [
     "TrustLevel",
     "SourceInfo",
     "ForensicAnalyzer",
-    
+
     # Layer 2: Guard
     "MemoryGuard",
     "GuardResult",
@@ -1003,7 +1003,7 @@ __all__ = [
     "MemgarDefensePipeline",
     "DefensePipelineResult",
     "create_defense_pipeline",
-    
+
     # Layer 3: Retrieval
     "TrustAwareRetriever",
     "RetrievalMetadata",
@@ -1013,20 +1013,20 @@ __all__ = [
     "DecayFunction",
     "RetrievalAnomalyDetector",
     "AnomalyEvent",
-    
+
     # Layer 4: Monitoring
     "HTMLReporter",
     "MemoryWatcher",
-    
+
     # Semantic (optional)
     "SemanticAnalyzer",
     "EmbeddingAnalyzer",
     "SEMANTIC_AVAILABLE",
-    
+
     # LLM (optional)
     "LLMAnalyzer",
     "LLM_AVAILABLE",
-    
+
     # Metadata
     "__version__",
     "__author__",
@@ -1039,21 +1039,21 @@ __all__ = [
     "CircuitBreakerStats",
     "AgentHaltedException",
     "MultiCircuitBreaker",
-    
+
     # Memory Auditor
     "MemoryAuditor",
     "AuditEventType",
     "AuditEvent",
     "Snapshot",
     "IntegrityReport",
-    
+
     # Multi-Modal Detection (v0.4.0)
     "MultiModalAnalyzer",
     "ImageAnalyzer",
     "PDFAnalyzer",
     "AudioAnalyzer",
     "MULTIMODAL_AVAILABLE",
-    
+
     # Multi-Agent Security (v0.4.0)
     "AgentSecurityGuard",
     "AgentMessageValidator",
@@ -1065,7 +1065,7 @@ __all__ = [
     "SwarmThreat",
     "MCPSecurityLayer",
     "MCPValidationResult",
-    
+
     # High-Performance Core (v0.5.0)
     "AhoCorasick",
     "PatternMatcher",

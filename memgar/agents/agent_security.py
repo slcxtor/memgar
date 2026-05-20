@@ -62,17 +62,17 @@ class SecurityAssessment:
     action: SecurityAction
     overall_risk: int  # 0-100
     is_safe: bool
-    
+
     # Component results
     message_result: Optional[MessageValidationResult] = None
     mcp_result: Optional[MCPValidationResult] = None
     swarm_threats: List[SwarmThreat] = field(default_factory=list)
-    
+
     # Summary
     threat_count: int = 0
     critical_threats: int = 0
     recommendations: List[str] = field(default_factory=list)
-    
+
     # Metadata
     assessment_time_ms: float = 0.0
     timestamp: datetime = field(default_factory=datetime.now)
@@ -113,7 +113,7 @@ class AgentSecurityGuard:
         # Monitor for swarm attacks
         threats = guard.detect_swarm_attacks()
     """
-    
+
     def __init__(
         self,
         text_analyzer: Optional[Any] = None,
@@ -135,34 +135,34 @@ class AgentSecurityGuard:
         self.strict_mode   = strict_mode
         # CompositeTrustScorer for L1 inter-agent message analysis
         self._trust_scorer = trust_scorer or self._build_default_trust_scorer()
-        
+
         # Initialize components
         self.message_validator = AgentMessageValidator(
             text_analyzer=text_analyzer,
             strict_mode=strict_mode,
             allowed_agents=allowed_agents,
         )
-        
+
         self.trust_manager = TrustChainManager(
             allow_transitive_trust=not strict_mode,
         )
-        
+
         self.delegation_monitor = DelegationMonitor(
             alert_on_sensitive=True,
         )
-        
+
         self.swarm_detector = SwarmDetector()
-        
+
         self.mcp_security = MCPSecurityLayer(
             text_analyzer=text_analyzer,
             allowed_tools=allowed_tools,
             strict_mode=strict_mode,
         )
-        
+
         # Security event log
         self._security_log: List[Dict[str, Any]] = []
         self._max_log_size = 1000
-    
+
     def _build_default_trust_scorer(self) -> Any:
         """Build a CompositeTrustScorer with allow=65 (higher than L1 default=60)."""
         try:
@@ -229,12 +229,12 @@ class AgentSecurityGuard:
         """
         import time
         start_time = time.time()
-        
+
         recommendations = []
-        
+
         # Check trust relationship
         trust_level = self.trust_manager.get_trust_level(source, target)
-        
+
         if trust_level == TrustLevel.NONE:
             if self.strict_mode:
                 return SecurityAssessment(
@@ -246,7 +246,7 @@ class AgentSecurityGuard:
                 )
             else:
                 recommendations.append(f"No trust relationship between {source} and {target}")
-        
+
         # Validate message content
         msg_result = self.message_validator.validate(
             source_agent=source,
@@ -254,7 +254,7 @@ class AgentSecurityGuard:
             message=message,
             context=context,
         )
-        
+
         # Layer 1: CompositeTrustScorer on inter-agent message
         # This runs the 7-signal analysis that standalone pattern checks miss.
         trust_analysis = self._run_composite_trust(message, source, target)
@@ -281,7 +281,7 @@ class AgentSecurityGuard:
             target=target,
             content=message[:100],
         )
-        
+
         # Determine action
         action = SecurityAction.ALLOW
         if not msg_result.is_valid:
@@ -289,9 +289,9 @@ class AgentSecurityGuard:
                 action = SecurityAction.BLOCK
             else:
                 action = SecurityAction.WARN
-        
+
         recommendations.extend(msg_result.recommendations)
-        
+
         # Log event
         self._log_event("message_validation", {
             "source": source,
@@ -299,7 +299,7 @@ class AgentSecurityGuard:
             "action": action.value,
             "risk": msg_result.risk_score,
         })
-        
+
         return SecurityAssessment(
             action=action,
             overall_risk=msg_result.risk_score,
@@ -310,7 +310,7 @@ class AgentSecurityGuard:
             recommendations=recommendations,
             assessment_time_ms=(time.time() - start_time) * 1000,
         )
-    
+
     def validate_tool_call(
         self,
         agent_id: str,
@@ -332,16 +332,16 @@ class AgentSecurityGuard:
         """
         import time
         start_time = time.time()
-        
+
         recommendations = []
-        
+
         # Check if agent has tool capability
         delegated_caps = self.delegation_monitor.get_agent_capabilities(agent_id)
         has_capability = tool_name in delegated_caps or "tool_use" in delegated_caps
-        
+
         if not has_capability and self.strict_mode:
             recommendations.append(f"Agent {agent_id} needs '{tool_name}' capability")
-        
+
         # Validate tool call
         mcp_result = self.mcp_security.validate_tool_call(
             agent_id=agent_id,
@@ -349,7 +349,7 @@ class AgentSecurityGuard:
             parameters=parameters,
             context=context,
         )
-        
+
         # Report for swarm detection
         self.swarm_detector.report_activity(
             agent_id=agent_id,
@@ -357,7 +357,7 @@ class AgentSecurityGuard:
             target=None,
             content=str(parameters)[:100],
         )
-        
+
         # Determine action
         action = SecurityAction.ALLOW
         if not mcp_result.is_allowed:
@@ -365,7 +365,7 @@ class AgentSecurityGuard:
                 action = SecurityAction.BLOCK
             else:
                 action = SecurityAction.WARN
-        
+
         # Log event
         self._log_event("tool_call", {
             "agent": agent_id,
@@ -373,7 +373,7 @@ class AgentSecurityGuard:
             "action": action.value,
             "risk": mcp_result.risk_score,
         })
-        
+
         return SecurityAssessment(
             action=action,
             overall_risk=mcp_result.risk_score,
@@ -384,7 +384,7 @@ class AgentSecurityGuard:
             recommendations=recommendations,
             assessment_time_ms=(time.time() - start_time) * 1000,
         )
-    
+
     def detect_swarm_attacks(self) -> List[SwarmThreat]:
         """
         Check for coordinated swarm attacks.
@@ -393,16 +393,16 @@ class AgentSecurityGuard:
             List of detected SwarmThreat objects
         """
         threats = self.swarm_detector.detect_swarm_threats()
-        
+
         # Log if threats found
         if threats:
             self._log_event("swarm_detected", {
                 "threat_count": len(threats),
                 "agents": [t.agents_involved for t in threats],
             })
-        
+
         return threats
-    
+
     def set_trust(
         self,
         source: str,
@@ -431,28 +431,28 @@ class AgentSecurityGuard:
             capabilities=capabilities,
             duration_hours=duration_hours,
         )
-        
+
         if success:
             self._log_event("trust_established", {
                 "source": source,
                 "target": target,
                 "level": level.name if hasattr(level, 'name') else str(level),
             })
-        
+
         return success
-    
+
     def revoke_trust(self, source: str, target: str) -> bool:
         """Revoke trust between agents."""
         success = self.trust_manager.revoke_trust(source, target)
-        
+
         if success:
             self._log_event("trust_revoked", {
                 "source": source,
                 "target": target,
             })
-        
+
         return success
-    
+
     def delegate_capability(
         self,
         delegator: str,
@@ -474,7 +474,7 @@ class AgentSecurityGuard:
         """
         # Check trust first
         trust_level = self.trust_manager.get_trust_level(delegator, delegate)
-        
+
         if trust_level.value < TrustLevel.MEDIUM.value:
             self._log_event("delegation_denied", {
                 "delegator": delegator,
@@ -482,23 +482,23 @@ class AgentSecurityGuard:
                 "capability": capability,
                 "reason": "insufficient_trust",
             })
-        
+
         event = self.delegation_monitor.record_delegation(
             delegator=delegator,
             delegate=delegate,
             capability=capability,
             duration_hours=duration_hours,
         )
-        
+
         self._log_event("delegation", {
             "delegator": delegator,
             "delegate": delegate,
             "capability": capability,
             "status": event.status.value,
         })
-        
+
         return event
-    
+
     def block_agent(self, agent_id: str, reason: str = "") -> None:
         """
         Block an agent from all interactions.
@@ -508,25 +508,25 @@ class AgentSecurityGuard:
             reason: Reason for blocking
         """
         self.trust_manager.block_agent(agent_id, reason)
-        
+
         self._log_event("agent_blocked", {
             "agent": agent_id,
             "reason": reason,
         })
-    
+
     def unblock_agent(self, agent_id: str) -> bool:
         """Unblock a previously blocked agent."""
         success = self.trust_manager.unblock_agent(agent_id)
-        
+
         if success:
             self._log_event("agent_unblocked", {"agent": agent_id})
-        
+
         return success
-    
+
     def is_agent_blocked(self, agent_id: str) -> bool:
         """Check if agent is blocked."""
         return self.trust_manager.is_blocked(agent_id)
-    
+
     def get_agent_profile(self, agent_id: str) -> Dict[str, Any]:
         """
         Get comprehensive profile for an agent.
@@ -556,7 +556,7 @@ class AgentSecurityGuard:
             ),
             "behavior_profile": self.swarm_detector.get_agent_profile(agent_id),
         }
-    
+
     def get_security_summary(self) -> Dict[str, Any]:
         """
         Get overall security summary.
@@ -567,10 +567,10 @@ class AgentSecurityGuard:
         swarm_stats = self.swarm_detector.get_statistics()
         delegation_stats = self.delegation_monitor.get_statistics()
         mcp_stats = self.mcp_security.get_statistics()
-        
+
         recent_events = self._security_log[-20:]
         recent_blocks = sum(1 for e in recent_events if e.get("data", {}).get("action") == "block")
-        
+
         return {
             "timestamp": datetime.now().isoformat(),
             "components": {
@@ -598,11 +598,11 @@ class AgentSecurityGuard:
             },
             "mode": "strict" if self.strict_mode else "standard",
         }
-    
+
     def get_recent_threats(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent security threats across all components."""
         threats = []
-        
+
         # Message threats
         for t in self.message_validator.get_message_history(limit=limit):
             if t.get("threats"):
@@ -616,7 +616,7 @@ class AgentSecurityGuard:
                     }
                     for threat in t.get("threats", [])
                 ])
-        
+
         # MCP threats
         for t in self.mcp_security.get_threats(limit=limit):
             threats.append({
@@ -626,7 +626,7 @@ class AgentSecurityGuard:
                 "tool": t.tool_name,
                 "agent": t.agent_id,
             })
-        
+
         # Swarm threats
         for t in self.swarm_detector.get_threats(limit=limit):
             threats.append({
@@ -636,10 +636,10 @@ class AgentSecurityGuard:
                 "agents": t.agents_involved,
                 "timestamp": t.timestamp.isoformat(),
             })
-        
+
         # Sort by timestamp (most recent first)
         return sorted(threats, key=lambda x: x.get("timestamp", ""), reverse=True)[:limit]
-    
+
     def _log_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """Log a security event."""
         self._security_log.append({
@@ -647,10 +647,10 @@ class AgentSecurityGuard:
             "data": data,
             "timestamp": datetime.now().isoformat(),
         })
-        
+
         if len(self._security_log) > self._max_log_size:
             self._security_log = self._security_log[-self._max_log_size:]
-    
+
     def get_security_log(
         self,
         event_type: Optional[str] = None,
@@ -658,12 +658,12 @@ class AgentSecurityGuard:
     ) -> List[Dict[str, Any]]:
         """Get security event log."""
         log = self._security_log
-        
+
         if event_type:
             log = [e for e in log if e.get("type") == event_type]
-        
+
         return log[-limit:]
-    
+
     def export_security_state(self) -> Dict[str, Any]:
         """Export complete security state."""
         return {

@@ -30,7 +30,7 @@ class FeedVerifier:
         try:
             from cryptography.exceptions import InvalidSignature
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-        except ImportError as exc:
+        except BaseException as exc:  # pyo3_runtime.PanicException is BaseException, not ImportError
             raise ImportError(
                 "Feed signature verification requires 'cryptography'. "
                 "Install with: pip install 'memgar[feed]'"

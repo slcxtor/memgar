@@ -197,6 +197,7 @@ addopts = "-v --tb=short -m 'not slow'"
 asyncio_mode = "auto"
 markers = [
     "slow: full throughput/load benchmarks (run with: pytest -m slow)",
+    "asyncio: mark test as async/asyncio (auto-applied when asyncio_mode=auto)",
 ]
 
 [tool.coverage.run]

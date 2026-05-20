@@ -86,7 +86,7 @@ class TrustChainManager:
         # Check trust chain
         chain = manager.get_trust_chain("agent-a", "agent-d")
     """
-    
+
     # Default capabilities by trust level
     DEFAULT_CAPABILITIES = {
         TrustLevel.NONE: set(),
@@ -95,10 +95,10 @@ class TrustChainManager:
         TrustLevel.HIGH: {"query", "read", "analyze", "summarize", "write", "modify"},
         TrustLevel.FULL: {"*"},  # All capabilities
     }
-    
+
     # Maximum trust chain depth
     MAX_CHAIN_DEPTH = 3
-    
+
     def __init__(
         self,
         max_chain_depth: int = 3,
@@ -116,17 +116,17 @@ class TrustChainManager:
         self.max_chain_depth = max_chain_depth
         self.allow_transitive = allow_transitive_trust
         self.default_duration = timedelta(hours=default_trust_duration_hours)
-        
+
         # Trust relationships: (source, target) -> TrustRelationship
         self._trust_graph: Dict[Tuple[str, str], TrustRelationship] = {}
-        
+
         # Violation log
         self._violations: List[TrustViolation] = []
         self._max_violations = 1000
-        
+
         # Blocked agents
         self._blocked_agents: Set[str] = set()
-    
+
     def set_trust(
         self,
         source_agent: str,
@@ -160,19 +160,19 @@ class TrustChainManager:
                 "high",
             )
             return False
-        
+
         # No self-trust
         if source_agent == target_agent:
             return False
-        
+
         # Calculate expiration
         duration = timedelta(hours=duration_hours) if duration_hours else self.default_duration
         expires_at = datetime.now() + duration
-        
+
         # Get capabilities
         if capabilities is None:
             capabilities = self.DEFAULT_CAPABILITIES.get(trust_level, set()).copy()
-        
+
         # Create relationship
         relationship = TrustRelationship(
             source_agent=source_agent,
@@ -182,10 +182,10 @@ class TrustChainManager:
             expires_at=expires_at,
             granted_by=granted_by,
         )
-        
+
         self._trust_graph[(source_agent, target_agent)] = relationship
         return True
-    
+
     def get_trust(
         self,
         source_agent: str,
@@ -194,15 +194,15 @@ class TrustChainManager:
         """Get trust relationship between agents."""
         key = (source_agent, target_agent)
         relationship = self._trust_graph.get(key)
-        
+
         if relationship:
             # Check expiration
             if relationship.expires_at and datetime.now() > relationship.expires_at:
                 del self._trust_graph[key]
                 return None
-        
+
         return relationship
-    
+
     def get_trust_level(
         self,
         source_agent: str,
@@ -211,7 +211,7 @@ class TrustChainManager:
         """Get trust level between agents."""
         relationship = self.get_trust(source_agent, target_agent)
         return relationship.trust_level if relationship else TrustLevel.NONE
-    
+
     def can_delegate(
         self,
         source_agent: str,
@@ -239,26 +239,26 @@ class TrustChainManager:
                 "high",
             )
             return False
-        
+
         # Check direct trust
         relationship = self.get_trust(source_agent, target_agent)
-        
+
         if relationship:
             # Check for wildcard
             if "*" in relationship.capabilities:
                 return True
             # Check specific capability
             return capability in relationship.capabilities
-        
+
         # Check transitive trust if allowed
         if self.allow_transitive:
             chain = self.get_trust_chain(source_agent, target_agent)
             if chain:
                 # Get minimum capability along chain
                 return self._check_chain_capability(chain, capability)
-        
+
         return False
-    
+
     def get_trust_chain(
         self,
         source_agent: str,
@@ -278,34 +278,34 @@ class TrustChainManager:
         """
         if max_depth is None:
             max_depth = self.max_chain_depth
-        
+
         # BFS to find shortest path
         visited = {source_agent}
         queue = [(source_agent, [source_agent])]
-        
+
         while queue:
             current, path = queue.pop(0)
-            
+
             if len(path) > max_depth + 1:
                 continue
-            
+
             # Find all trusted agents
             for (src, tgt), rel in self._trust_graph.items():
                 if src == current and tgt not in visited:
                     # Check expiration
                     if rel.expires_at and datetime.now() > rel.expires_at:
                         continue
-                    
+
                     new_path = path + [tgt]
-                    
+
                     if tgt == target_agent:
                         return new_path
-                    
+
                     visited.add(tgt)
                     queue.append((tgt, new_path))
-        
+
         return None
-    
+
     def _check_chain_capability(
         self,
         chain: List[str],
@@ -319,7 +319,7 @@ class TrustChainManager:
             if "*" not in relationship.capabilities and capability not in relationship.capabilities:
                 return False
         return True
-    
+
     def revoke_trust(
         self,
         source_agent: str,
@@ -331,11 +331,11 @@ class TrustChainManager:
             del self._trust_graph[key]
             return True
         return False
-    
+
     def block_agent(self, agent_id: str, reason: str = "") -> None:
         """Block an agent from all trust relationships."""
         self._blocked_agents.add(agent_id)
-        
+
         # Remove all trust relationships involving this agent
         to_remove = [
             key for key in self._trust_graph
@@ -343,7 +343,7 @@ class TrustChainManager:
         ]
         for key in to_remove:
             del self._trust_graph[key]
-        
+
         self._log_violation(
             "agent_blocked",
             "system",
@@ -352,18 +352,18 @@ class TrustChainManager:
             "critical",
             {"reason": reason},
         )
-    
+
     def unblock_agent(self, agent_id: str) -> bool:
         """Unblock a previously blocked agent."""
         if agent_id in self._blocked_agents:
             self._blocked_agents.remove(agent_id)
             return True
         return False
-    
+
     def is_blocked(self, agent_id: str) -> bool:
         """Check if agent is blocked."""
         return agent_id in self._blocked_agents
-    
+
     def validate_trust_request(
         self,
         requesting_agent: str,
@@ -378,51 +378,51 @@ class TrustChainManager:
             (is_valid, list of concerns)
         """
         concerns = []
-        
+
         # Check if requester is blocked
         if requesting_agent in self._blocked_agents:
             return False, ["Requesting agent is blocked"]
-        
+
         if target_agent in self._blocked_agents:
             return False, ["Target agent is blocked"]
-        
+
         # Check for circular trust
         existing_chain = self.get_trust_chain(target_agent, requesting_agent)
         if existing_chain:
             concerns.append(f"Creates circular trust: {' -> '.join(existing_chain)}")
-        
+
         # Check for excessive trust
         if requested_level == TrustLevel.FULL:
             concerns.append("FULL trust level is reserved for system use")
             return False, concerns
-        
+
         # Check for dangerous capabilities
         dangerous = {"execute", "admin", "system", "root", "delete"}
         dangerous_requested = requested_capabilities & dangerous
         if dangerous_requested:
             concerns.append(f"Dangerous capabilities requested: {dangerous_requested}")
-        
+
         # Check trust chain depth
         current_depth = self._get_max_chain_depth_to(target_agent)
         if current_depth >= self.max_chain_depth:
             concerns.append(f"Would exceed max chain depth ({self.max_chain_depth})")
             return False, concerns
-        
+
         is_valid = len(concerns) == 0 or all("circular" not in c.lower() for c in concerns)
         return is_valid, concerns
-    
+
     def _get_max_chain_depth_to(self, agent_id: str) -> int:
         """Get maximum chain depth leading to an agent."""
         max_depth = 0
-        
+
         for (src, tgt), rel in self._trust_graph.items():
             if tgt == agent_id:
                 chain = self.get_trust_chain(src, agent_id)
                 if chain:
                     max_depth = max(max_depth, len(chain) - 1)
-        
+
         return max_depth
-    
+
     def _log_violation(
         self,
         violation_type: str,
@@ -441,13 +441,13 @@ class TrustChainManager:
             severity=severity,
             details=details or {},
         )
-        
+
         self._violations.append(violation)
-        
+
         # Trim if needed
         if len(self._violations) > self._max_violations:
             self._violations = self._violations[-self._max_violations:]
-    
+
     def get_violations(
         self,
         agent_id: Optional[str] = None,
@@ -455,15 +455,15 @@ class TrustChainManager:
     ) -> List[TrustViolation]:
         """Get recent trust violations."""
         violations = self._violations
-        
+
         if agent_id:
             violations = [
                 v for v in violations
                 if v.source_agent == agent_id or v.target_agent == agent_id
             ]
-        
+
         return violations[-limit:]
-    
+
     def get_all_relationships(self) -> List[TrustRelationship]:
         """Get all active trust relationships."""
         # Filter expired
@@ -473,21 +473,21 @@ class TrustChainManager:
             if not rel.expires_at or rel.expires_at > now
         ]
         return active
-    
+
     def get_trusted_by(self, agent_id: str) -> List[TrustRelationship]:
         """Get all relationships where agent_id is trusted."""
         return [
             rel for (src, tgt), rel in self._trust_graph.items()
             if tgt == agent_id and (not rel.expires_at or rel.expires_at > datetime.now())
         ]
-    
+
     def get_trusts(self, agent_id: str) -> List[TrustRelationship]:
         """Get all relationships where agent_id trusts others."""
         return [
             rel for (src, tgt), rel in self._trust_graph.items()
             if src == agent_id and (not rel.expires_at or rel.expires_at > datetime.now())
         ]
-    
+
     def export_trust_graph(self) -> Dict[str, Any]:
         """Export trust graph as dictionary."""
         return {

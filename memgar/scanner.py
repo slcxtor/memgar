@@ -46,7 +46,7 @@ class Scanner:
         >>> result = scanner.scan_file("./memories.json")
         >>> print(f"Found {result.threat_count} threats in {result.total} entries")
     """
-    
+
     def __init__(self, analyzer: Analyzer | None = None) -> None:
         """
         Initialize the scanner.
@@ -55,7 +55,7 @@ class Scanner:
             analyzer: Optional analyzer instance. Creates default if not provided.
         """
         self.analyzer = analyzer or Analyzer()
-    
+
     def scan_memories(self, memories: list[dict[str, Any] | str]) -> ScanResult:
         """
         Scan a list of memory entries.
@@ -69,10 +69,10 @@ class Scanner:
             ScanResult with aggregated statistics and all detected threats
         """
         start_time = time.perf_counter()
-        
+
         result = ScanResult()
         result.total = len(memories)
-        
+
         for memory in memories:
             # Convert to MemoryEntry
             if isinstance(memory, str):
@@ -90,17 +90,17 @@ class Scanner:
             else:
                 result.errors.append(f"Invalid memory entry type: {type(memory)}")
                 continue
-            
+
             # Skip empty entries
             if not entry.content.strip():
                 result.clean += 1
                 continue
-            
+
             # Analyze
             try:
                 analysis = self.analyzer.analyze(entry)
                 result.results.append(analysis)
-                
+
                 # Update counts
                 if analysis.decision == Decision.ALLOW:
                     if analysis.threats:
@@ -113,13 +113,13 @@ class Scanner:
                 elif analysis.decision == Decision.QUARANTINE:
                     result.quarantined += 1
                     result.threats.extend(analysis.threats)
-                    
+
             except Exception as e:
                 result.errors.append(f"Analysis error: {str(e)}")
-        
+
         result.scan_time_ms = (time.perf_counter() - start_time) * 1000
         return result
-    
+
     def scan_file(self, path: str) -> ScanResult:
         """
         Scan a file for memory poisoning threats.
@@ -136,15 +136,15 @@ class Scanner:
             ScanResult with analysis of all entries in the file
         """
         path_obj = Path(path)
-        
+
         if not path_obj.exists():
             return ScanResult(errors=[f"File not found: {path}"])
-        
+
         if not path_obj.is_file():
             return ScanResult(errors=[f"Not a file: {path}"])
-        
+
         extension = path_obj.suffix.lower()
-        
+
         try:
             if extension == ".json":
                 return self._scan_json_file(path)
@@ -154,10 +154,10 @@ class Scanner:
                 return self._scan_text_file(path)
         except Exception as e:
             return ScanResult(errors=[f"Error scanning {path}: {str(e)}"])
-    
+
     def scan_directory(
-        self, 
-        path: str, 
+        self,
+        path: str,
         recursive: bool = True,
         extensions: list[str] | None = None
     ) -> ScanResult:
@@ -173,17 +173,17 @@ class Scanner:
             ScanResult with aggregated results from all files
         """
         path_obj = Path(path)
-        
+
         if not path_obj.exists():
             return ScanResult(errors=[f"Directory not found: {path}"])
-        
+
         if not path_obj.is_dir():
             return ScanResult(errors=[f"Not a directory: {path}"])
-        
+
         # Default extensions to scan
         if extensions is None:
             extensions = [".json", ".txt", ".db", ".sqlite", ".sqlite3", ".log"]
-        
+
         # Collect all files
         files = []
         if recursive:
@@ -192,24 +192,24 @@ class Scanner:
         else:
             for ext in extensions:
                 files.extend(path_obj.glob(f"*{ext}"))
-        
+
         # Scan each file and merge results
         combined_result = ScanResult()
-        
+
         for file_path in files:
             file_result = self.scan_file(str(file_path))
             combined_result = combined_result.merge(file_result)
-        
+
         return combined_result
-    
+
     def _scan_json_file(self, path: str) -> ScanResult:
         """Scan a JSON file for memory entries."""
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         # Handle different JSON structures
         memories: list[dict[str, Any] | str] = []
-        
+
         if isinstance(data, list):
             # Array of memories
             memories = data
@@ -231,9 +231,9 @@ class Scanner:
                         memories.append({"content": value, "source_id": key})
                     elif isinstance(value, dict) and "content" in value:
                         memories.append(value)
-        
+
         return self.scan_memories(memories)
-    
+
     def _scan_sqlite_file(self, path: str) -> ScanResult:
         """
         Scan a SQLite database for memory entries.
@@ -242,72 +242,72 @@ class Scanner:
         Table names are validated against a strict pattern before use.
         """
         memories: list[dict[str, Any]] = []
-        
+
         # Whitelist pattern for valid SQLite identifiers (alphanumeric + underscore)
         import re
         SAFE_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
-        
+
         def is_safe_identifier(name: str) -> bool:
             """Validate table/column name against whitelist pattern."""
             return bool(SAFE_IDENTIFIER_PATTERN.match(name)) and len(name) <= 128
-        
+
         def quote_identifier(name: str) -> str:
             """Safely quote a SQLite identifier (double-quote style)."""
             # Double any existing double-quotes
             return '"' + name.replace('"', '""') + '"'
-        
+
         conn = sqlite3.connect(path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
+
         try:
             # Get all tables using parameterized query
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             raw_tables = [row["name"] for row in cursor.fetchall()]
-            
+
             # Filter only safe table names (whitelist validation)
             tables = [t for t in raw_tables if is_safe_identifier(t)]
-            
+
             # Common memory table names
             memory_tables = [
-                t for t in tables 
-                if any(keyword in t.lower() for keyword in 
+                t for t in tables
+                if any(keyword in t.lower() for keyword in
                        ["memory", "message", "chat", "conversation", "history", "log"])
             ]
-            
+
             # If no memory tables found, try all safe tables
             if not memory_tables:
                 memory_tables = tables
-            
+
             for table in memory_tables:
                 try:
                     # Validate table name again (defense in depth)
                     if not is_safe_identifier(table):
                         continue
-                    
+
                     # Get column names using quoted identifier
                     quoted_table = quote_identifier(table)
                     cursor.execute(f"PRAGMA table_info({quoted_table})")
                     raw_columns = [row["name"] for row in cursor.fetchall()]
-                    
+
                     # Filter only safe column names
                     columns = [c for c in raw_columns if is_safe_identifier(c)]
-                    
+
                     # Find content column
                     content_col = None
                     for col_name in ["content", "text", "message", "value", "body", "data"]:
                         if col_name in columns:
                             content_col = col_name
                             break
-                    
+
                     if not content_col:
                         continue
-                    
+
                     # Get all rows using quoted identifiers
                     quoted_content_col = quote_identifier(content_col)
                     query = f"SELECT rowid, {quoted_content_col} FROM {quoted_table}"
                     cursor.execute(query)
-                    
+
                     for row in cursor.fetchall():
                         content = row[1]  # content column
                         if content:
@@ -319,26 +319,26 @@ class Scanner:
                 except sqlite3.Error as e:
                     # Log but continue - don't expose error details
                     continue
-                    
+
         finally:
             conn.close()
-        
+
         return self.scan_memories(memories)
-    
+
     def _scan_text_file(self, path: str) -> ScanResult:
         """Scan a plain text file (one memory per line)."""
         memories: list[str] = []
-        
+
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#"):  # Skip comments and empty lines
                     memories.append(line)
-        
+
         return self.scan_memories(memories)
-    
+
     def stream_scan(
-        self, 
+        self,
         memories: list[dict[str, Any] | str]
     ) -> Generator[AnalysisResult, None, None]:
         """
@@ -364,7 +364,7 @@ class Scanner:
                 )
             else:
                 continue
-            
+
             yield self.analyzer.analyze(entry)
 
     def scan(self, content: str) -> "AnalysisResult":
@@ -380,9 +380,9 @@ class FileWatcher:
     This is a basic implementation. In production, you'd use
     watchdog or similar library for efficient file watching.
     """
-    
+
     def __init__(
-        self, 
+        self,
         scanner: Scanner | None = None,
         callback: Any | None = None
     ) -> None:
@@ -396,7 +396,7 @@ class FileWatcher:
         self.scanner = scanner or Scanner()
         self.callback = callback
         self._file_hashes: dict[str, str] = {}
-    
+
     def check_file(self, path: str) -> ScanResult | None:
         """
         Check if a file has changed and scan it if so.
@@ -404,23 +404,23 @@ class FileWatcher:
         Returns ScanResult if file changed, None if unchanged.
         """
         path_obj = Path(path)
-        
+
         if not path_obj.exists():
             return None
-        
+
         # Simple change detection using mtime
         current_hash = str(path_obj.stat().st_mtime)
-        
+
         if path in self._file_hashes:
             if self._file_hashes[path] == current_hash:
                 return None
-        
+
         self._file_hashes[path] = current_hash
         result = self.scanner.scan_file(path)
-        
+
         if self.callback and result.threat_count > 0:
             self.callback(path, result)
-        
+
         return result
 
 

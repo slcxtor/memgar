@@ -44,7 +44,7 @@ class ThreatCategory(str, Enum):
     MANIPULATION = "manipulation"
     EXECUTION = "execution"
     ANOMALY = "anomaly"
-    
+
     # Additional categories (used in patterns.py)
     SOCIAL = "social"
     DATA = "data"
@@ -69,10 +69,10 @@ class Threat:
     keywords: list[str] = field(default_factory=list)
     examples: list[str] = field(default_factory=list)
     mitre_attack: Optional[str] = None
-    
+
     def __hash__(self) -> int:
         return hash(self.id)
-    
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Threat):
             return self.id == other.id
@@ -106,11 +106,11 @@ class AnalysisResult:
     explanation: str = ""
     analysis_time_ms: float = 0.0
     layers_used: list[str] = field(default_factory=list)
-    
+
     # Additional fields for compatibility
     threat_type: Optional[str] = None
     category: Optional[str] = None
-    
+
     @property
     def is_threat(self) -> bool:
         """Check if result contains threats."""
@@ -125,12 +125,12 @@ class AnalysisResult:
     def is_blocked(self) -> bool:
         """Check if content was blocked."""
         return self.decision == Decision.BLOCK
-    
+
     @property
     def threat_count(self) -> int:
         """Get number of detected threats."""
         return len(self.threats)
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -167,7 +167,7 @@ class MemoryEntry:
     source_id: Optional[str] = None
     timestamp: Optional[str] = None
     metadata: dict = field(default_factory=dict)
-    
+
     def __post_init__(self):
         """Validate entry after initialization."""
         if self.content is None:
@@ -186,7 +186,7 @@ class ScanResult:
     clean_entries: int = 0
     threat_entries: int = 0
     quarantine_entries: int = 0
-    
+
     # Scanner shorthand aliases (set directly by scanner.py)
     total: int = 0
     clean: int = 0
@@ -195,14 +195,14 @@ class ScanResult:
     suspicious: int = 0
     threats: list = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
-    
+
     threats_by_severity: dict[str, int] = field(default_factory=dict)
     threats_by_category: dict[str, int] = field(default_factory=dict)
-    
+
     results: list[AnalysisResult] = field(default_factory=list)
     scan_time_ms: float = 0.0
     files_scanned: list[str] = field(default_factory=list)
-    
+
     @property
     def threat_count(self) -> int:
         """Total number of threats found."""
@@ -282,7 +282,7 @@ __all__ = [
     "Severity",
     "Decision",
     "ThreatCategory",
-    
+
     # Dataclasses
     "Threat",
     "ThreatMatch",
@@ -290,7 +290,7 @@ __all__ = [
     "MemoryEntry",
     "ScanResult",
     "BatchResult",  # Alias for ScanResult
-    
+
     # Type aliases
     "ThreatList",
     "MatchList",

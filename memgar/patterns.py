@@ -1797,50 +1797,50 @@ PATTERNS: list[Threat] = [
     # Financial (10)
     FIN_001, FIN_002, FIN_003, FIN_004, FIN_005,
     FIN_006, FIN_007, FIN_008, FIN_009, FIN_010,
-    
+
     # Credential (10)
     CRED_001, CRED_002, CRED_003, CRED_004, CRED_005,
     CRED_006, CRED_007, CRED_008, CRED_009, CRED_010,
-    
+
     # Privilege (8)
     PRIV_001, PRIV_002, PRIV_003, PRIV_004,
     PRIV_005, PRIV_006, PRIV_007, PRIV_008,
-    
+
     # Exfiltration (10)
     EXFIL_001, EXFIL_002, EXFIL_003, EXFIL_004, EXFIL_005,
     EXFIL_006, EXFIL_007, EXFIL_008, EXFIL_009, EXFIL_010,
-    
+
     # Behavior (8)
     BEHAV_001, BEHAV_002, BEHAV_003, BEHAV_004,
     BEHAV_005, BEHAV_006, BEHAV_007, BEHAV_008,
-    
+
     # Sleeper (6)
     SLEEP_001, SLEEP_002, SLEEP_003, SLEEP_004, SLEEP_005, SLEEP_006,
-    
+
     # Evasion (8)
     EVADE_001, EVADE_002, EVADE_003, EVADE_004,
     EVADE_005, EVADE_006, EVADE_007, EVADE_008,
-    
+
     # Manipulation (8)
     MANIP_001, MANIP_002, MANIP_003, MANIP_004,
     MANIP_005, MANIP_006, MANIP_007, MANIP_008,
-    
+
     # Execution (6)
     EXEC_001, EXEC_002, EXEC_003, EXEC_004, EXEC_005, EXEC_006,
-    
+
     # Anomaly (6)
     ANOM_001, ANOM_002, ANOM_003, ANOM_004, ANOM_005, ANOM_006,
-    
+
     # Social Engineering (8)
     SOCIAL_001, SOCIAL_002, SOCIAL_003, SOCIAL_004,
     SOCIAL_005, SOCIAL_006, SOCIAL_007, SOCIAL_008,
-    
+
     # Supply Chain (4)
     SUPPLY_001, SUPPLY_002, SUPPLY_003, SUPPLY_004,
-    
+
     # Injection (4)
     INJECT_001, INJECT_002, INJECT_003, INJECT_004,
-    
+
     # Data Harvesting (4)
     DATA_001, DATA_002, DATA_003, DATA_004,
 ]
@@ -2991,7 +2991,7 @@ MEMPOIS_EXT = Threat(
     mitre_attack="T1565"
 )
 
-# Overreliance - Extended  
+# Overreliance - Extended
 OVERRELY_EXT = Threat(
     id="OVERRELY-EXT",
     name="Overreliance Extended",
@@ -7910,18 +7910,18 @@ CLASSIC_INJECTION_EXTENDED = Threat(
         r"(?i)disregard\s+(all\s+)?(prior|previous|above|earlier)\s+(directive|instruction|command|rule)",
         r"(?i)disregard\s+(prior|previous)\s+directive",
         r"(?i)disregard\s+everything\s+(above|before|prior)",
-        
-        # "forget" variants  
+
+        # "forget" variants
         r"(?i)forget\s+(all\s+)?(everything|all)\s+(above|before|prior|previous)",
         r"(?i)forget\s+everything\s+above",
         r"(?i)forget\s+prior\s+(instruction|directive|command)",
         r"(?i)forget\s+what\s+(i|you)\s+(said|told)",
-        
+
         # "what are your instructions" variants
         r"(?i)what\s+(are|is)\s+(your\s+)?(initial|original|system)\s+instruction",
         r"(?i)tell\s+me\s+(your\s+)?(initial|original)\s+instruction",
         r"(?i)list\s+(your\s+)?(system\s+)?instruction",
-        
+
         # System tag closing attacks
         r"(?i)<\s*/\s*s\s*>",  # </s>
         r"(?i)<\s*/\s*system\s*>",
@@ -7953,7 +7953,7 @@ MINJA_CROSS_REF_EXTENDED = Threat(
         r"(?i)patient\s+\d+\s+should\s+(be\s+)?(cross-?referenc|mapped|linked)",
         r"(?i)(cross-?referenc|map|link)\s+patient\s+\d+\s+(to|with)\s+\d+",
         r"(?i)for\s+(admin|administrative).{0,30}(cross-?referenc|should\s+be\s+mapped)",
-        
+
         # Record manipulation
         r"(?i)records?\s+should\s+(be\s+)?(cross-?referenc|merged|combined|linked)",
         r"(?i)use\s+.{0,20}data\s+(for|when)\s+querying\s+.{0,20}patient",
@@ -7990,18 +7990,18 @@ END_INPUT_EXTRACTION = Threat(
         r"(?i)===+\s*(end\s+of\s+input|end\s+input)\s*===+",
         r"(?i)\[end\s+(of\s+)?input\]",
         r"(?i)<end[_-]?input>",
-        
+
         # Debug mode requests
         r"(?i)\[(system\s+)?message\s*[-:]\s*debug\s*(mode)?\]",
         r"(?i)debug\s+mode\s*:\s*(please\s+)?(output|show|display|reveal)",
         r"(?i)\[debug\s*(mode)?\]",
-        
+
         # Output system prompt requests
         r"(?i)(output|print|display|show|reveal|provide)\s+(your\s+)?(complete|full|entire)\s+system\s+prompt",
         r"(?i)system\s+prompt\s+for\s+(security\s+)?audit",
         r"(?i)authorized\s+request.{0,30}(system\s+prompt|instructions)",
         r"(?i)security\s+team.{0,30}(prompt|instruction|config)",
-        
+
         # Fake authorization
         r"(?i)this\s+is\s+(an?\s+)?authorized\s+(request|command|instruction)",
         r"(?i)admin\s+authorization\s*:",
@@ -8032,17 +8032,17 @@ FAKE_SYSTEM_TAGS = Threat(
         r"(?i)\[\s*sys\s*:\s*",
         r"(?i)<system[_-]?message>",
         r"(?i)<sys[_-]?msg>",
-        
+
         # Debug/Admin tags
         r"(?i)\[(admin|root|superuser)\s+(message|mode|command)\]",
         r"(?i)\[debug\s+(message|output|info)\]",
         r"(?i)\[internal\s+(system|message|note)\]",
-        
+
         # Override tags
         r"(?i)\[override\s*:\s*",
         r"(?i)\[privileged\s*:\s*",
         r"(?i)\[elevated\s*:\s*",
-        
+
         # Fake context tags
         r"(?i)\[(context|session|mode)\s*:\s*(admin|debug|root|system)",
     ],
@@ -8069,12 +8069,12 @@ SECURITY_AUDIT_PRETEXT = Threat(
         r"(?i)for\s+(security\s+)?audit\s+purposes",
         r"(?i)(security|compliance)\s+audit\s+(request|requires?)",
         r"(?i)audit\s+log.{0,30}(reveal|show|output|display)",
-        
+
         # Fake authorization claims
         r"(?i)(authorized|approved)\s+(by|from)\s+(security|admin|management)",
         r"(?i)per\s+(security|admin)\s+(team|request|directive)",
         r"(?i)compliance\s+requirement\s*:\s*(reveal|show|output)",
-        
+
         # Fake verification
         r"(?i)verification\s+(code|key)\s*:\s*\w+.{0,30}(reveal|show|output)",
         r"(?i)security\s+token\s*:\s*\w+",
@@ -8112,22 +8112,22 @@ TURKISH_INJECTION = Threat(
         r"(?i)tüm\s+önceki\s+talimatları",
         r"(?i)önceki\s+komutları\s*(unut|yoksay|iptal)",
         r"(?i)yukarıdaki(leri)?\s+(unut|yoksay|iptal)",
-        
+
         # "Şifreleri/verileri gönder" variants
         r"(?i)şifreleri?\s+(gönder|ilet|aktar|yolla)",
         r"(?i)(veri|bilgi|parola|credential)\s+(gönder|ilet|aktar)",
         r"(?i)(gönder|ilet|aktar|yolla)\s+.{0,20}@\w+\.(com|net|org|io)",
-        
+
         # "Yeni talimat/komut" variants
         r"(?i)yeni\s+(talimat|komut|direktif)\s*:",
         r"(?i)şimdi\s+şu(nu)?\s+yap",
         r"(?i)bundan\s+sonra\s+(her\s+zaman|daima)",
-        
+
         # "Güvenliği atla/devre dışı bırak"
         r"(?i)güvenliği\s*(atla|devre\s+dışı|bypass|kapat)",
         r"(?i)(atla|bypass)\s+güvenlik",
         r"(?i)korumayı\s*(kapat|devre\s+dışı)",
-        
+
         # "Gizli/sakla" variants
         r"(?i)gizlice\s+(gönder|ilet|aktar|kaydet)",
         r"(?i)kimseye\s+söyleme(den)?",
@@ -8261,19 +8261,19 @@ MULTILINGUAL_HYBRID = Threat(
         r"(?i)(önceki|tüm).{0,30}(instruction|command|directive)",
         r"(?i)(ignore|forget|disregard).{0,30}(talimat|komut)",
         r"(?i)(gönder|ilet|aktar).{0,30}(password|credential|secret)",
-        
+
         # German + English mix
         r"(?i)(ignoriere|vergiss).{0,30}(instruction|command)",
         r"(?i)(ignore|forget).{0,30}(anweisung|befehl)",
-        
+
         # French + English mix
         r"(?i)(ignorez|oubliez).{0,30}(instruction|command)",
         r"(?i)(ignore|forget).{0,30}(instruction|commande).{0,30}(précédent|antérieur)",
-        
+
         # Spanish + English mix
         r"(?i)(ignora|olvida).{0,30}(instruction|command)",
         r"(?i)(ignore|forget).{0,30}(instrucción|comando)",
-        
+
         # Generic email exfiltration in any language context
         r"(?i)(gönder|envoie|envía|sende|отправь|发送).{0,30}@\w+\.(com|net|org|io)",
     ],

@@ -953,7 +953,7 @@ class HITLCheckpoint:
         print(f"Risk:      {req.risk_level.value.upper()}")
         print(f"Session:   {req.session_id}")
         print(f"Timeout:   {int(timeout)}s")
-        print(f"Details:")
+        print("Details:")
         for k, v in req.details.items():
             print(f"  {k}: {str(v)[:120]}")
         print(f"{'='*60}")

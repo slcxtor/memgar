@@ -36,7 +36,7 @@ def _signing_key():
     """Return (private_key, public_key_b64) if cryptography is available, else None."""
     try:
         return MemoryVault.generate_signing_key()
-    except ImportError:
+    except BaseException:  # pyo3_runtime.PanicException is BaseException, not ImportError
         return None, None
 
 
@@ -548,8 +548,8 @@ class TestSigning:
     def _require_crypto(self):
         try:
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: F401
-        except ImportError:
-            pytest.skip("cryptography package not installed")
+        except BaseException:  # pyo3_runtime.PanicException is BaseException, not ImportError
+            pytest.skip("cryptography package not functional in this environment")
 
     def test_generate_signing_key_returns_pair(self):
         priv, pub_b64 = MemoryVault.generate_signing_key()

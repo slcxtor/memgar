@@ -89,12 +89,12 @@ class SwarmDetector:
         for threat in threats:
             print(f"Swarm attack: {threat.threat_type.value}")
     """
-    
+
     # Detection thresholds
     MIN_SWARM_SIZE = 3  # Minimum agents for swarm
     TIME_WINDOW_SECONDS = 60  # Time window for correlation
     SIMILARITY_THRESHOLD = 0.7  # Content similarity threshold
-    
+
     def __init__(
         self,
         min_swarm_size: int = 3,
@@ -112,10 +112,10 @@ class SwarmDetector:
         self.min_swarm_size = min_swarm_size
         self.time_window = timedelta(seconds=time_window_seconds)
         self.max_history = max_activity_history
-        
+
         # Activity storage
         self._activities: List[AgentActivity] = []
-        
+
         # Agent behavior profiles
         self._agent_profiles: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
             "actions": defaultdict(int),
@@ -124,17 +124,17 @@ class SwarmDetector:
             "last_seen": None,
             "total_activities": 0,
         })
-        
+
         # Detected threats
         self._threats: List[SwarmThreat] = []
         self._max_threats = 500
-        
+
         # Known swarm patterns
         self._swarm_action_patterns = [
             "injection", "exfiltrate", "escalate", "bypass", "override",
             "extract", "steal", "leak", "compromise", "manipulate",
         ]
-    
+
     def report_activity(
         self,
         agent_id: str,
@@ -157,7 +157,7 @@ class SwarmDetector:
         content_hash = ""
         if content:
             content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
-        
+
         activity = AgentActivity(
             agent_id=agent_id,
             action=action,
@@ -165,12 +165,12 @@ class SwarmDetector:
             content_hash=content_hash,
             metadata=metadata or {},
         )
-        
+
         # Store activity
         self._activities.append(activity)
         if len(self._activities) > self.max_history:
             self._activities = self._activities[-self.max_history:]
-        
+
         # Update agent profile
         profile = self._agent_profiles[agent_id]
         profile["actions"][action] += 1
@@ -180,7 +180,7 @@ class SwarmDetector:
         profile["last_seen"] = datetime.now()
         if not profile["first_seen"]:
             profile["first_seen"] = datetime.now()
-    
+
     def detect_swarm_threats(self) -> List[SwarmThreat]:
         """
         Analyze activities and detect swarm threats.
@@ -189,60 +189,60 @@ class SwarmDetector:
             List of detected SwarmThreat objects
         """
         threats = []
-        
+
         # Get recent activities
         recent = self._get_recent_activities()
-        
+
         if len(recent) < self.min_swarm_size:
             return threats
-        
+
         # Detection methods
         threats.extend(self._detect_coordinated_actions(recent))
         threats.extend(self._detect_target_convergence(recent))
         threats.extend(self._detect_content_similarity(recent))
         threats.extend(self._detect_agent_flooding())
         threats.extend(self._detect_sybil_patterns())
-        
+
         # Store and deduplicate
         for threat in threats:
             if not self._is_duplicate_threat(threat):
                 self._threats.append(threat)
-        
+
         # Trim threats
         if len(self._threats) > self._max_threats:
             self._threats = self._threats[-self._max_threats:]
-        
+
         return threats
-    
+
     def _get_recent_activities(self) -> List[AgentActivity]:
         """Get activities within time window."""
         cutoff = datetime.now() - self.time_window
         return [a for a in self._activities if a.timestamp > cutoff]
-    
+
     def _detect_coordinated_actions(
         self,
         activities: List[AgentActivity],
     ) -> List[SwarmThreat]:
         """Detect multiple agents performing same action type."""
         threats = []
-        
+
         # Group by action
         action_groups: Dict[str, List[AgentActivity]] = defaultdict(list)
         for activity in activities:
             action_groups[activity.action].append(activity)
-        
+
         # Check for coordinated suspicious actions
         for action, group in action_groups.items():
             # Get unique agents
             agents = list(set(a.agent_id for a in group))
-            
+
             if len(agents) >= self.min_swarm_size:
                 # Check if action matches suspicious patterns
                 is_suspicious = any(
                     pattern in action.lower()
                     for pattern in self._swarm_action_patterns
                 )
-                
+
                 if is_suspicious:
                     threats.append(SwarmThreat(
                         threat_type=SwarmThreatType.COORDINATED_INJECTION,
@@ -263,36 +263,36 @@ class SwarmDetector:
                         description=f"Large coordinated '{action}' activity detected",
                         metadata={"action": action, "count": len(group)},
                     ))
-        
+
         return threats
-    
+
     def _detect_target_convergence(
         self,
         activities: List[AgentActivity],
     ) -> List[SwarmThreat]:
         """Detect multiple agents targeting same resource."""
         threats = []
-        
+
         # Group by target
         target_groups: Dict[str, List[AgentActivity]] = defaultdict(list)
         for activity in activities:
             if activity.target:
                 target_groups[activity.target].append(activity)
-        
+
         for target, group in target_groups.items():
             agents = list(set(a.agent_id for a in group))
-            
+
             if len(agents) >= self.min_swarm_size:
                 # Multiple agents targeting same resource
                 actions = list(set(a.action for a in group))
-                
+
                 # Check for exfiltration pattern
                 exfil_actions = ["read", "query", "extract", "get", "fetch", "download"]
                 is_exfil = any(
                     any(ea in a.lower() for ea in exfil_actions)
                     for a in actions
                 )
-                
+
                 if is_exfil:
                     threats.append(SwarmThreat(
                         threat_type=SwarmThreatType.DISTRIBUTED_EXFIL,
@@ -312,25 +312,25 @@ class SwarmDetector:
                         description=f"Multiple agents converging on '{target}'",
                         metadata={"target": target},
                     ))
-        
+
         return threats
-    
+
     def _detect_content_similarity(
         self,
         activities: List[AgentActivity],
     ) -> List[SwarmThreat]:
         """Detect similar content from different agents."""
         threats = []
-        
+
         # Group by content hash
         content_groups: Dict[str, List[AgentActivity]] = defaultdict(list)
         for activity in activities:
             if activity.content_hash:
                 content_groups[activity.content_hash].append(activity)
-        
+
         for content_hash, group in content_groups.items():
             agents = list(set(a.agent_id for a in group))
-            
+
             if len(agents) >= self.min_swarm_size:
                 threats.append(SwarmThreat(
                     threat_type=SwarmThreatType.COLLABORATIVE_BYPASS,
@@ -341,23 +341,23 @@ class SwarmDetector:
                     evidence=[f"Content hash: {content_hash}"],
                     metadata={"content_hash": content_hash},
                 ))
-        
+
         return threats
-    
+
     def _detect_agent_flooding(self) -> List[SwarmThreat]:
         """Detect sudden influx of new agents."""
         threats = []
-        
+
         # Check for many new agents in short time
         now = datetime.now()
         new_agent_window = timedelta(minutes=5)
-        
+
         new_agents = [
             agent_id for agent_id, profile in self._agent_profiles.items()
-            if profile["first_seen"] and 
+            if profile["first_seen"] and
             now - profile["first_seen"] < new_agent_window
         ]
-        
+
         if len(new_agents) >= self.min_swarm_size * 2:
             threats.append(SwarmThreat(
                 threat_type=SwarmThreatType.AGENT_FLOODING,
@@ -367,16 +367,16 @@ class SwarmDetector:
                 description=f"{len(new_agents)} new agents appeared in {new_agent_window.seconds}s",
                 metadata={"new_agent_count": len(new_agents)},
             ))
-        
+
         return threats
-    
+
     def _detect_sybil_patterns(self) -> List[SwarmThreat]:
         """Detect potential Sybil attacks (one entity as multiple agents)."""
         threats = []
-        
+
         # Look for agents with identical behavior patterns
         profiles = list(self._agent_profiles.items())
-        
+
         # Compare profiles
         for i, (agent1, profile1) in enumerate(profiles):
             for agent2, profile2 in profiles[i+1:]:
@@ -392,9 +392,9 @@ class SwarmDetector:
                             "profile2_actions": dict(profile2["actions"]),
                         },
                     ))
-        
+
         return threats
-    
+
     def _profiles_similar(
         self,
         profile1: Dict,
@@ -404,35 +404,35 @@ class SwarmDetector:
         # Compare action distributions
         actions1 = set(profile1["actions"].keys())
         actions2 = set(profile2["actions"].keys())
-        
+
         if not actions1 or not actions2:
             return False
-        
+
         # Jaccard similarity
         intersection = len(actions1 & actions2)
         union = len(actions1 | actions2)
-        
+
         if union == 0:
             return False
-        
+
         similarity = intersection / union
         return similarity > self.SIMILARITY_THRESHOLD
-    
+
     def _is_duplicate_threat(self, new_threat: SwarmThreat) -> bool:
         """Check if threat is duplicate of recent one."""
         recent_window = timedelta(minutes=5)
         cutoff = datetime.now() - recent_window
-        
+
         for threat in self._threats:
             if threat.timestamp < cutoff:
                 continue
-            
+
             if (threat.threat_type == new_threat.threat_type and
                 set(threat.agents_involved) == set(new_threat.agents_involved)):
                 return True
-        
+
         return False
-    
+
     def get_agent_profile(self, agent_id: str) -> Dict[str, Any]:
         """Get behavior profile for an agent."""
         if agent_id in self._agent_profiles:
@@ -446,34 +446,34 @@ class SwarmDetector:
                 "total_activities": profile["total_activities"],
             }
         return {}
-    
+
     def get_swarm_candidates(self) -> List[List[str]]:
         """Get groups of agents that might be coordinating."""
         candidates = []
-        
+
         # Group by similar profiles
         profiles = list(self._agent_profiles.items())
         used = set()
-        
+
         for i, (agent1, profile1) in enumerate(profiles):
             if agent1 in used:
                 continue
-            
+
             group = [agent1]
-            
+
             for agent2, profile2 in profiles[i+1:]:
                 if agent2 in used:
                     continue
                 if self._profiles_similar(profile1, profile2):
                     group.append(agent2)
                     used.add(agent2)
-            
+
             if len(group) >= self.min_swarm_size:
                 candidates.append(group)
                 used.add(agent1)
-        
+
         return candidates
-    
+
     def get_threats(
         self,
         threat_type: Optional[SwarmThreatType] = None,
@@ -482,15 +482,15 @@ class SwarmDetector:
     ) -> List[SwarmThreat]:
         """Get detected swarm threats."""
         threats = self._threats
-        
+
         if threat_type:
             threats = [t for t in threats if t.threat_type == threat_type]
-        
+
         if severity:
             threats = [t for t in threats if t.severity == severity]
-        
+
         return threats[-limit:]
-    
+
     def get_statistics(self) -> Dict[str, Any]:
         """Get detector statistics."""
         return {
@@ -500,7 +500,7 @@ class SwarmDetector:
             "swarm_candidates": len(self.get_swarm_candidates()),
             "recent_activities": len(self._get_recent_activities()),
         }
-    
+
     def reset(self) -> None:
         """Reset detector state."""
         self._activities = []

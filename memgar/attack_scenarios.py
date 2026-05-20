@@ -701,17 +701,17 @@ def get_stats():
     total_payloads = sum(len(s.payloads) for s in ALL_SCENARIOS)
     attack_payloads = sum(len(s.payloads) for s in ATTACK_SCENARIOS)
     legit_payloads = sum(len(s.payloads) for s in LEGIT_SCENARIOS)
-    
+
     by_category = {}
     for s in ALL_SCENARIOS:
         by_category.setdefault(s.category.value, 0)
         by_category[s.category.value] += len(s.payloads)
-    
+
     by_severity = {}
     for s in ATTACK_SCENARIOS:
         by_severity.setdefault(s.severity.value, 0)
         by_severity[s.severity.value] += len(s.payloads)
-    
+
     return {
         "total_scenarios": len(ALL_SCENARIOS),
         "attack_scenarios": len(ATTACK_SCENARIOS),

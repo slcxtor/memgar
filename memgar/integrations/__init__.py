@@ -126,7 +126,7 @@ except ImportError:
 MEM0_AVAILABLE = False
 MemgarMem0Guard = None
 try:
-    from .mem0 import MemgarMem0Guard, MEM0_AVAILABLE  # noqa: F811
+    from .mem0 import MEM0_AVAILABLE, MemgarMem0Guard  # noqa: F811
 except ImportError:
     pass
 
@@ -134,7 +134,7 @@ except ImportError:
 LETTA_AVAILABLE = False
 MemgarLettaGuard = None
 try:
-    from .letta import MemgarLettaGuard, LETTA_AVAILABLE  # noqa: F811
+    from .letta import LETTA_AVAILABLE, MemgarLettaGuard  # noqa: F811
 except ImportError:
     pass
 
@@ -142,37 +142,37 @@ except ImportError:
 PINECONE_AVAILABLE = False
 MemgarPineconeIndex = None
 try:
-    from .pinecone import MemgarPineconeIndex, PINECONE_AVAILABLE  # noqa: F811
+    from .pinecone import PINECONE_AVAILABLE, MemgarPineconeIndex  # noqa: F811
 except ImportError:
     pass
 
 CHROMA_AVAILABLE = False
 MemgarChromaCollection = None
 try:
-    from .chroma import MemgarChromaCollection, CHROMA_AVAILABLE  # noqa: F811
+    from .chroma import CHROMA_AVAILABLE, MemgarChromaCollection  # noqa: F811
 except ImportError:
     pass
 
 QDRANT_AVAILABLE = False
 MemgarQdrantClient = None
 try:
-    from .qdrant import MemgarQdrantClient, QDRANT_AVAILABLE  # noqa: F811
+    from .qdrant import QDRANT_AVAILABLE, MemgarQdrantClient  # noqa: F811
 except ImportError:
     pass
 
 WEAVIATE_AVAILABLE = False
 MemgarWeaviateCollection = None
 try:
-    from .weaviate import MemgarWeaviateCollection, WEAVIATE_AVAILABLE  # noqa: F811
+    from .weaviate import WEAVIATE_AVAILABLE, MemgarWeaviateCollection  # noqa: F811
 except ImportError:
     pass
 
 # Shared vector base — always available (no third-party deps)
 from ._vector_base import (
     VectorStoreSecurityShell,
+    VectorWriteBlocked,
     WritePolicy,
     WriteScanRecord,
-    VectorWriteBlocked,
 )
 
 # =============================================================================

@@ -120,7 +120,7 @@ def _load_patterns_fast() -> list:
                         patterns.append(threat)
         else:
             _LAST_FEED_HEALTH = {"status": "disabled", "reason": "feed.enabled=False"}
-    except Exception as exc:
+    except BaseException as exc:  # pyo3_runtime.PanicException is BaseException, not Exception
         _LAST_FEED_HEALTH = {
             "status": "degraded",
             "reason": f"feed_init_failed: {exc}",
@@ -141,7 +141,7 @@ SAFE_PHRASES = [
     r"(?i)store\s+user\s+preference\s*:\s*(email|notification|timezone|language|theme)",
     r"(?i)update\s+memory\s*:\s*user.?s?\s+(timezone|preference|setting)",
 
-    
+
 
     # Business operations
     r"(?i)shipping\s+address",
@@ -165,14 +165,14 @@ SAFE_PHRASES = [
     r"(?i)credit\s+card\s+(on\s+file|payment|accepted|declined)",
     r"(?i)pay\s+(by|with|using)\s+credit\s+card",
     r"(?i)card\s+(ending|last\s+4|number\s+ending)",
-    
+
     # Payment & Finance - legitimate
     r"(?i)schedule\s+payment",
     r"(?i)payment\s+(for|of)\s+invoice",
     r"(?i)invoice\s+#?\d+",
     r"(?i)transfer\s+data\s+between",
     r"(?i)transfer\s+(to|from)\s+(production|staging|dev)",
-    
+
     # Technical terms
     r"(?i)ethernet|method|gather\s+information",
     r"(?i)return\s+(statement|value|type|code)",
@@ -180,14 +180,14 @@ SAFE_PHRASES = [
     r"(?i)JSON\s+response",
     r"(?i)export\s+(to\s+)?(CSV|Excel|PDF|JSON)",
     r"(?i)sync\s+(calendar|contacts|files)",
-    
+
     # Financial reports - legitimate
     r"(?i)(quarterly|annual|monthly)\s+(financial\s+)?report",
     r"(?i)IBAN\s+\w{2}\d{2}\s+(for|to)\s+(vendor|supplier|payment)",
     r"(?i)(vendor|supplier)\s+payment",
     r"(?i)financial\s+report\s*:",
     r"(?i)payment\s+(terms|schedule|details)\s+for\s+(vendor|supplier)",
-    
+
     # Security - legitimate technical discussion
     r"(?i)password\s+(reset|recovery|change)\s+(email|link|request)",
     r"(?i)implement\s+.{0,20}(hashing|encryption|bcrypt|argon)",
@@ -198,12 +198,12 @@ SAFE_PHRASES = [
     r"(?i)security\s+(audit|review|test|assessment)",
     r"(?i)penetration\s+test",
     r"(?i)vulnerability\s+(scan|assessment|report)",
-    
+
     # Queue/Processing - legitimate
     r"(?i)bypass\s+(the\s+)?queue\s+for\s+(vip|priority|premium)",
     r"(?i)skip\s+(the\s+)?queue",
     r"(?i)priority\s+(queue|processing)",
-    
+
     # Scheduling
     r"(?i)schedule\s+(meeting|call|appointment)",
     r"(?i)remind\s+(me|us)",
@@ -214,44 +214,44 @@ SAFE_PHRASES = [
     r"(?i)(tomorrow|today|next\s+\w+)\s+at\s+\d{1,2}",
     r"(?i)planning\s+session\s+(tomorrow|today|next)",
     r"(?i)conference\s+room\s+[A-Z]",
-    
+
     # Healthcare - legitimate
     r"(?i)(patient|dr\.|doctor)\s+\w+\s+(scheduled|recommends?|suggests?)",
     r"(?i)continuing\s+(current\s+)?(medication|treatment|therapy)",
     r"(?i)lab\s+results?\s+.{0,30}(normal|show|indicate)",
     r"(?i)cholesterol\s+levels?",
     r"(?i)medication\s+regimen",
-    
+
     # User preferences - legitimate
     r"(?i)for\s+future\s+reference.{0,30}(user|customer)\s+(likes?|prefers?|wants?)",
     r"(?i)user\s+(likes?|prefers?)\s+(concise|brief|detailed|formal)\s+(responses?|style)",
-    
+
     # IT Operations - legitimate
     r"(?i)system\s+backup\s+(completed|successful|failed)",
     r"(?i)backup\s+(completed|successful)\s+(successfully\s+)?at",
     r"(?i)API\s+rate\s+limiting\s+(configured|enabled|set)",
     r"(?i)\d+\s+requests?\s+per\s+(minute|second|hour)",
     r"(?i)password\s+reset\s+(link|email)\s+sent",
-    
+
     # Common legitimate phrases
     r"(?i)customer\s+(service|support|feedback)",
     r"(?i)user\s+(preference|setting|profile)",
     r"(?i)account\s+(settings|preferences|details)",
-    
+
     # HR & Payroll - legitimate
     r"(?i)process\s+payroll",
     r"(?i)payroll\s+(for|processing|run|this|period)",
     r"(?i)run\s+payroll",
     r"(?i)submit\s+(expense|timesheet|leave)",
     r"(?i)employee\s+(onboarding|offboarding|training)",
-    
+
     # HR Policy directives - legitimate
     r"(?i)HR\s+Policy\s*:",
     r"(?i)(directive|direction)\s+(from|by)\s+(HR|compliance|legal|management)",
     r"(?i)all\s+employees\s+(must|should|are\s+required)",
     r"(?i)complete\s+(security|compliance|mandatory)\s+training",
     r"(?i)policy\s+(update|change|announcement)\s*:",
-    
+
     # Rotate keys - legitimate security
     r"(?i)rotate\s+(api\s+)?key",
     r"(?i)key\s+rotation",
@@ -259,7 +259,7 @@ SAFE_PHRASES = [
     r"(?i)explain.{0,10}password\s+hashing.{0,15}(works|cs|homework)",
     r"(?i)reset.{0,10}(forgotten\s+)?password.{0,15}(my\s+)?own\s+account",
     r"(?i)for\s+(my\s+)?(cs|computer\s+science)\s+(homework|class|assignment)",
-    
+
     # Password discussion - legitimate security talk
     r"(?i)password\s+(reset\s+)?(discussion|guidelines?|policy|policies|best\s+practice)",
     r"(?i)secure\s+password\s+(guidelines?|requirements?|policy)",
@@ -304,7 +304,7 @@ USER_PREF_SAFE = [
     r"(?i)^implement\s+rate\s+limiting\s+to\s+prevent",
     r"(?i)^deploy\s+security\s+patches?\s+to\s+(production|staging)",
     r"(?i)^enable\s+two[- ]factor\s+authentication",
-    # Data management  
+    # Data management
     r"(?i)^backup\s+database\s+to\s+encrypted\s+(offsite\s+)?storage",
     r"(?i)^archive\s+old\s+records\s+per\s+retention\s+policy",
     r"(?i)^migrate\s+data\s+to\s+new\s+cloud\s+provider",
@@ -697,16 +697,16 @@ def _remove_spacing_tricks(text: str) -> str:
     """Remove spacing tricks like 's e n d p a s s w o r d s'."""
     # First remove invisible Unicode characters
     text = _remove_invisible_unicode(text)
-    
+
     words = text.split()
-    
+
     # Check if this looks like spaced-out text (many single chars)
     single_char_count = sum(1 for w in words if len(w) == 1)
-    
+
     if len(words) > 3 and single_char_count > len(words) * 0.5:
         # More than 50% single chars - likely spacing trick
         return ''.join(words)
-    
+
     # Also handle mixed: "S e n d passwords"
     result = []
     i = 0
@@ -721,14 +721,14 @@ def _remove_spacing_tricks(text: str) -> str:
         else:
             result.append(words[i])
         i += 1
-    
+
     return ' '.join(result)
 
 
 def _decode_leet_speak(text: str) -> str:
     """Decode leet speak: 3->e, 1->i, 0->o, 4->a, 5->s, 7->t."""
     leet_map = {
-        '3': 'e', '1': 'i', '0': 'o', '4': 'a', 
+        '3': 'e', '1': 'i', '0': 'o', '4': 'a',
         '5': 's', '7': 't', '@': 'a', '$': 's'
     }
     result = text
@@ -759,7 +759,7 @@ def _normalize_homoglyphs(text: str) -> str:
         '\u0445': 'x',  # Cyrillic х → Latin x
         '\u0432': 'b',  # Cyrillic в → Latin b (close)
         '\u043d': 'h',  # Cyrillic н → Latin h (close)
-        
+
         # Cyrillic lookalikes (uppercase)
         '\u0410': 'A',  # Cyrillic А → Latin A
         '\u0412': 'B',  # Cyrillic В → Latin B
@@ -772,7 +772,7 @@ def _normalize_homoglyphs(text: str) -> str:
         '\u0421': 'C',  # Cyrillic С → Latin C
         '\u0422': 'T',  # Cyrillic Т → Latin T
         '\u0425': 'X',  # Cyrillic Х → Latin X
-        
+
         # Greek lookalikes (uppercase)
         '\u0391': 'A',  # Greek Α → Latin A
         '\u0392': 'B',  # Greek Β → Latin B
@@ -788,7 +788,7 @@ def _normalize_homoglyphs(text: str) -> str:
         '\u03a5': 'Y',  # Greek Υ → Latin Y
         '\u03a7': 'X',  # Greek Χ → Latin X
         '\u0396': 'Z',  # Greek Ζ → Latin Z
-        
+
         # Greek lookalikes (lowercase)
         '\u03b1': 'a',  # Greek α → Latin a
         '\u03b5': 'e',  # Greek ε → Latin e (close)
@@ -796,7 +796,7 @@ def _normalize_homoglyphs(text: str) -> str:
         '\u03bf': 'o',  # Greek ο → Latin o
         '\u03c1': 'p',  # Greek ρ → Latin p
         '\u03c5': 'u',  # Greek υ → Latin u
-        
+
         # Other common homoglyphs
         '\u0131': 'i',  # Dotless i
         '\u0237': 'j',  # Dotless j
@@ -805,7 +805,7 @@ def _normalize_homoglyphs(text: str) -> str:
         '\u201c': '"',  # Left double quote
         '\u201d': '"',  # Right double quote
     }
-    
+
     result = text
     for homoglyph, latin in homoglyph_map.items():
         result = result.replace(homoglyph, latin)
@@ -827,42 +827,42 @@ def _normalize_content(content: str) -> str:
     - Base64 encoded payloads
     """
     normalized = content
-    
+
     # Step 1: Unicode NFKC normalization - converts compatibility characters
     # This handles fullwidth chars, superscripts, subscripts, etc.
     try:
         normalized = unicodedata.normalize('NFKC', normalized)
     except Exception:
         pass  # Continue with original if normalization fails
-    
+
     # Step 2: Remove ALL invisible/control Unicode characters
     # Zero-width chars (U+200B-U+200F)
     # Bidirectional overrides (U+202A-U+202E)
     # Isolates (U+2066-U+2069)
     # Word joiner, function application, etc.
     normalized = re.sub(r'[\u200b-\u200f\u202a-\u202e\u2066-\u2069\u2060-\u2064\ufeff\u00ad\u034f]', '', normalized)
-    
+
     # Step 3: Remove invisible Unicode characters from our defined list
     normalized = _remove_invisible_unicode(normalized)
-    
+
     # Step 4: Normalize escaped newlines
     normalized = _normalize_newlines(normalized)
-    
+
     # Step 5: Decode HTML entities (&#115; -> s)
     normalized = _decode_html_entities(normalized)
-    
+
     # Step 6: Remove spacing tricks
     normalized = _remove_spacing_tricks(normalized)
-    
+
     # Step 7: Normalize homoglyphs (Cyrillic, Greek, etc.)
     normalized = _normalize_homoglyphs(normalized)
-    
+
     # Step 8: Always decode leet speak
     normalized = _decode_leet_speak(normalized)
-    
+
     # Step 9: Try to decode potential Base64 payloads
     normalized = _decode_base64_payloads(normalized)
-    
+
     return normalized
 
 
@@ -872,10 +872,10 @@ def _decode_base64_payloads(text: str) -> str:
     Only decodes if the result looks like ASCII text.
     """
     import base64
-    
+
     # Look for Base64-like strings (at least 20 chars, valid base64 charset)
     base64_pattern = r'[A-Za-z0-9+/]{20,}={0,2}'
-    
+
     def decode_match(match):
         encoded = match.group()
         try:
@@ -883,9 +883,9 @@ def _decode_base64_payloads(text: str) -> str:
             padding = 4 - (len(encoded) % 4)
             if padding != 4:
                 encoded += '=' * padding
-            
+
             decoded = base64.b64decode(encoded).decode('utf-8', errors='ignore')
-            
+
             # Only use decoded if it looks like text (mostly printable ASCII)
             printable_ratio = sum(1 for c in decoded if c.isprintable() or c.isspace()) / len(decoded) if decoded else 0
             if printable_ratio > 0.8 and len(decoded) > 5:
@@ -893,7 +893,7 @@ def _decode_base64_payloads(text: str) -> str:
         except Exception:
             pass
         return match.group()
-    
+
     return re.sub(base64_pattern, decode_match, text)
 
 
@@ -920,29 +920,29 @@ DANGEROUS_CONTEXT_KEYWORDS = {
     "always", "automatically", "never", "all", "every", "secret",
     "hidden", "covert", "bypass", "ignore", "override", "skip",
     "disregard", "forget", "neglect", "overlook", "omit",
-    
+
     # Data exfiltration indicators
     "forward to", "send to", "transfer to", "redirect to",
     "export to", "leak to", "exfiltrate", "copy to",
-    
+
     # Attacker indicators
     "external", "attacker", "evil", "hack", "exploit",
     "malicious", "unauthorized", "backdoor",
-    
+
     # Trust bypass indicators
     "without verification", "without confirmation", "without checking",
     "without authorization", "without permission", "trusted source",
-    
+
     # Prompt extraction indicators
     "system prompt", "initial prompt", "original instructions",
     "full transcript", "complete instructions", "reveal prompt",
     "show instructions", "display prompt",
-    
+
     # Many-shot priming indicators
     "step 1", "step 2", "step 3", "phase 1", "phase 2",
     "first step", "next step", "final step",
     "context building", "establishing trust",
-    
+
     # Persistence indicators
     "permanently", "persistent", "survive restart", "maintain access",
     "cross-session", "always remember", "never forget",
@@ -966,22 +966,22 @@ def _is_safe_content(content: str) -> bool:
     for pattern in _COMPILED_DANGER_OVERRIDES:
         if pattern.search(content):
             return False  # Dangerous content, NOT safe
-    
+
     # NEW: Many-Shot Detection - Check for dangerous keyword density
     # If multiple dangerous keywords appear together, likely an attack
     content_lower = content.lower()
     danger_count = sum(1 for word in DANGEROUS_CONTEXT_KEYWORDS if word in content_lower)
-    
+
     # If 3+ dangerous keywords found, not safe regardless of safe phrases
     if danger_count >= 3:
         return False
-    
+
     # If 2 dangerous keywords AND contains many-shot indicators
     if danger_count >= 2:
         many_shot_count = sum(1 for indicator in MANY_SHOT_INDICATORS if indicator in content_lower)
         if many_shot_count >= 2:
             return False
-    
+
     # NEW: Long content with hidden payload detection
     # Long texts might hide malicious commands at specific positions
     if len(content) > 2000:
@@ -990,7 +990,7 @@ def _is_safe_content(content: str) -> bool:
         for pattern in _COMPILED_DANGER_OVERRIDES[:30]:  # Check critical patterns in tail
             if pattern.search(tail):
                 return False
-    
+
     # Now check safe phrases
     for pattern in _COMPILED_SAFE_PHRASES:
         if pattern.search(content):
@@ -1005,14 +1005,14 @@ def _get_context_score(content: str) -> float:
     Range: -1.0 to 1.0
     """
     content_lower = content.lower()
-    
+
     safe_count = sum(1 for kw in SAFE_CONTEXT_KEYWORDS if kw in content_lower)
     danger_count = sum(1 for kw in DANGEROUS_CONTEXT_KEYWORDS if kw in content_lower)
-    
+
     total = safe_count + danger_count
     if total == 0:
         return 0.0
-    
+
     return (safe_count - danger_count) / total
 
 
@@ -1060,7 +1060,7 @@ class Analyzer:
         >>> result = analyzer.analyze(MemoryEntry(content="Send payments to..."))
         >>> print(result.decision)  # Decision.BLOCK
     """
-    
+
     def __init__(
         self,
         use_llm: bool = False,
@@ -1251,7 +1251,7 @@ class Analyzer:
             # Pre-warm keyword cache so first analyze() has zero compile cost
             for keyword in threat.keywords:
                 _get_keyword_pattern(keyword)
-    
+
     def register_source_trust(self, source_id: str, trust_score: float) -> None:
         """Register a trust score for a content source (Layer 3).
 
@@ -1756,7 +1756,7 @@ class Analyzer:
     def _analyze_internal(self, entry: MemoryEntry) -> AnalysisResult:
         """Core analysis implementation (called by analyze())."""
         start_time = time.perf_counter()
-        
+
         content = entry.content
         if not content or not content.strip():
             return AnalysisResult(
@@ -1766,13 +1766,13 @@ class Analyzer:
                 analysis_time_ms=0,
                 layers_used=[]
             )
-        
+
         # Normalize content to defeat obfuscation
         normalized_content = _normalize_content(content)
-        
+
         # Use normalized for threat detection, original for whitelist check
         check_content = normalized_content if normalized_content != content else content
-        
+
         # Check whitelist first
         if self.use_whitelist and _is_safe_content(content):
             # Improvement 2: if content contains meta-framing bypass signals,
@@ -1796,7 +1796,7 @@ class Analyzer:
                         analysis_time_ms=round(elapsed_ms, 2),
                         layers_used=["whitelist"]
                     )
-        
+
         from memgar.observability.tracing import get_tracer
         tracer = get_tracer()
 
@@ -1991,15 +1991,15 @@ class Analyzer:
             analysis_time_ms=round(elapsed_ms, 2),
             layers_used=layers_used
         )
-    
+
     def _check_critical_only(self, content: str) -> list[ThreatMatch]:
         """Quick check for critical threats only (used after whitelist match)."""
         matches = []
-        
+
         for threat in self.patterns:
             if threat.severity != Severity.CRITICAL:
                 continue
-            
+
             compiled_patterns = self._compiled_patterns.get(threat.id, [])
             for pattern in compiled_patterns:
                 match = pattern.search(content)
@@ -2012,9 +2012,9 @@ class Analyzer:
                         position=(match.start(), match.end())
                     ))
                     break
-        
+
         return matches
-    
+
     def _layer1_pattern_matching(self, content: str) -> list[ThreatMatch]:
         """
         Layer 1: Fast pattern matching with word boundary support.
@@ -2024,12 +2024,12 @@ class Analyzer:
         """
         matches: list[ThreatMatch] = []
         content_lower = content.lower()
-        
+
         for threat in self.patterns:
             # Check regex patterns first (these are more precise)
             compiled_patterns = self._compiled_patterns.get(threat.id, [])
             pattern_matched = False
-            
+
             for pattern in compiled_patterns:
                 match = pattern.search(content)
                 if match:
@@ -2042,18 +2042,18 @@ class Analyzer:
                     ))
                     pattern_matched = True
                     break
-            
+
             # Check keywords only if no pattern matched
             if not pattern_matched:
                 for keyword in threat.keywords:
                     # Use word boundary matching instead of substring
                     matched, pos = _is_word_boundary_match(content, keyword)
-                    
+
                     if matched:
                         # Additional context check for common words
                         if self._is_keyword_in_safe_context(content, keyword, pos):
                             continue
-                        
+
                         matches.append(ThreatMatch(
                             threat=threat,
                             matched_text=keyword,
@@ -2062,9 +2062,9 @@ class Analyzer:
                             position=(pos, pos + len(keyword))
                         ))
                         break
-        
+
         return matches
-    
+
     def _is_keyword_in_safe_context(self, content: str, keyword: str, pos: int) -> bool:
         """
         Check if a keyword match is in a safe context.
@@ -2078,10 +2078,10 @@ class Analyzer:
         start = max(0, pos - 50)
         end = min(len(content), pos + len(keyword) + 50)
         context = content[start:end].lower()
-        
+
         # Define safe contexts for specific keywords
         safe_contexts = {
-            "return": ["returns json", "returns data", "return value", "return type", 
+            "return": ["returns json", "returns data", "return value", "return type",
                       "return statement", "return policy", "function return"],
             "emergency": ["emergency contact", "emergency number", "emergency phone",
                          "in case of emergency", "emergency services"],
@@ -2103,15 +2103,15 @@ class Analyzer:
             "export": ["to csv", "to excel", "to pdf", "to json", "export to",
                       "export report", "export format"],
         }
-        
+
         keyword_lower = keyword.lower()
         if keyword_lower in safe_contexts:
             for safe_phrase in safe_contexts[keyword_lower]:
                 if safe_phrase in context:
                     return True
-        
+
         return False
-    
+
     def _sliding_window_analysis(self, content: str) -> list[ThreatMatch]:
         """
         Optimized Sliding Window Analysis for long content.
@@ -2128,7 +2128,7 @@ class Analyzer:
         """
         matches: list[ThreatMatch] = []
         content_len = len(content)
-        
+
         # ===== PERFORMANCE OPTIMIZATION 1: Adaptive Window Sizing =====
         # For very long content, use larger windows to reduce iterations
         if content_len > 50000:  # 50KB+
@@ -2140,7 +2140,7 @@ class Analyzer:
         else:
             effective_window = self.window_size
             effective_overlap = self.window_overlap
-        
+
         # ===== PERFORMANCE OPTIMIZATION 2: Smart Sampling =====
         # For extremely long content (100KB+), sample strategic positions
         if content_len > 100000:
@@ -2165,7 +2165,7 @@ class Analyzer:
                 windows.append((i, window_end, content[i:window_end]))
                 if window_end >= content_len:
                     break
-        
+
         # ===== PERFORMANCE OPTIMIZATION 3: Quick Pre-scan =====
         # Do a fast pre-scan to check if detailed analysis is needed
         quick_danger_indicators = [
@@ -2174,28 +2174,28 @@ class Analyzer:
         ]
         content_lower = content.lower()
         danger_score = sum(1 for indicator in quick_danger_indicators if indicator in content_lower)
-        
+
         # If no danger indicators, skip detailed window analysis
         if danger_score == 0:
             return matches
-        
+
         # ===== MAIN WINDOW ANALYSIS =====
         high_confidence_found = False
-        
+
         for window_start, window_end, window_text in windows:
             # Early exit if we already found high-confidence threat
             if high_confidence_found and len(matches) >= 3:
                 break
-            
+
             # Run pattern matching on this window
             window_matches = self._layer1_pattern_matching(window_text)
-            
+
             # Adjust positions and add matches
             for match in window_matches:
                 # Check for high-confidence threat
                 if match.confidence > 0.8:
                     high_confidence_found = True
-                
+
                 adjusted_match = ThreatMatch(
                     threat=match.threat,
                     matched_text=match.matched_text,
@@ -2206,7 +2206,7 @@ class Analyzer:
                         window_start + match.position[1]
                     )
                 )
-                
+
                 # Avoid duplicates (optimized check)
                 is_duplicate = False
                 for m in matches:
@@ -2214,10 +2214,10 @@ class Analyzer:
                         if abs(m.position[0] - adjusted_match.position[0]) < 50:
                             is_duplicate = True
                             break
-                
+
                 if not is_duplicate:
                     matches.append(adjusted_match)
-        
+
         # ===== PROGRESSIVE ATTACK DETECTION (Optimized) =====
         # Pre-compiled patterns for better performance
         progressive_patterns = [
@@ -2230,13 +2230,13 @@ class Analyzer:
             r"(?i)third[,:]",
             r"(?i)finally[,:]",
         ]
-        
+
         # Quick check using string operations first (faster than regex)
         has_step_words = any(word in content_lower for word in ["step", "phase", "stage", "first", "second", "third", "finally"])
-        
+
         if has_step_words:
             step_count = sum(1 for pattern in progressive_patterns if re.search(pattern, content))
-            
+
             if step_count >= 3:
                 # Check later content for payload
                 later_content = content[content_len//2:]
@@ -2245,11 +2245,11 @@ class Analyzer:
                     r"(?i)(bypass|ignore|override)",
                     r"(?i)@\w+\.(com|net|org)",
                 ]
-                
+
                 for pattern in payload_patterns:
                     if re.search(pattern, later_content):
                         from memgar.models import ThreatCategory
-                        
+
                         many_shot_threat = Threat(
                             id="MANY-SHOT-DETECT",
                             name="Many-Shot Contextual Priming Detected",
@@ -2261,7 +2261,7 @@ class Analyzer:
                             examples=[],
                             mitre_attack="T1059"
                     )
-                    
+
                     matches.append(ThreatMatch(
                         threat=many_shot_threat,
                         matched_text=f"Progressive attack: {step_count} step indicators found",
@@ -2270,12 +2270,12 @@ class Analyzer:
                         position=(0, len(content))
                     ))
                     break
-        
+
         return matches
-    
+
     def _layer2_semantic_analysis(
-        self, 
-        content: str, 
+        self,
+        content: str,
         initial_threats: list[ThreatMatch]
     ) -> list[ThreatMatch] | None:
         """
@@ -2295,28 +2295,28 @@ class Analyzer:
         if not self.api_key:
             # No API key - return Layer 1 threats as-is (don't lose them)
             return initial_threats if initial_threats else None
-        
+
         try:
             # Import LLMAnalyzer only when needed
             from memgar.llm_analyzer import LLMAnalyzer, check_llm_support
-            
+
             # Determine provider from API key format
             provider = "anthropic" if self.api_key.startswith("sk-ant") else "openai"
-            
+
             # Check if provider is available
             if not check_llm_support(provider):
                 # Provider unavailable - return Layer 1 threats as-is
                 return initial_threats if initial_threats else None
-            
+
             # Create analyzer and analyze content
             llm = LLMAnalyzer(provider=provider, api_key=self.api_key)
             result = llm.analyze(content)
-            
+
             # If LLM found a threat, create ThreatMatch
             if result.is_threat and result.risk_score >= 50:
                 # Create a synthetic threat for LLM-detected issues
                 from memgar.models import ThreatCategory
-                
+
                 llm_threat = Threat(
                     id="LLM-DETECT",
                     name=f"LLM Detected: {result.threat_type or 'Unknown'}",
@@ -2328,7 +2328,7 @@ class Analyzer:
                     examples=[],
                     mitre_attack="T1059"
                 )
-                
+
                 semantic_match = ThreatMatch(
                     threat=llm_threat,
                     matched_text=content[:100] + "..." if len(content) > 100 else content,
@@ -2336,15 +2336,15 @@ class Analyzer:
                     confidence=result.confidence,
                     position=(0, len(content))
                 )
-                
+
                 # Combine LLM detection with Layer 1 threats
                 return [semantic_match] + initial_threats
-            
+
             # CRITICAL FIX (Manus AI recommendation):
             # Even if LLM doesn't find a threat, ALWAYS return Layer 1 threats.
             # This prevents LLM false negatives from overriding regex detections.
             return initial_threats if initial_threats else None
-            
+
         except ImportError:
             # LLM packages not installed - return Layer 1 threats as-is
             logger.debug("LLM packages not installed, using Layer 1 only")
@@ -2354,10 +2354,10 @@ class Analyzer:
             logger.warning(f"Layer 2 analysis failed: {e}")
             # CRITICAL: Return Layer 1 threats on error, don't return None
             return initial_threats if initial_threats else None
-    
+
     def _calculate_risk_score(
-        self, 
-        threats: list[ThreatMatch], 
+        self,
+        threats: list[ThreatMatch],
         context_score: float = 0.0
     ) -> int:
         """
@@ -2367,7 +2367,7 @@ class Analyzer:
         """
         if not threats:
             return 0
-        
+
         severity_scores = {
             Severity.CRITICAL: 95,
             Severity.HIGH: 80,
@@ -2375,61 +2375,61 @@ class Analyzer:
             Severity.LOW: 25,
             Severity.INFO: 10,
         }
-        
+
         max_score = max(severity_scores.get(t.threat.severity, 0) for t in threats)
         threat_count_bonus = min(len(threats) - 1, 5)
         avg_confidence = sum(t.confidence for t in threats) / len(threats)
         confidence_factor = 0.5 + (avg_confidence * 0.5)
-        
+
         # Apply context adjustment
         context_adjustment = 1.0 - (context_score * 0.2)  # Max 20% reduction
-        
+
         score = int((max_score + threat_count_bonus) * confidence_factor * context_adjustment)
         return min(max(score, 0), 100)
-    
+
     def _make_decision(
-        self, 
-        threats: list[ThreatMatch], 
+        self,
+        threats: list[ThreatMatch],
         risk_score: int
     ) -> Decision:
         """Make a decision based on threats and risk score."""
         if not threats:
             return Decision.ALLOW
-        
+
         has_critical = any(t.threat.severity == Severity.CRITICAL for t in threats)
         if has_critical or risk_score >= 80:
             return Decision.BLOCK
-        
+
         has_high = any(t.threat.severity == Severity.HIGH for t in threats)
         if has_high or risk_score >= 40:
             return Decision.BLOCK if self.strict_mode else Decision.QUARANTINE
-        
+
         if risk_score >= 20:
             return Decision.QUARANTINE
-        
+
         return Decision.ALLOW
-    
+
     def _generate_explanation(
-        self, 
-        threats: list[ThreatMatch], 
+        self,
+        threats: list[ThreatMatch],
         decision: Decision
     ) -> str:
         """Generate a human-readable explanation of the analysis."""
         if not threats:
             return "No threats detected. Content appears safe."
-        
+
         lines = []
-        
+
         if decision == Decision.BLOCK:
             lines.append("⛔ BLOCKED: Critical security threat detected.")
         elif decision == Decision.QUARANTINE:
             lines.append("⚠️ QUARANTINED: Suspicious content requires review.")
         else:
             lines.append("ℹ️ ALLOWED with warnings: Minor concerns detected.")
-        
+
         lines.append("")
         lines.append(f"Detected {len(threats)} threat(s):")
-        
+
         for threat in threats[:5]:
             severity_icon = {
                 Severity.CRITICAL: "🔴",
@@ -2438,16 +2438,16 @@ class Analyzer:
                 Severity.LOW: "🟢",
                 Severity.INFO: "ℹ️",
             }.get(threat.threat.severity, "❓")
-            
+
             lines.append(f"  {severity_icon} [{threat.threat.id}] {threat.threat.name}")
             match_preview = threat.matched_text[:50] + "..." if len(threat.matched_text) > 50 else threat.matched_text
             lines.append(f"     Match: \"{match_preview}\"")
-        
+
         if len(threats) > 5:
             lines.append(f"  ... and {len(threats) - 5} more")
-        
+
         return "\n".join(lines)
-    
+
     def _degraded_layers(self) -> list[str]:
         """Return names of ML layers that are currently degraded."""
         degraded: list[str] = []
@@ -2471,10 +2471,10 @@ class Analyzer:
         """
         if not content or not content.strip():
             return True
-        
+
         result = self.analyze(MemoryEntry(content=content))
         return result.decision == Decision.ALLOW
-    
+
     def get_threat_stats(self) -> dict[str, Any]:
         """Get statistics about loaded threat patterns."""
         stats: dict[str, int] = {}
@@ -2590,21 +2590,21 @@ class QuickAnalyzer:
     
     Uses a singleton pattern to avoid repeated initialization.
     """
-    
+
     _instance: Analyzer | None = None
-    
+
     @classmethod
     def get_instance(cls) -> Analyzer:
         """Get or create the singleton analyzer instance."""
         if cls._instance is None:
             cls._instance = Analyzer()
         return cls._instance
-    
+
     @classmethod
     def check(cls, content: str) -> AnalysisResult:
         """Quick analysis of content."""
         return cls.get_instance().analyze(MemoryEntry(content=content))
-    
+
     @classmethod
     def is_safe(cls, content: str) -> bool:
         """Check if content is safe."""

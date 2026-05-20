@@ -30,7 +30,7 @@ class ReportMetadata:
     generated_at: str = ""
     version: str = "0.2.0"
     source_file: Optional[str] = None
-    
+
 
 class ReportGenerator:
     """
@@ -38,10 +38,10 @@ class ReportGenerator:
     
     Supports HTML and JSON output formats.
     """
-    
+
     def __init__(self):
         self.metadata = ReportMetadata()
-    
+
     def generate_html(
         self,
         results: List[AnalysisResult],
@@ -66,18 +66,18 @@ class ReportGenerator:
         blocked = sum(1 for r in results if r.decision == Decision.BLOCK)
         quarantined = sum(1 for r in results if r.decision == Decision.QUARANTINE)
         allowed = sum(1 for r in results if r.decision == Decision.ALLOW)
-        
+
         # Risk distribution
         high_risk = sum(1 for r in results if r.risk_score >= 80)
         medium_risk = sum(1 for r in results if 40 <= r.risk_score < 80)
         low_risk = sum(1 for r in results if r.risk_score < 40)
-        
+
         # Threat categories
         categories: Dict[str, int] = {}
         for r in results:
             if r.category:
                 categories[r.category] = categories.get(r.category, 0) + 1
-        
+
         # Generate HTML
         html = self._generate_html_template(
             title=title,
@@ -92,13 +92,13 @@ class ReportGenerator:
             categories=categories,
             results=results,
         )
-        
+
         # Write file
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html)
-        
+
         return output_path
-    
+
     def generate_json(
         self,
         results: List[AnalysisResult],
@@ -120,7 +120,7 @@ class ReportGenerator:
         blocked = sum(1 for r in results if r.decision == Decision.BLOCK)
         quarantined = sum(1 for r in results if r.decision == Decision.QUARANTINE)
         allowed = sum(1 for r in results if r.decision == Decision.ALLOW)
-        
+
         report = {
             "metadata": {
                 "title": "Memgar Security Report",
@@ -137,12 +137,12 @@ class ReportGenerator:
             },
             "results": [r.to_dict() for r in results],
         }
-        
+
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
-        
+
         return output_path
-    
+
     def _generate_html_template(
         self,
         title: str,
@@ -158,9 +158,9 @@ class ReportGenerator:
         results: List[AnalysisResult],
     ) -> str:
         """Generate HTML template."""
-        
+
         generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         # Generate results rows
         results_html = ""
         for i, r in enumerate(results, 1):
@@ -169,17 +169,17 @@ class ReportGenerator:
                 Decision.BLOCK: "block",
                 Decision.QUARANTINE: "quarantine",
             }.get(r.decision, "")
-            
+
             decision_icon = {
                 Decision.ALLOW: "✅",
                 Decision.BLOCK: "🚫",
                 Decision.QUARANTINE: "⚠️",
             }.get(r.decision, "")
-            
+
             threat_info = f"{r.threat_type}: {r.threat_name}" if r.threat_type else "-"
             category = r.category or "-"
             severity = r.severity or "-"
-            
+
             results_html += f"""
             <tr class="{decision_class}">
                 <td>{i}</td>
@@ -190,11 +190,11 @@ class ReportGenerator:
                 <td>{severity}</td>
             </tr>
             """
-        
+
         # Generate category chart data
         category_labels = list(categories.keys()) if categories else ["None"]
         category_values = list(categories.values()) if categories else [0]
-        
+
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -533,7 +533,7 @@ def generate_report(
         Path to generated report
     """
     generator = ReportGenerator()
-    
+
     if format == "json":
         return generator.generate_json(results, output_path, **kwargs)
     else:

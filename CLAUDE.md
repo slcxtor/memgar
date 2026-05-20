@@ -100,11 +100,11 @@ memgar.start_metrics_server(port=9090)  # idempotent
 pip install -e ".[dev,adversarial,feed,observability]"
 
 # Run tests
-pytest -q                              # 165 pass, 7 skip (crypto)
-pytest tests/test_analyzer.py -v      # Layer 3+4 integration tests
-pytest tests/test_feed.py -v          # Feed verify/cache/loader tests
-pytest tests/test_adversarial.py -v   # Red-team tests
-pytest tests/test_observability.py -v # Prometheus/drift tests
+python -m pytest -q                    # ~1600+ pass, ~11 skip (crypto), 0 errors
+python -m pytest tests/test_analyzer.py -v      # Layer 3+4 integration tests
+python -m pytest tests/test_feed.py -v          # Feed verify/cache/loader tests
+python -m pytest tests/test_adversarial.py -v   # Red-team tests
+python -m pytest tests/test_observability.py -v # Prometheus/drift tests
 
 # Rebuild ML model (runs quality gate)
 python rebuild_model.py

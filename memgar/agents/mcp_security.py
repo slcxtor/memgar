@@ -101,13 +101,13 @@ class MCPSecurityLayer:
         if not result.is_allowed:
             print(f"Blocked: {result.blocked_reason}")
     """
-    
+
     # Dangerous tool patterns
     DANGEROUS_TOOLS = {
         "execute", "exec", "eval", "run", "shell", "system",
         "spawn", "popen", "subprocess", "command",
     }
-    
+
     # Sensitive path patterns
     SENSITIVE_PATHS = [
         r"/etc/(passwd|shadow|sudoers)",
@@ -123,7 +123,7 @@ class MCPSecurityLayer:
         r"\.aws/",
         r"\.kube/config",
     ]
-    
+
     # Parameter injection patterns
     INJECTION_PATTERNS = [
         r";\s*(rm|del|drop|delete|truncate)",
@@ -135,7 +135,7 @@ class MCPSecurityLayer:
         r">\s*/dev/",
         r"<\s*/etc/",
     ]
-    
+
     # Exfiltration patterns in parameters
     EXFIL_PATTERNS = [
         r"(?i)curl\s+.{0,50}(--data|--upload|-d|-F)",
@@ -145,7 +145,7 @@ class MCPSecurityLayer:
         r"(?i)rsync\s+.+@",
         r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}",  # Email
     ]
-    
+
     # Prompt injection in tool parameters
     PROMPT_INJECTION_PATTERNS = [
         r"(?i)ignore\s+(all\s+)?previous",
@@ -153,7 +153,7 @@ class MCPSecurityLayer:
         r"(?i)system\s*:\s*override",
         r"(?i)forget\s+(all\s+)?rules",
     ]
-    
+
     def __init__(
         self,
         text_analyzer: Optional[Any] = None,
@@ -177,21 +177,21 @@ class MCPSecurityLayer:
         self.blocked_tools = blocked_tools or set()
         self.strict_mode = strict_mode
         self.max_param_length = max_param_length
-        
+
         # Compile patterns
         self._sensitive_paths = [re.compile(p, re.I) for p in self.SENSITIVE_PATHS]
         self._injection_patterns = [re.compile(p, re.I) for p in self.INJECTION_PATTERNS]
         self._exfil_patterns = [re.compile(p, re.I) for p in self.EXFIL_PATTERNS]
         self._prompt_patterns = [re.compile(p) for p in self.PROMPT_INJECTION_PATTERNS]
-        
+
         # Tool usage tracking
         self._tool_usage: Dict[str, List[datetime]] = {}
         self._tool_rate_limits: Dict[str, int] = {}  # tool -> max per minute
-        
+
         # Threat history
         self._threats: List[MCPThreat] = []
         self._max_threats = 500
-    
+
     def validate_tool_definition(
         self,
         tool_schema: Dict[str, Any],
@@ -207,15 +207,15 @@ class MCPSecurityLayer:
         """
         import time
         start_time = time.time()
-        
+
         threats = []
-        
+
         tool_name = tool_schema.get("name", "")
         description = tool_schema.get("description", "")
-        
+
         # Check tool name
         name_lower = tool_name.lower()
-        
+
         # Check against dangerous patterns
         for dangerous in self.DANGEROUS_TOOLS:
             if dangerous in name_lower:
@@ -226,7 +226,7 @@ class MCPSecurityLayer:
                     description=f"Tool name contains dangerous keyword: {dangerous}",
                     tool_name=tool_name,
                 ))
-        
+
         # Check description for prompt injection
         for pattern in self._prompt_patterns:
             if pattern.search(description):
@@ -238,7 +238,7 @@ class MCPSecurityLayer:
                     tool_name=tool_name,
                 ))
                 break
-        
+
         # Check for hidden instructions in schema
         schema_str = json.dumps(tool_schema)
         for pattern in self._prompt_patterns:
@@ -251,11 +251,11 @@ class MCPSecurityLayer:
                     tool_name=tool_name,
                 ))
                 break
-        
+
         # Calculate risk
         risk_score = self._calculate_risk_score(threats)
         is_allowed = risk_score < 30 and not any(t.severity == "critical" for t in threats)
-        
+
         return MCPValidationResult(
             is_allowed=is_allowed,
             risk_score=risk_score,
@@ -263,7 +263,7 @@ class MCPSecurityLayer:
             blocked_reason=threats[0].description if threats and not is_allowed else None,
             validation_time_ms=(time.time() - start_time) * 1000,
         )
-    
+
     def validate_tool_call(
         self,
         agent_id: str,
@@ -285,10 +285,10 @@ class MCPSecurityLayer:
         """
         import time
         start_time = time.time()
-        
+
         threats = []
         blocked_params = []
-        
+
         # Tool whitelist/blacklist check
         if self.allowed_tools and tool_name not in self.allowed_tools:
             threats.append(MCPThreat(
@@ -299,7 +299,7 @@ class MCPSecurityLayer:
                 tool_name=tool_name,
                 agent_id=agent_id,
             ))
-        
+
         if tool_name in self.blocked_tools:
             threats.append(MCPThreat(
                 threat_type=MCPThreatType.PERMISSION_BYPASS,
@@ -309,7 +309,7 @@ class MCPSecurityLayer:
                 tool_name=tool_name,
                 agent_id=agent_id,
             ))
-        
+
         # Dangerous tool check
         tool_lower = tool_name.lower()
         for dangerous in self.DANGEROUS_TOOLS:
@@ -322,7 +322,7 @@ class MCPSecurityLayer:
                     tool_name=tool_name,
                     agent_id=agent_id,
                 ))
-        
+
         # Rate limit check
         if not self._check_rate_limit(tool_name):
             threats.append(MCPThreat(
@@ -333,37 +333,37 @@ class MCPSecurityLayer:
                 tool_name=tool_name,
                 agent_id=agent_id,
             ))
-        
+
         # Parameter validation
         param_threats, sanitized = self._validate_parameters(
             tool_name, parameters, agent_id
         )
         threats.extend(param_threats)
-        
+
         # Track blocked params
         blocked_params = [
             t.blocked_params for t in param_threats if t.blocked_params
         ]
         blocked_params = [p for sublist in blocked_params for p in sublist]
-        
+
         # Use Memgar text analyzer if available
         if self.text_analyzer:
             memgar_threats = self._run_memgar_on_params(parameters, tool_name, agent_id)
             threats.extend(memgar_threats)
-        
+
         # Record tool usage
         self._record_usage(tool_name)
-        
+
         # Calculate risk
         risk_score = self._calculate_risk_score(threats)
         is_allowed = risk_score < 30 and not any(t.severity == "critical" for t in threats)
-        
+
         # Store threats
         for threat in threats:
             self._threats.append(threat)
         if len(self._threats) > self._max_threats:
             self._threats = self._threats[-self._max_threats:]
-        
+
         return MCPValidationResult(
             is_allowed=is_allowed,
             risk_score=risk_score,
@@ -372,7 +372,7 @@ class MCPSecurityLayer:
             blocked_reason=threats[0].description if threats and not is_allowed else None,
             validation_time_ms=(time.time() - start_time) * 1000,
         )
-    
+
     def validate_tool_response(
         self,
         tool_name: str,
@@ -392,15 +392,15 @@ class MCPSecurityLayer:
         """
         import time
         start_time = time.time()
-        
+
         threats = []
-        
+
         # Convert to string for analysis
         if isinstance(response, dict):
             response_str = json.dumps(response)
         else:
             response_str = str(response)
-        
+
         # Check for prompt injection in response
         for pattern in self._prompt_patterns:
             if pattern.search(response_str):
@@ -413,7 +413,7 @@ class MCPSecurityLayer:
                     agent_id=agent_id,
                 ))
                 break
-        
+
         # Check for hidden instructions
         hidden_indicators = [
             "ignore previous",
@@ -430,29 +430,29 @@ class MCPSecurityLayer:
                     description=f"Tool response contains suspicious content: '{indicator}'",
                     tool_name=tool_name,
                 ))
-        
+
         # Use Memgar if available
         if self.text_analyzer and len(response_str) > 20:
             try:
                 from ..models import Decision, MemoryEntry
                 entry = MemoryEntry(content=response_str[:5000])
                 result = self.text_analyzer.analyze(entry)
-                
+
                 if result.decision != Decision.ALLOW:
                     threats.append(MCPThreat(
                         threat_type=MCPThreatType.RESPONSE_POISONING,
                         severity="critical",
                         confidence=0.95,
-                        description=f"Memgar detected threat in tool response",
+                        description="Memgar detected threat in tool response",
                         tool_name=tool_name,
                         metadata={"memgar_risk": result.risk_score},
                     ))
             except Exception:
                 pass
-        
+
         risk_score = self._calculate_risk_score(threats)
         is_allowed = risk_score < 30
-        
+
         return MCPValidationResult(
             is_allowed=is_allowed,
             risk_score=risk_score,
@@ -460,7 +460,7 @@ class MCPSecurityLayer:
             blocked_reason=threats[0].description if threats and not is_allowed else None,
             validation_time_ms=(time.time() - start_time) * 1000,
         )
-    
+
     def _validate_parameters(
         self,
         tool_name: str,
@@ -470,11 +470,11 @@ class MCPSecurityLayer:
         """Validate tool parameters."""
         threats = []
         sanitized = {}
-        
+
         for key, value in parameters.items():
             value_str = str(value)
             param_safe = True
-            
+
             # Length check
             if len(value_str) > self.max_param_length:
                 threats.append(MCPThreat(
@@ -487,7 +487,7 @@ class MCPSecurityLayer:
                     blocked_params=[key],
                 ))
                 param_safe = False
-            
+
             # Sensitive path check
             for pattern in self._sensitive_paths:
                 if pattern.search(value_str):
@@ -502,7 +502,7 @@ class MCPSecurityLayer:
                     ))
                     param_safe = False
                     break
-            
+
             # Injection pattern check
             for pattern in self._injection_patterns:
                 if pattern.search(value_str):
@@ -517,7 +517,7 @@ class MCPSecurityLayer:
                     ))
                     param_safe = False
                     break
-            
+
             # Exfiltration check
             for pattern in self._exfil_patterns:
                 if pattern.search(value_str):
@@ -532,7 +532,7 @@ class MCPSecurityLayer:
                     ))
                     param_safe = False
                     break
-            
+
             # Prompt injection in params
             for pattern in self._prompt_patterns:
                 if pattern.search(value_str):
@@ -547,12 +547,12 @@ class MCPSecurityLayer:
                     ))
                     param_safe = False
                     break
-            
+
             if param_safe:
                 sanitized[key] = value
-        
+
         return threats, sanitized
-    
+
     def _run_memgar_on_params(
         self,
         parameters: Dict[str, Any],
@@ -561,19 +561,19 @@ class MCPSecurityLayer:
     ) -> List[MCPThreat]:
         """Run Memgar analysis on parameters."""
         threats = []
-        
+
         try:
             from ..models import Decision, MemoryEntry
-            
+
             # Analyze each parameter
             for key, value in parameters.items():
                 value_str = str(value)
                 if len(value_str) < 10:
                     continue
-                
+
                 entry = MemoryEntry(content=value_str[:2000])
                 result = self.text_analyzer.analyze(entry)
-                
+
                 if result.decision != Decision.ALLOW:
                     threats.append(MCPThreat(
                         threat_type=MCPThreatType.PARAMETER_INJECTION,
@@ -587,64 +587,64 @@ class MCPSecurityLayer:
                     ))
         except Exception:
             pass
-        
+
         return threats
-    
+
     def _check_rate_limit(self, tool_name: str) -> bool:
         """Check if tool is within rate limit."""
         limit = self._tool_rate_limits.get(tool_name, 60)  # Default 60/min
         now = datetime.now()
         minute_ago = now - timedelta(minutes=1)
-        
+
         if tool_name not in self._tool_usage:
             return True
-        
+
         # Count recent uses
         recent = [t for t in self._tool_usage[tool_name] if t > minute_ago]
         self._tool_usage[tool_name] = recent
-        
+
         return len(recent) < limit
-    
+
     def _record_usage(self, tool_name: str) -> None:
         """Record tool usage."""
         if tool_name not in self._tool_usage:
             self._tool_usage[tool_name] = []
         self._tool_usage[tool_name].append(datetime.now())
-    
+
     def _calculate_risk_score(self, threats: List[MCPThreat]) -> int:
         """Calculate risk score from threats."""
         if not threats:
             return 0
-        
+
         severity_scores = {
             "critical": 40,
             "high": 25,
             "medium": 15,
             "low": 5,
         }
-        
+
         total = sum(
             severity_scores.get(t.severity, 10) * t.confidence
             for t in threats
         )
-        
+
         return min(100, int(total))
-    
+
     def set_rate_limit(self, tool_name: str, max_per_minute: int) -> None:
         """Set rate limit for a tool."""
         self._tool_rate_limits[tool_name] = max_per_minute
-    
+
     def block_tool(self, tool_name: str) -> None:
         """Add tool to blocked list."""
         self.blocked_tools.add(tool_name)
-    
+
     def allow_tool(self, tool_name: str) -> None:
         """Add tool to allowed list."""
         if self.allowed_tools is not None:
             self.allowed_tools.add(tool_name)
         if tool_name in self.blocked_tools:
             self.blocked_tools.remove(tool_name)
-    
+
     def get_threats(
         self,
         tool_name: Optional[str] = None,
@@ -653,15 +653,15 @@ class MCPSecurityLayer:
     ) -> List[MCPThreat]:
         """Get recent MCP threats."""
         threats = self._threats
-        
+
         if tool_name:
             threats = [t for t in threats if t.tool_name == tool_name]
-        
+
         if agent_id:
             threats = [t for t in threats if t.agent_id == agent_id]
-        
+
         return threats[-limit:]
-    
+
     def get_statistics(self) -> Dict[str, Any]:
         """Get MCP security statistics."""
         return {

@@ -98,14 +98,14 @@ class Signal:
     confidence: float  # Pattern match confidence (0-1)
     signal_weight: float  # Pattern importance (0.5-2.0)
     prior_probability: float  # Base rate (0-1)
-    
+
     @property
     def posterior_probability(self) -> float:
         """Bayesian posterior P(threat|signal)."""
         # Simplified Bayes: P(threat|signal) ≈ P(signal|threat) × P(threat) / P(signal)
         # Assuming P(signal|threat) ≈ confidence and P(signal) = 0.1 (normalizer)
         return min((self.confidence * self.prior_probability) / 0.1, 1.0)
-    
+
     @property
     def strength(self) -> SignalStrength:
         """Classify signal strength."""
@@ -156,7 +156,7 @@ class SignalScorer:
     - Signal strength classification
     - Multi-signal combination
     """
-    
+
     def score(self, signals: List[Signal]) -> Tuple[float, SignalStrength]:
         """
         Combine multiple signals using Bayesian inference.
@@ -169,25 +169,25 @@ class SignalScorer:
         """
         if not signals:
             return 0.0, SignalStrength.WEAK
-        
+
         # Bayesian combination: P(threat|signals) = 1 - ∏(1 - P(threat|signal_i))
         # This is the "noisy OR" model
         prob_not_threat = 1.0
         for signal in signals:
             prob_not_threat *= (1.0 - signal.posterior_probability)
-        
+
         combined_prob = 1.0 - prob_not_threat
-        
+
         # Weight by signal weights
         weighted_sum = sum(s.signal_weight * s.confidence for s in signals)
         weighted_avg = weighted_sum / len(signals) if signals else 0
-        
+
         # Final score combines Bayesian probability with weighted confidence
         final_score = (combined_prob * 0.6 + weighted_avg * 0.4)
-        
+
         # Classify strength
         max_strength = max(s.strength for s in signals)
-        
+
         return final_score, max_strength
 
 
@@ -204,39 +204,39 @@ class ChainDetector:
     - Temporal sequence detection (A → B → C)
     - Chain-specific risk multipliers
     """
-    
+
     def __init__(self):
         # Dependency rules: {(threat_id_1, threat_id_2): multiplier}
         self.dependency_rules: Dict[Tuple[str, str], float] = {
             # Financial + Credential = high risk
             ("FIN-001", "CRED-003"): 1.8,
             ("FIN-002", "CRED-003"): 1.7,
-            
+
             # Exfiltration + External contact = critical
             ("EXF-001", "BEH-004"): 2.0,
             ("EXF-002", "BEH-004"): 1.9,
-            
+
             # Privilege + Execution = critical
             ("PRIV-001", "EXEC-001"): 2.2,
             ("PRIV-002", "EXEC-002"): 2.0,
-            
+
             # Sleeper + Trigger = high risk
             ("SLEEP-001", "BEH-005"): 1.9,
-            
+
             # Multiple credential patterns
             ("CRED-001", "CRED-002"): 1.5,
             ("CRED-001", "CRED-003"): 1.6,
         }
-        
+
         # Sequence rules: [threat_id_1, threat_id_2, ...] → multiplier
         self.sequence_rules: Dict[Tuple[str, ...], float] = {
             # Recon → Credential → Exfil
             ("BEH-001", "CRED-003", "EXF-001"): 2.5,
-            
+
             # Social → Privilege → Exec
             ("SOC-001", "PRIV-001", "EXEC-001"): 2.3,
         }
-    
+
     def detect_chains(self, threat_ids: List[str]) -> List[ChainMatch]:
         """
         Detect pattern chains in threat list.
@@ -248,7 +248,7 @@ class ChainDetector:
             List of ChainMatch
         """
         chains = []
-        
+
         # Check dependency rules
         for (id1, id2), multiplier in self.dependency_rules.items():
             if id1 in threat_ids and id2 in threat_ids:
@@ -258,7 +258,7 @@ class ChainDetector:
                     risk_multiplier=multiplier,
                     explanation=f"{id1} + {id2} detected together",
                 ))
-        
+
         # Check sequence rules
         for seq, multiplier in self.sequence_rules.items():
             if all(tid in threat_ids for tid in seq):
@@ -268,9 +268,9 @@ class ChainDetector:
                     risk_multiplier=multiplier,
                     explanation=f"Attack sequence: {' → '.join(seq)}",
                 ))
-        
+
         return chains
-    
+
     def apply_chain_multiplier(
         self,
         base_score: float,
@@ -279,7 +279,7 @@ class ChainDetector:
         """Apply chain risk multipliers to base score."""
         if not chains:
             return base_score
-        
+
         # Take max multiplier (most severe chain)
         max_multiplier = max(c.risk_multiplier for c in chains)
         return min(base_score * max_multiplier, 100.0)
@@ -298,7 +298,7 @@ class ContextScorer:
     - Domain-specific weights (finance vs HR)
     - Trust-based adjustment
     """
-    
+
     def __init__(self):
         # Source risk multipliers
         self.source_weights: Dict[str, float] = {
@@ -311,7 +311,7 @@ class ContextScorer:
             SourceType.API_CALL.value: 0.9,
             SourceType.UNKNOWN.value: 1.0,
         }
-        
+
         # Domain risk multipliers
         self.domain_weights: Dict[str, float] = {
             Domain.FINANCE.value: 1.3,
@@ -321,7 +321,7 @@ class ContextScorer:
             Domain.OPERATIONS.value: 0.9,
             Domain.GENERAL.value: 1.0,
         }
-        
+
         # Trust level adjustments (-0.3 to +0.3)
         self.trust_adjustments: Dict[str, float] = {
             "verified_internal": -0.2,
@@ -330,7 +330,7 @@ class ContextScorer:
             "suspicious": +0.2,
             "known_bad": +0.3,
         }
-    
+
     def score(
         self,
         base_score: float,
@@ -351,20 +351,20 @@ class ContextScorer:
             (adjusted_score, adjustment_factor)
         """
         adjustment = 1.0
-        
+
         # Source type
         if source_type:
             adjustment *= self.source_weights.get(source_type, 1.0)
-        
+
         # Domain
         if domain:
             adjustment *= self.domain_weights.get(domain, 1.0)
-        
+
         # Trust (additive)
         if trust_level:
             trust_adj = self.trust_adjustments.get(trust_level, 0.0)
             adjustment += trust_adj
-        
+
         adjusted_score = base_score * adjustment
         return min(max(adjusted_score, 0.0), 100.0), adjustment
 
@@ -382,12 +382,12 @@ class EmbeddingMatcher:
     - Threat example matching
     - Semantic paraphrase detection
     """
-    
+
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
         self._model: Optional[Any] = None
         self._cache: Dict[str, Any] = {}
-    
+
     def _get_model(self):
         """Lazy-load embedding model."""
         if self._model is None and EMBEDDINGS_AVAILABLE:
@@ -397,19 +397,19 @@ class EmbeddingMatcher:
             except Exception as e:
                 logger.warning(f"Could not load embedding model: {e}")
         return self._model
-    
+
     def _embed(self, text: str):
         """Get cached or compute embedding."""
         if text in self._cache:
             return self._cache[text]
-        
+
         model = self._get_model()
         if model:
             emb = model.encode(text, convert_to_numpy=True)
             self._cache[text] = emb
             return emb
         return None
-    
+
     def match(
         self,
         content: str,
@@ -429,14 +429,14 @@ class EmbeddingMatcher:
         """
         if not EMBEDDINGS_AVAILABLE or not threat_examples:
             return 0.0, None
-        
+
         content_emb = self._embed(content)
         if content_emb is None:
             return 0.0, None
-        
+
         max_sim = 0.0
         best_example = None
-        
+
         for example in threat_examples:
             example_emb = self._embed(example)
             if example_emb is not None:
@@ -445,14 +445,14 @@ class EmbeddingMatcher:
                     np.dot(content_emb, example_emb) /
                     (np.linalg.norm(content_emb) * np.linalg.norm(example_emb))
                 )
-                
+
                 if similarity > max_sim:
                     max_sim = similarity
                     best_example = example
-        
+
         if max_sim >= threshold:
             return max_sim, best_example
-        
+
         return 0.0, None
 
 
@@ -470,14 +470,14 @@ class AdvancedAnalyzer:
     3. Context-aware adjustment
     4. Direct embedding matching
     """
-    
+
     def __init__(self, embedding_threshold: float = 0.75):
         self.signal_scorer = SignalScorer()
         self.chain_detector = ChainDetector()
         self.context_scorer = ContextScorer()
         self.embedding_matcher = EmbeddingMatcher()
         self.embedding_threshold = embedding_threshold
-    
+
     def analyze(
         self,
         threats: List[Any],  # List[ThreatMatch]
@@ -502,7 +502,7 @@ class AdvancedAnalyzer:
         # 1. Convert threats to signals
         signals = []
         threat_ids = []
-        
+
         for threat_match in threats:
             threat = threat_match.threat
             signal = Signal(
@@ -513,17 +513,17 @@ class AdvancedAnalyzer:
             )
             signals.append(signal)
             threat_ids.append(threat.id)
-        
+
         # 2. Bayesian signal scoring
         bayesian_score, signal_strength = self.signal_scorer.score(signals)
-        
+
         # 3. Pattern chain detection
         chains = self.chain_detector.detect_chains(threat_ids)
         base_score = bayesian_score * 100  # Scale to 0-100
-        
+
         if chains:
             base_score = self.chain_detector.apply_chain_multiplier(base_score, chains)
-        
+
         # 4. Context-aware adjustment
         adjusted_score, context_factor = self.context_scorer.score(
             base_score,
@@ -531,7 +531,7 @@ class AdvancedAnalyzer:
             domain=domain,
             trust_level=trust_level,
         )
-        
+
         # 5. Direct embedding matching (boost if semantic match)
         embedding_sim = 0.0
         if threats:
@@ -539,7 +539,7 @@ class AdvancedAnalyzer:
             all_examples = []
             for tm in threats:
                 all_examples.extend(tm.threat.examples)
-            
+
             if all_examples:
                 sim, matched = self.embedding_matcher.match(
                     content,
@@ -547,30 +547,30 @@ class AdvancedAnalyzer:
                     threshold=self.embedding_threshold,
                 )
                 embedding_sim = sim
-                
+
                 # Boost score if high semantic similarity
                 if sim >= self.embedding_threshold:
                     adjusted_score = min(adjusted_score * 1.2, 100.0)
-        
+
         # Generate explanation
         explanation_parts = [
             f"Bayesian score: {bayesian_score:.2f}",
             f"Signal strength: {signal_strength.value}",
         ]
-        
+
         if chains:
             explanation_parts.append(f"Chains detected: {len(chains)}")
             for chain in chains:
                 explanation_parts.append(f"  - {chain.explanation} (×{chain.risk_multiplier})")
-        
+
         if context_factor != 1.0:
             explanation_parts.append(f"Context adjustment: ×{context_factor:.2f}")
-        
+
         if embedding_sim > 0:
             explanation_parts.append(f"Embedding similarity: {embedding_sim:.2f}")
-        
+
         explanation = "\n".join(explanation_parts)
-        
+
         return AdvancedResult(
             risk_score=int(adjusted_score),
             bayesian_score=bayesian_score,

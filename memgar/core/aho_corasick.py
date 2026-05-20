@@ -70,11 +70,11 @@ class Match:
     end: int
     pattern_id: Optional[str] = None
     metadata: Optional[Dict] = None
-    
+
     @property
     def length(self) -> int:
         return self.end - self.start
-    
+
     def __hash__(self):
         return hash((self.pattern, self.start, self.end))
 
@@ -97,7 +97,7 @@ class TrieNode:
     Uses __slots__ for memory efficiency with large pattern sets.
     """
     __slots__ = ('children', 'fail', 'output', 'depth')
-    
+
     def __init__(self):
         self.children: Dict[str, TrieNode] = {}
         self.fail: Optional[TrieNode] = None
@@ -126,7 +126,7 @@ class AhoCorasick:
         matches = ac.search("ushers")
         # Returns matches for "she", "he", "hers"
     """
-    
+
     def __init__(self, case_sensitive: bool = False):
         """
         Initialize automaton.
@@ -139,11 +139,11 @@ class AhoCorasick:
         self._built = False
         self._pattern_count = 0
         self._build_lock = threading.Lock()
-    
+
     def _normalize(self, text: str) -> str:
         """Normalize text based on case sensitivity."""
         return text if self._case_sensitive else text.lower()
-    
+
     def add_pattern(
         self,
         pattern: str,
@@ -166,19 +166,19 @@ class AhoCorasick:
         """
         if self._built:
             raise RuntimeError("Cannot add patterns after build(). Create new automaton.")
-        
+
         if not pattern:
             return
-        
+
         normalized = self._normalize(pattern)
         node = self._root
-        
+
         for i, char in enumerate(normalized):
             if char not in node.children:
                 node.children[char] = TrieNode()
                 node.children[char].depth = i + 1
             node = node.children[char]
-        
+
         # Store pattern info at terminal node
         info = PatternInfo(
             pattern=pattern,  # Store original case
@@ -190,7 +190,7 @@ class AhoCorasick:
         )
         node.output.append(info)
         self._pattern_count += 1
-    
+
     def add_patterns(
         self,
         patterns: Iterable[Union[str, Tuple[str, str], Dict]],
@@ -217,7 +217,7 @@ class AhoCorasick:
                     severity=p.get("severity"),
                     metadata=p.get("metadata"),
                 )
-    
+
     def build(self) -> None:
         """
         Build failure links using BFS.
@@ -228,35 +228,35 @@ class AhoCorasick:
         with self._build_lock:
             if self._built:
                 return
-            
+
             # BFS to build failure links
             queue = deque()
-            
+
             # Initialize depth-1 nodes
             for char, child in self._root.children.items():
                 child.fail = self._root
                 queue.append(child)
-            
+
             # BFS for remaining nodes
             while queue:
                 current = queue.popleft()
-                
+
                 for char, child in current.children.items():
                     queue.append(child)
-                    
+
                     # Find failure link
                     fail = current.fail
                     while fail is not None and char not in fail.children:
                         fail = fail.fail
-                    
+
                     child.fail = fail.children[char] if fail else self._root
-                    
+
                     # Merge output from failure link (suffix outputs)
                     if child.fail and child.fail.output:
                         child.output = child.output + child.fail.output
-            
+
             self._built = True
-    
+
     def search(self, text: str) -> List[Match]:
         """
         Search text for all pattern matches.
@@ -269,22 +269,22 @@ class AhoCorasick:
         """
         if not self._built:
             raise RuntimeError("Must call build() before searching")
-        
+
         matches = []
         normalized = self._normalize(text)
         node = self._root
-        
+
         for i, char in enumerate(normalized):
             # Follow failure links until match or root
             while node is not None and char not in node.children:
                 node = node.fail
-            
+
             if node is None:
                 node = self._root
                 continue
-            
+
             node = node.children[char]
-            
+
             # Collect all matches at this position
             for info in node.output:
                 start = i - len(info.pattern) + 1
@@ -299,9 +299,9 @@ class AhoCorasick:
                         **info.metadata,
                     } if info.category or info.severity or info.metadata else None,
                 ))
-        
+
         return sorted(matches, key=lambda m: (m.start, -m.length))
-    
+
     def search_iter(self, text: str) -> Generator[Match, None, None]:
         """
         Iterator version for streaming/large texts.
@@ -310,20 +310,20 @@ class AhoCorasick:
         """
         if not self._built:
             raise RuntimeError("Must call build() before searching")
-        
+
         normalized = self._normalize(text)
         node = self._root
-        
+
         for i, char in enumerate(normalized):
             while node is not None and char not in node.children:
                 node = node.fail
-            
+
             if node is None:
                 node = self._root
                 continue
-            
+
             node = node.children[char]
-            
+
             for info in node.output:
                 start = i - len(info.pattern) + 1
                 yield Match(
@@ -337,22 +337,22 @@ class AhoCorasick:
                         **info.metadata,
                     } if info.category or info.severity or info.metadata else None,
                 )
-    
+
     def search_first(self, text: str) -> Optional[Match]:
         """Return first match only (early termination)."""
         for match in self.search_iter(text):
             return match
         return None
-    
+
     def contains_any(self, text: str) -> bool:
         """Check if text contains any pattern (fast boolean check)."""
         return self.search_first(text) is not None
-    
+
     @property
     def pattern_count(self) -> int:
         """Number of patterns in automaton."""
         return self._pattern_count
-    
+
     @property
     def is_built(self) -> bool:
         """Whether automaton has been built."""
@@ -390,7 +390,7 @@ class PatternMatcher:
         # Filter by category
         cred_matches = matcher.search(text, categories=["credential"])
     """
-    
+
     def __init__(
         self,
         case_sensitive: bool = False,
@@ -410,7 +410,7 @@ class PatternMatcher:
         self._categories: Dict[str, Set[str]] = {}  # category -> pattern_ids
         self._dirty = False
         self._lock = threading.RLock()
-        
+
         # Statistics
         self._stats = {
             "searches": 0,
@@ -418,7 +418,7 @@ class PatternMatcher:
             "total_search_time_ms": 0,
             "texts_processed": 0,
         }
-    
+
     def add_pattern(
         self,
         pattern: str,
@@ -435,7 +435,7 @@ class PatternMatcher:
         """
         with self._lock:
             pid = pattern_id or f"p_{len(self._patterns)}"
-            
+
             info = PatternInfo(
                 pattern=pattern,
                 pattern_id=pid,
@@ -444,19 +444,19 @@ class PatternMatcher:
                 metadata=metadata or {},
             )
             self._patterns[pid] = info
-            
+
             if category:
                 if category not in self._categories:
                     self._categories[category] = set()
                 self._categories[category].add(pid)
-            
+
             self._dirty = True
-            
+
             if self._auto_build:
                 self._rebuild()
-            
+
             return pid
-    
+
     def add_patterns(
         self,
         patterns: Iterable[Union[str, Dict]],
@@ -465,7 +465,7 @@ class PatternMatcher:
         with self._lock:
             old_auto = self._auto_build
             self._auto_build = False
-            
+
             ids = []
             for p in patterns:
                 if isinstance(p, str):
@@ -478,20 +478,20 @@ class PatternMatcher:
                         severity=p.get("severity"),
                         metadata=p.get("metadata"),
                     ))
-            
+
             self._auto_build = old_auto
             if self._auto_build:
                 self._rebuild()
-            
+
             return ids
-    
+
     def _rebuild(self) -> None:
         """Rebuild automaton with current patterns."""
         if not self._dirty:
             return
-        
+
         self._ac = AhoCorasick(case_sensitive=self._case_sensitive)
-        
+
         for info in self._patterns.values():
             self._ac.add_pattern(
                 pattern=info.pattern,
@@ -500,16 +500,16 @@ class PatternMatcher:
                 severity=info.severity,
                 metadata=info.metadata,
             )
-        
+
         self._ac.build()
         self._dirty = False
-    
+
     def build(self) -> None:
         """Explicitly build automaton."""
         with self._lock:
             self._dirty = True
             self._rebuild()
-    
+
     def search(
         self,
         text: str,
@@ -530,11 +530,11 @@ class PatternMatcher:
         with self._lock:
             if self._dirty:
                 self._rebuild()
-        
+
         start_time = time.perf_counter()
         matches = self._ac.search(text)
         elapsed = (time.perf_counter() - start_time) * 1000
-        
+
         # Filter if needed
         if categories or severities:
             filtered = []
@@ -546,15 +546,15 @@ class PatternMatcher:
                     continue
                 filtered.append(m)
             matches = filtered
-        
+
         # Update stats
         self._stats["searches"] += 1
         self._stats["matches_found"] += len(matches)
         self._stats["total_search_time_ms"] += elapsed
         self._stats["texts_processed"] += 1
-        
+
         return matches
-    
+
     def search_batch(
         self,
         texts: List[str],
@@ -576,51 +576,51 @@ class PatternMatcher:
         with self._lock:
             if self._dirty:
                 self._rebuild()
-        
+
         results = [None] * len(texts)
-        
+
         def search_one(idx: int, text: str):
             return idx, self._ac.search(text)
-        
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
                 executor.submit(search_one, i, t)
                 for i, t in enumerate(texts)
             ]
-            
+
             for future in as_completed(futures):
                 idx, matches = future.result()
-                
+
                 # Filter if needed
                 if categories:
                     matches = [
                         m for m in matches
                         if (m.metadata or {}).get("category") in categories
                     ]
-                
+
                 results[idx] = matches
-        
+
         self._stats["texts_processed"] += len(texts)
-        
+
         return results
-    
+
     def contains_any(self, text: str) -> bool:
         """Fast check if text contains any pattern."""
         with self._lock:
             if self._dirty:
                 self._rebuild()
         return self._ac.contains_any(text)
-    
+
     def get_categories(self) -> List[str]:
         """Get all registered categories."""
         return list(self._categories.keys())
-    
+
     def get_patterns_by_category(self, category: str) -> List[PatternInfo]:
         """Get patterns in a category."""
         if category not in self._categories:
             return []
         return [self._patterns[pid] for pid in self._categories[category]]
-    
+
     def get_statistics(self) -> Dict:
         """Get matcher statistics."""
         avg_time = (
@@ -632,7 +632,7 @@ class PatternMatcher:
             "category_count": len(self._categories),
             "avg_search_time_ms": round(avg_time, 3),
         }
-    
+
     def clear_statistics(self) -> None:
         """Reset statistics."""
         self._stats = {
@@ -641,7 +641,7 @@ class PatternMatcher:
             "total_search_time_ms": 0,
             "texts_processed": 0,
         }
-    
+
     @property
     def pattern_count(self) -> int:
         return len(self._patterns)
@@ -665,7 +665,7 @@ class ThreatScanner:
         if result.has_threats:
             print(f"Threats: {result.threat_count}")
     """
-    
+
     def __init__(self):
         self._matcher = PatternMatcher(case_sensitive=False)
         self._severity_scores = {
@@ -676,7 +676,7 @@ class ThreatScanner:
             "info": 10,
         }
         self._loaded = False
-    
+
     def add_threat_pattern(
         self,
         pattern: str,
@@ -693,7 +693,7 @@ class ThreatScanner:
             severity=severity,
             metadata={"description": description} if description else None,
         )
-    
+
     def load_patterns(self, patterns: List[Dict]) -> int:
         """
         Load patterns from list of dicts.
@@ -718,10 +718,10 @@ class ThreatScanner:
                             description=p.get("description"),
                         )
                         count += 1
-        
+
         self._loaded = True
         return count
-    
+
     def load_keywords_from_memgar(self) -> int:
         """
         Load keyword patterns from memgar.patterns module.
@@ -731,7 +731,7 @@ class ThreatScanner:
         """
         try:
             from memgar.patterns import PATTERNS
-            
+
             count = 0
             for threat in PATTERNS:
                 # Add keywords
@@ -744,14 +744,14 @@ class ThreatScanner:
                         description=threat.description,
                     )
                     count += 1
-            
+
             self._matcher.build()
             self._loaded = True
             return count
-            
+
         except ImportError:
             return 0
-    
+
     def scan(self, text: str) -> 'ScanResult':
         """
         Scan text for threats.
@@ -761,33 +761,33 @@ class ThreatScanner:
         """
         if not self._loaded:
             self._matcher.build()
-        
+
         matches = self._matcher.search(text)
-        
+
         # Calculate risk score
         risk_score = 0
         seen_ids = set()
-        
+
         for m in matches:
             meta = m.metadata or {}
             severity = meta.get("severity", "medium")
             score = self._severity_scores.get(severity, 25)
-            
+
             # Avoid double-counting same threat
             if m.pattern_id not in seen_ids:
                 risk_score += score
                 seen_ids.add(m.pattern_id)
-        
+
         # Cap at 100
         risk_score = min(100, risk_score)
-        
+
         return ScanResult(
             matches=matches,
             threat_count=len(seen_ids),
             risk_score=risk_score,
             has_threats=len(matches) > 0,
         )
-    
+
     def scan_batch(
         self,
         texts: List[str],
@@ -795,32 +795,32 @@ class ThreatScanner:
     ) -> List['ScanResult']:
         """Parallel batch scanning."""
         match_lists = self._matcher.search_batch(texts, max_workers=max_workers)
-        
+
         results = []
         for matches in match_lists:
             risk_score = 0
             seen_ids = set()
-            
+
             for m in matches:
                 meta = m.metadata or {}
                 severity = meta.get("severity", "medium")
                 score = self._severity_scores.get(severity, 25)
-                
+
                 if m.pattern_id not in seen_ids:
                     risk_score += score
                     seen_ids.add(m.pattern_id)
-            
+
             risk_score = min(100, risk_score)
-            
+
             results.append(ScanResult(
                 matches=matches,
                 threat_count=len(seen_ids),
                 risk_score=risk_score,
                 has_threats=len(matches) > 0,
             ))
-        
+
         return results
-    
+
     def get_statistics(self) -> Dict:
         """Get scanner statistics."""
         return self._matcher.get_statistics()
@@ -833,14 +833,14 @@ class ScanResult:
     threat_count: int
     risk_score: int
     has_threats: bool
-    
+
     def get_by_severity(self, severity: str) -> List[Match]:
         """Filter matches by severity."""
         return [
             m for m in self.matches
             if (m.metadata or {}).get("severity") == severity
         ]
-    
+
     def get_by_category(self, category: str) -> List[Match]:
         """Filter matches by category."""
         return [
@@ -859,7 +859,7 @@ __all__ = [
     "Match",
     "PatternInfo",
     "TrieNode",
-    
+
     # High-level
     "PatternMatcher",
     "ThreatScanner",
