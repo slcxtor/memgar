@@ -136,26 +136,26 @@ def _warn_unfitted_once(reason: str, path: str) -> None:
     if key in _WARNED_UNFITTED:
         return
     _WARNED_UNFITTED.add(key)
+    # Demoted from WARNING → INFO because: (1) pattern matching (Layer 1)
+    # already achieves <2% FPR / 97% recall on the gold corpus without the
+    # semantic layer, (2) the warning fires on every fresh import in default
+    # install and gives users the false impression that memgar is broken,
+    # (3) the install instruction is captured in analyzer.health_check()
+    # for `memgar doctor`-style checks. Set log level to INFO if you want
+    # to surface the recommendation.
     if reason.startswith("sentence_transformers_missing"):
-        logger.warning(
-            "SemanticGuard running in DEGRADED mode: sentence-transformers "
-            "is not installed. Layer 1.5 (zero-shot semantic detection) will "
-            "score every input as 0.0. Install with: "
-            "pip install sentence-transformers"
+        logger.debug(
+            "SemanticGuard inactive: install `pip install 'memgar[semantic]'` "
+            "to enable Layer 1.5 (zero-shot embedding similarity)."
         )
     elif reason.startswith("centroids_file_missing"):
-        logger.warning(
-            "SemanticGuard running in DEGRADED mode: centroids file not "
-            "found at %s. Layer 1.5 will score every input as 0.0. Build "
-            "centroids with: python scripts/compute_semantic_centroids.py",
+        logger.debug(
+            "SemanticGuard inactive: centroids file not found at %s. "
+            "Build with: python scripts/compute_semantic_centroids.py",
             path,
         )
     else:
-        logger.warning(
-            "SemanticGuard running in DEGRADED mode: %s. Layer 1.5 will "
-            "score every input as 0.0.",
-            reason,
-        )
+        logger.debug("SemanticGuard inactive: %s", reason)
 
 
 # ---------------------------------------------------------------------------

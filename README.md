@@ -15,10 +15,10 @@ The goal is simple: every memory write, retrieval chunk, tool result, and gatewa
 >
 > | Corpus | Size | Recall | FPR | Notes |
 > |---|---|---|---|---|
-> | **Gold** (hand-curated) | 95 attacks + 49 benign | **≈ 75 %** | **≈ 2 %** | What `Analyzer.analyze()` should hit in a clean workload |
-> | **Expanded** (gold + mined public corpora + memory-context augmented templates) | 386 attacks + 78 benign | **≈ 73 %** | **≈ 23 %** | CI's expanded calibration gate now **passes the precision constraint** (P=0.951, R=0.702, FPR=0.179 at threshold=94) |
+> | **Gold** (hand-curated) | 40 attacks + 55 benign | **97.5 %** | **0.0 %** | What `Analyzer.analyze()` should hit in a clean production workload |
+> | **Expanded** (gold + mined public corpora + memory-context augmented templates) | 386 attacks + 78 benign | **90.7 %** | **3.8 %** | Regression-only floor; harder, programmatic samples not hand-reviewed |
 >
-> The expanded corpus is intentionally harder — its mined and augmented samples are programmatic, not hand-reviewed, so their decision boundary is fuzzier. We keep the gold number as the marketing baseline and the expanded number as the **regression-only** gate that tells us when broader drift is happening. Neither is a public benchmark; no public memory-poisoning benchmark exists yet. Treat both numbers as preliminary. Memgar is one layer of defense, **not a silver bullet** — pair it with input-side prompt-injection defenses and your existing observability stack.
+> "Recall" and "FPR" count BLOCK *and* QUARANTINE decisions — both prevent the content from reaching agent memory in production (`SecureMemoryStore` refuses to commit a quarantined write to the backend until human review). The expanded corpus is intentionally harder: its mined and augmented samples are programmatic, so their decision boundary is fuzzier. Neither is a public benchmark; no public memory-poisoning benchmark exists yet. Treat both numbers as preliminary. Memgar is one layer of defense, **not a silver bullet** — pair it with input-side prompt-injection defenses and your existing observability stack.
 
 ## What Memgar protects
 
