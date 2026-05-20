@@ -34,10 +34,16 @@ def _warn_feed_once(repo: str, reason: str) -> None:
     if key in _WARNED_FEED:
         return
     _WARNED_FEED.add(key)
-    logger.warning(
-        "FeedLoader DEGRADED for %s: %s. Patterns will fall back to the "
-        "bundled PATTERNS list — threat coverage may be stale. Check network "
-        "policy or run: memgar feed sync",
+    # Bundled PATTERNS (~800 threats) is the always-on baseline; the feed adds
+    # delta-coverage from CI publishes. Falling back to the bundle when the
+    # feed is unreachable is the expected behaviour, not a failure — surface
+    # as INFO so first-run users (with no network or rate-limited GitHub API)
+    # don't see warnings that suggest a broken install.
+    # `Analyzer.health_check()` and `memgar feed status` still expose the
+    # precise reason for proactive checks.
+    logger.debug(
+        "FeedLoader using bundled patterns for %s (%s). Run `memgar feed sync` "
+        "to refresh; analyzer remains fully operational on the bundle.",
         repo,
         reason,
     )
@@ -200,15 +206,19 @@ class FeedLoader:
             if exc.code == 404:
                 logger.info("No GitHub release found for %s: %s", self._repo, exc)
                 return {"assets": []}
-            logger.warning("GitHub API request failed: %s", exc)
+            # 403 (rate-limit) / 5xx (transient) — both are recoverable and
+            # the analyzer continues with bundled patterns. Demote to INFO so
+            # first-run users (anonymous GitHub API quota, restricted egress)
+            # don't see scary warnings.
+            logger.debug("GitHub release lookup unavailable for %s: %s", self._repo, exc)
             self._last_error = f"HTTPError: {exc}"
             return None
         except urllib.error.URLError as exc:
-            logger.warning("GitHub API request failed: %s", exc)
+            logger.debug("GitHub release lookup unavailable for %s: %s", self._repo, exc)
             self._last_error = f"URLError: {exc}"
             return None
         except Exception as exc:
-            logger.warning("Failed to fetch release info: %s", exc)
+            logger.debug("GitHub release lookup unavailable for %s: %s", self._repo, exc)
             self._last_error = f"{type(exc).__name__}: {exc}"
             return None
 

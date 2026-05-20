@@ -27,14 +27,30 @@ class FeedVerifier:
 
     def verify(self, bundle_bytes: bytes, signature_b64: str) -> bool:
         """Return True if *signature_b64* is a valid Ed25519 signature over *bundle_bytes*."""
-        try:
-            from cryptography.exceptions import InvalidSignature
-            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-        except BaseException as exc:  # pyo3_runtime.PanicException is BaseException, not ImportError
+        # Pre-flight check: `cryptography` is built on `_cffi_backend`, and if
+        # the C-extension isn't present the pyo3 layer panics on import and
+        # writes a backtrace to stderr BEFORE Python raises. Detect the
+        # missing backend first so we can raise a clean ImportError.
+        import importlib.util as _ilu
+        if _ilu.find_spec("_cffi_backend") is None:
             raise ImportError(
                 "Feed signature verification requires 'cryptography'. "
                 "Install with: pip install 'memgar[feed]'"
-            ) from exc
+            )
+        # Capture stderr around the import so a panicking system-installed
+        # cryptography (e.g. distro package with mismatched libffi) doesn't
+        # leak a Rust backtrace into the user's terminal — we surface a
+        # clean ImportError instead.
+        import contextlib, io, os
+        with contextlib.redirect_stderr(io.StringIO()):
+            try:
+                from cryptography.exceptions import InvalidSignature
+                from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+            except BaseException as exc:  # pyo3_runtime.PanicException is BaseException, not ImportError
+                raise ImportError(
+                    "Feed signature verification requires a functional 'cryptography' "
+                    "install. Install with: pip install 'memgar[feed]'"
+                ) from exc
 
         try:
             key_bytes = base64.b64decode(self._public_key_b64)

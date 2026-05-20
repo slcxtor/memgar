@@ -194,8 +194,13 @@ class SimilarityLayer:
                     len(self._examples),
                 )
             except ImportError:
-                logger.warning(
-                    "SimilarityLayer unavailable: install sentence-transformers"
+                # Demoted from WARNING → DEBUG: pattern matching alone meets
+                # quality bars; the install hint is preserved for users who
+                # opt in to verbose logging or run `memgar doctor`.
+                logger.debug(
+                    "SimilarityLayer inactive: install `pip install "
+                    "'memgar[semantic]'` to enable embedding-based "
+                    "similarity scoring."
                 )
                 self._available = False
             except Exception as exc:

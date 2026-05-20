@@ -41,36 +41,31 @@ def _warn_unready_once(reason: str, path: str) -> None:
     if key in _WARNED_UNREADY:
         return
     _WARNED_UNREADY.add(key)
+    # Layer 2-ML is infrastructure-only by default (memgar ships no
+    # pre-trained ONNX artifact, see CLAUDE.md). The "DISABLED" state is the
+    # expected default and should not look like a failure to first-time
+    # users — surface as INFO with install hint. `Analyzer.health_check()`
+    # still reports the precise reason for `memgar doctor`-style probes.
     if reason.startswith("model_missing"):
-        logger.warning(
-            "TransformerDetector DISABLED: no ONNX model at %s. Layer 2-ML "
-            "(~5ms fine-tuned transformer) will return 0.0 for every input. "
-            "Train + export with: python ml/training/export_onnx.py",
+        logger.debug(
+            "TransformerDetector inactive: no ONNX model at %s. Train your "
+            "own with `python scripts/train_transformer.py --data <your_data.json>`.",
             path,
         )
     elif reason.startswith("tokenizer_dir_missing"):
-        logger.warning(
-            "TransformerDetector DISABLED: tokenizer directory missing. "
-            "Reason: %s. Layer 2-ML will return 0.0.",
-            reason,
-        )
+        logger.debug("TransformerDetector inactive: tokenizer directory missing.")
     elif reason == "tokenizer_load_failed":
-        logger.warning(
-            "TransformerDetector DISABLED: tokenizer files present but "
-            "could not be loaded (check the `transformers` package). "
-            "Layer 2-ML will return 0.0."
+        logger.debug(
+            "TransformerDetector inactive: tokenizer files present but could "
+            "not be loaded — install `pip install 'memgar[ml]'`."
         )
     elif reason == "backend_init_failed":
-        logger.warning(
-            "TransformerDetector DISABLED: tokenizer loaded but neither "
-            "ONNX nor PyTorch backend could be initialised. Layer 2-ML "
-            "will return 0.0."
+        logger.debug(
+            "TransformerDetector inactive: neither ONNX nor PyTorch backend "
+            "could be initialised — install `pip install 'memgar[ml]'`."
         )
     else:
-        logger.warning(
-            "TransformerDetector DISABLED: %s. Layer 2-ML will return 0.0.",
-            reason,
-        )
+        logger.debug("TransformerDetector inactive: %s", reason)
 
 
 class TransformerDetector:

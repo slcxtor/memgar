@@ -139,6 +139,21 @@ def _recommend_profile(curve: list[dict], *, name: str, **constraints) -> dict |
 
 
 def _decision_block_rate(rows: list[dict]) -> float:
+    """Production rejection rate — counts BLOCK *and* QUARANTINE.
+
+    Both decisions prevent the content from reaching the agent's memory store:
+    BLOCK rejects outright; QUARANTINE holds the content out of context until
+    human review (memgar's secure-memory write boundary refuses to commit a
+    quarantined entry to the active backend). For attack samples this is the
+    true recall; for benign samples it is the user-visible false-positive rate.
+    """
+    if not rows:
+        return 0.0
+    return sum(1 for r in rows if r["decision"] in ("block", "quarantine")) / len(rows)
+
+
+def _decision_block_only_rate(rows: list[dict]) -> float:
+    """Hard-block-only rate (excludes QUARANTINE). Useful for hardest-UX impact."""
     if not rows:
         return 0.0
     return sum(1 for r in rows if r["decision"] == "block") / len(rows)
@@ -218,7 +233,15 @@ def main() -> int:
     rows: list[dict[str, Any]] = []
     t0 = time.perf_counter()
     for i, row in enumerate(samples):
-        entry = MemoryEntry(content=row["text"])
+        # Each calibration sample is an INDEPENDENT memory write — give it a
+        # unique source_id and agent_id so cross-entry correlation (Layer 6)
+        # and behavioral baseline (Layer 4) don't bleed across unrelated
+        # samples within a single calibration batch.
+        entry = MemoryEntry(
+            content=row["text"],
+            source_id=f"calib-{i}",
+            metadata={"agent_id": f"calib-{i}"},
+        )
         try:
             res = analyzer.analyze(entry)
         except Exception as e:
@@ -251,7 +274,10 @@ def main() -> int:
         bucket = per_lang[lang]
         bucket["n"] += 1
         # Decision-based confusion (block = positive prediction)
-        pred = 1 if r["decision"] == "block" else 0
+        # Treat BLOCK + QUARANTINE as positive detection — both prevent the
+        # content from reaching agent memory in production (SecureMemoryStore
+        # refuses to commit quarantined writes to the active backend).
+        pred = 1 if r["decision"] in ("block", "quarantine") else 0
         if pred == 1 and r["label"] == 1:
             bucket["tp"] += 1
         elif pred == 1 and r["label"] == 0:
@@ -273,7 +299,7 @@ def main() -> int:
             continue
         cat = r["category"]
         per_cat[cat]["n"] += 1
-        if r["decision"] == "block":
+        if r["decision"] in ("block", "quarantine"):
             per_cat[cat]["blocked"] += 1
         elif len(per_cat[cat]["missed_examples"]) < 3:
             per_cat[cat]["missed_examples"].append({
@@ -322,12 +348,22 @@ def main() -> int:
             "attack": _summary(attack_scores),
         },
         "analyzer_default_metrics": {
+            # "block_rate_*" — production rejection rate (BLOCK + QUARANTINE).
+            # Used by CI gates as the true recall/FPR.
             "block_rate_overall": round(_decision_block_rate(rows), 4),
             "block_rate_attack": round(
                 _decision_block_rate([r for r in rows if r["label"] == 1]), 4
             ),
             "block_rate_benign": round(
                 _decision_block_rate([r for r in rows if r["label"] == 0]), 4
+            ),
+            # "hard_block_*" — hard BLOCK only (excludes QUARANTINE). Tracks
+            # the worst-case user-disrupting FPs (content fully rejected).
+            "hard_block_rate_attack": round(
+                _decision_block_only_rate([r for r in rows if r["label"] == 1]), 4
+            ),
+            "hard_block_rate_benign": round(
+                _decision_block_only_rate([r for r in rows if r["label"] == 0]), 4
             ),
         },
         "threshold_sweep": curve,

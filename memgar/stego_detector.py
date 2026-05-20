@@ -169,23 +169,37 @@ class StegoDetector:
         cleaned_chars: List[str] = []
 
         # 1. Zero-width / invisible characters
+        # A lone ZWSP is almost always web-scraping noise (HTML→text artifacts).
+        # The classic attack vector is ZWSPs *embedded between word characters*
+        # ("G​r​a​n​t admin") — that's what we flag.
+        # Standalone ZWSPs (between whitespace) are quarantined only when
+        # clustered (>=3) since lone scrape artifacts dominated FPR.
         zw_count = 0
         zw_positions: List[int] = []
+        zw_embedded = 0  # ZWSPs between word characters (real obfuscation signal)
+        prev_was_word = False
         for i, ch in enumerate(content):
             if ch in _ZERO_WIDTH:
                 zw_count += 1
                 zw_positions.append(i)
+                # Check if next char is a word character → ZWSP embedded in a word
+                if prev_was_word and i + 1 < len(content) and content[i + 1].isalnum():
+                    zw_embedded += 1
             else:
                 cleaned_chars.append(ch)
-        if zw_count > 0:
-            severity = "critical" if zw_count >= 5 else "high"
+                prev_was_word = ch.isalnum()
+        # Suppress noise: standalone (non-embedded) ZWSPs of <3 are not attacks.
+        should_report = zw_embedded >= 1 or zw_count >= 3
+        if should_report:
+            severity = "critical" if (zw_count >= 5 or zw_embedded >= 3) else "high"
             sample_pos = (zw_positions[0], zw_positions[-1] + 1)
             report.add(
                 StegoFinding(
                     technique="zero_width",
                     severity=severity,
                     description=(
-                        f"{zw_count} zero-width / invisible character(s) detected — "
+                        f"{zw_count} zero-width / invisible character(s) detected "
+                        f"({zw_embedded} embedded in words) — "
                         "common prompt-injection covert channel"
                     ),
                     sample=content[max(0, zw_positions[0] - 8):zw_positions[0] + 8],

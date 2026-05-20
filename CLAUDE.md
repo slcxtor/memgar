@@ -101,6 +101,11 @@ pip install -e ".[dev,adversarial,feed,observability]"
 
 # Run tests
 python -m pytest -q                    # ~1594 pass, ~81 skip, 0 errors, 0 failures
+
+# Pattern authoring note: Analyzer._compile_patterns() forces re.IGNORECASE
+# on every regex (see analyzer.py:1243). To require case-sensitive matching
+# inside a pattern — e.g. bare "DAN" must NOT match Turkish ablative
+# "...'dan" — wrap with the inline group r"(?-i:\bDAN\b)".
 python -m pytest tests/test_analyzer.py -v      # Layer 3+4 integration tests
 python -m pytest tests/test_feed.py -v          # Feed verify/cache/loader tests
 python -m pytest tests/test_adversarial.py -v   # Red-team tests

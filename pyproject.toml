@@ -121,6 +121,16 @@ gateway = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
     "httpx>=0.25.0",
+    # Production gateway deployments expect full multi-layer protection.
+    # Bundle semantic + feed by default so `memgar[gateway]` is genuinely
+    # production-ready out of the box (Layer 1 + Layer 1.5 + signed feed).
+    "memgar[semantic,feed]",
+]
+production = [
+    # Curated bundle for "I'm deploying memgar in front of an agent".
+    # All four detection layers active (Layer 1 pattern + 1.5 semantic +
+    # 3 trust + 4 behavioral), feed verification, observability metrics.
+    "memgar[semantic,feed,observability,gateway]",
 ]
 all = [
     "memgar[dev,semantic,ml,llm,langchain,llamaindex,crewai,autogen,watch,adversarial,feed,observability,tracing,server,graph,gateway]",
