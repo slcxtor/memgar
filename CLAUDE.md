@@ -100,7 +100,7 @@ memgar.start_metrics_server(port=9090)  # idempotent
 pip install -e ".[dev,adversarial,feed,observability]"
 
 # Run tests
-python -m pytest -q                    # ~1600+ pass, ~11 skip (crypto), 0 errors
+python -m pytest -q                    # ~1594 pass, ~81 skip, 0 errors, 0 failures
 python -m pytest tests/test_analyzer.py -v      # Layer 3+4 integration tests
 python -m pytest tests/test_feed.py -v          # Feed verify/cache/loader tests
 python -m pytest tests/test_adversarial.py -v   # Red-team tests
