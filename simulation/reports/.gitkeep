@@ -1,0 +1,3 @@
+This directory is created by simulation.runner. Generated files
+(report.md, scoreboard.json, audit-*.jsonl, ledgers/) are local
+artefacts and are not committed.

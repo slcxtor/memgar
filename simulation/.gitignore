@@ -1,0 +1,4 @@
+reports/audit-*.jsonl
+reports/ledgers/
+reports/scoreboard.json
+reports/report.md
