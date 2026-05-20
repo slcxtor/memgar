@@ -104,7 +104,7 @@ class PDFAnalyzer:
             for threat in result.threats:
                 print(f"Threat: {threat.threat_type.value}")
     """
-    
+
     # Dangerous JavaScript patterns
     JS_DANGEROUS_PATTERNS = [
         r"(?i)this\.exportDataObject",
@@ -125,7 +125,7 @@ class PDFAnalyzer:
         r"(?i)shellcode",
         r"(?i)heap\s*spray",
     ]
-    
+
     # Prompt injection patterns (for AI context)
     PROMPT_INJECTION_PATTERNS = [
         r"(?i)ignore\s+(all\s+)?previous\s+instructions?",
@@ -138,7 +138,7 @@ class PDFAnalyzer:
         r"(?i)send\s+.{0,30}@[a-z0-9.-]+\.[a-z]{2,}",
         r"(?i)bypass\s+(all\s+)?(security|safety|filter)",
     ]
-    
+
     # Suspicious action types
     SUSPICIOUS_ACTIONS = [
         "/Launch",
@@ -156,7 +156,7 @@ class PDFAnalyzer:
         "/Movie",
         "/RichMedia",
     ]
-    
+
     # Malicious URL patterns
     MALICIOUS_URL_PATTERNS = [
         r"(?i)https?://[a-z0-9.-]+\.(ru|cn|tk|ml|ga|cf|gq|xyz|top|buzz)/",
@@ -165,7 +165,7 @@ class PDFAnalyzer:
         r"(?i)data:",  # Data URLs
         r"(?i)javascript:",  # JavaScript URLs
     ]
-    
+
     def __init__(
         self,
         text_analyzer: Optional[Any] = None,
@@ -186,17 +186,17 @@ class PDFAnalyzer:
         self.max_size_bytes = int(max_file_size_mb * 1024 * 1024)
         self.extract_text = extract_text
         self.check_encrypted = check_encrypted
-        
+
         # Compile patterns
         self._js_patterns = [re.compile(p) for p in self.JS_DANGEROUS_PATTERNS]
         self._injection_patterns = [re.compile(p) for p in self.PROMPT_INJECTION_PATTERNS]
         self._url_patterns = [re.compile(p) for p in self.MALICIOUS_URL_PATTERNS]
-        
+
         self.capabilities = {
             "pypdf": PYPDF_AVAILABLE,
             "pdfplumber": PDFPLUMBER_AVAILABLE,
         }
-    
+
     def analyze(
         self,
         pdf_data: Union[bytes, str],
@@ -214,12 +214,12 @@ class PDFAnalyzer:
         """
         import time
         start_time = time.time()
-        
+
         threats = []
         warnings = []
         file_info = {}
         extracted_text = None
-        
+
         # Normalize input
         try:
             pdf_bytes = self._normalize_input(pdf_data)
@@ -235,7 +235,7 @@ class PDFAnalyzer:
                 )],
                 analysis_time_ms=(time.time() - start_time) * 1000,
             )
-        
+
         # Basic validation
         if not pdf_bytes.startswith(b'%PDF'):
             threats.append(PDFThreat(
@@ -244,26 +244,26 @@ class PDFAnalyzer:
                 confidence=0.9,
                 description="File does not have valid PDF header",
             ))
-        
+
         # File info
         file_info = self._get_file_info(pdf_bytes, filename)
-        
+
         # Raw content analysis (works without libraries)
         raw_threats = self._analyze_raw_content(pdf_bytes)
         threats.extend(raw_threats)
-        
+
         # Incremental update detection
         inc_threats = self._detect_incremental_updates(pdf_bytes)
         threats.extend(inc_threats)
-        
+
         # PyPDF-based analysis
         if PYPDF_AVAILABLE:
             try:
                 reader = PdfReader(io.BytesIO(pdf_bytes))
-                
+
                 file_info["pages"] = len(reader.pages)
                 file_info["encrypted"] = reader.is_encrypted
-                
+
                 if reader.is_encrypted and self.check_encrypted:
                     threats.append(PDFThreat(
                         threat_type=PDFThreatType.ENCRYPTED_CONTENT,
@@ -271,44 +271,44 @@ class PDFAnalyzer:
                         confidence=0.5,
                         description="PDF is encrypted - content cannot be fully analyzed",
                     ))
-                
+
                 if not reader.is_encrypted:
                     # Metadata analysis
                     meta_threats = self._analyze_metadata(reader)
                     threats.extend(meta_threats)
-                    
+
                     # JavaScript analysis
                     js_threats = self._analyze_javascript(reader)
                     threats.extend(js_threats)
-                    
+
                     # Action analysis
                     action_threats = self._analyze_actions(reader)
                     threats.extend(action_threats)
-                    
+
                     # Embedded files
                     embed_threats = self._analyze_embedded_files(reader)
                     threats.extend(embed_threats)
-                    
+
                     # Form fields
                     form_threats = self._analyze_forms(reader)
                     threats.extend(form_threats)
-                    
+
                     # Text extraction and analysis
                     if self.extract_text:
                         text_result = self._extract_and_analyze_text(reader)
                         extracted_text = text_result.get("text")
                         if text_result.get("threats"):
                             threats.extend(text_result["threats"])
-                            
+
             except Exception as e:
                 warnings.append(f"PyPDF analysis failed: {str(e)}")
         else:
             warnings.append("PyPDF not available - limited analysis")
-        
+
         # Calculate risk
         risk_score = self._calculate_risk_score(threats)
         is_safe = risk_score < 30 and not any(t.severity == "critical" for t in threats)
-        
+
         return PDFAnalysisResult(
             is_safe=is_safe,
             risk_score=risk_score,
@@ -318,7 +318,7 @@ class PDFAnalyzer:
             analysis_time_ms=(time.time() - start_time) * 1000,
             warnings=warnings,
         )
-    
+
     def _normalize_input(self, pdf_data: Union[bytes, str]) -> bytes:
         """Convert input to bytes."""
         if isinstance(pdf_data, bytes):
@@ -329,36 +329,36 @@ class PDFAnalyzer:
             return base64.b64decode(pdf_data)
         else:
             raise ValueError(f"Unsupported input type: {type(pdf_data)}")
-    
+
     def _get_file_info(self, data: bytes, filename: Optional[str]) -> Dict[str, Any]:
         """Get basic file information."""
         import hashlib
-        
+
         info = {
             "size_bytes": len(data),
             "md5": hashlib.md5(data, usedforsecurity=False).hexdigest(),
         }
-        
+
         if filename:
             info["filename"] = filename
-        
+
         # Extract PDF version
         match = re.match(rb'%PDF-(\d+\.\d+)', data)
         if match:
             info["pdf_version"] = match.group(1).decode()
-        
+
         return info
-    
+
     def _analyze_raw_content(self, data: bytes) -> List[PDFThreat]:
         """Analyze raw PDF bytes for threats."""
         threats = []
-        
+
         # Convert to string for pattern matching
         try:
             content = data.decode('latin-1')
         except:
             content = data.decode('utf-8', errors='ignore')
-        
+
         # Check for JavaScript
         js_indicators = [
             '/JavaScript',
@@ -377,7 +377,7 @@ class PDFAnalyzer:
                     description=f"JavaScript indicator found: {indicator}",
                 ))
                 break
-        
+
         # Check for Launch action
         if '/Launch' in content:
             threats.append(PDFThreat(
@@ -386,7 +386,7 @@ class PDFAnalyzer:
                 confidence=0.95,
                 description="PDF contains Launch action (can execute external programs)",
             ))
-        
+
         # Check for suspicious actions
         for action in self.SUSPICIOUS_ACTIONS:
             if action in content:
@@ -398,7 +398,7 @@ class PDFAnalyzer:
                         confidence=0.7,
                         description=f"Suspicious action type found: {action}",
                     ))
-        
+
         # Check for embedded files
         if '/EmbeddedFiles' in content or '/EmbeddedFile' in content:
             threats.append(PDFThreat(
@@ -407,7 +407,7 @@ class PDFAnalyzer:
                 confidence=0.6,
                 description="PDF contains embedded files",
             ))
-        
+
         # Check for URLs
         for pattern in self._url_patterns:
             matches = pattern.findall(content)
@@ -416,11 +416,11 @@ class PDFAnalyzer:
                     threat_type=PDFThreatType.MALICIOUS_URL,
                     severity="high" if 'javascript:' in str(matches) else "medium",
                     confidence=0.75,
-                    description=f"Suspicious URL pattern found",
+                    description="Suspicious URL pattern found",
                     extracted_content=str(matches[:3]),
                 ))
                 break
-        
+
         # Check for prompt injection patterns
         for pattern in self._injection_patterns:
             if pattern.search(content):
@@ -431,7 +431,7 @@ class PDFAnalyzer:
                     description="Prompt injection pattern detected in PDF",
                 ))
                 break
-        
+
         # Check for obfuscated JavaScript (hex encoded)
         if re.search(r'/JS\s*<[0-9A-Fa-f]{20,}>', content):
             threats.append(PDFThreat(
@@ -440,7 +440,7 @@ class PDFAnalyzer:
                 confidence=0.9,
                 description="Hex-encoded JavaScript detected",
             ))
-        
+
         # Check for stream with suspicious filters
         suspicious_filters = ['ASCIIHexDecode', 'ASCII85Decode', 'RunLengthDecode']
         for f in suspicious_filters:
@@ -455,16 +455,16 @@ class PDFAnalyzer:
                         description=f"Multiple stream filters detected ({filter_count})",
                     ))
                     break
-        
+
         return threats
-    
+
     def _detect_incremental_updates(self, data: bytes) -> List[PDFThreat]:
         """Detect potentially malicious incremental updates."""
         threats = []
-        
+
         # Count %%EOF markers
         eof_count = data.count(b'%%EOF')
-        
+
         if eof_count > 1:
             threats.append(PDFThreat(
                 threat_type=PDFThreatType.INCREMENTAL_UPDATE,
@@ -473,24 +473,24 @@ class PDFAnalyzer:
                 description=f"PDF has {eof_count} incremental updates (may hide content)",
                 metadata={"eof_count": eof_count},
             ))
-        
+
         return threats
-    
+
     def _analyze_metadata(self, reader: "PdfReader") -> List[PDFThreat]:
         """Analyze PDF metadata for threats."""
         threats = []
-        
+
         try:
             metadata = reader.metadata
             if not metadata:
                 return threats
-            
+
             # Check each metadata field
             for key in ['/Author', '/Title', '/Subject', '/Keywords', '/Creator', '/Producer']:
                 value = metadata.get(key, '')
                 if value:
                     value = str(value)
-                    
+
                     # Check for injection patterns
                     for pattern in self._injection_patterns:
                         if pattern.search(value):
@@ -503,7 +503,7 @@ class PDFAnalyzer:
                                 extracted_content=value[:200],
                             ))
                             break
-                    
+
                     # Check for URLs
                     if re.search(r'https?://', value):
                         for url_pattern in self._url_patterns:
@@ -517,21 +517,21 @@ class PDFAnalyzer:
                                     extracted_content=value[:100],
                                 ))
                                 break
-                                
+
         except Exception:
             pass
-        
+
         return threats
-    
+
     def _analyze_javascript(self, reader: "PdfReader") -> List[PDFThreat]:
         """Analyze JavaScript in PDF."""
         threats = []
-        
+
         try:
             # Check for JavaScript in document catalog
             if hasattr(reader, 'trailer') and reader.trailer:
                 root = reader.trailer.get('/Root', {})
-                
+
                 # Check Names dictionary
                 names = root.get('/Names', {})
                 if '/JavaScript' in str(names):
@@ -541,7 +541,7 @@ class PDFAnalyzer:
                         confidence=0.85,
                         description="JavaScript found in document Names dictionary",
                     ))
-                
+
                 # Check OpenAction
                 open_action = root.get('/OpenAction', {})
                 if '/JavaScript' in str(open_action) or '/JS' in str(open_action):
@@ -551,16 +551,16 @@ class PDFAnalyzer:
                         confidence=0.95,
                         description="JavaScript in OpenAction (executes on document open)",
                     ))
-                    
+
         except Exception:
             pass
-        
+
         return threats
-    
+
     def _analyze_actions(self, reader: "PdfReader") -> List[PDFThreat]:
         """Analyze PDF actions."""
         threats = []
-        
+
         try:
             for page_num, page in enumerate(reader.pages):
                 # Check page annotations for actions
@@ -568,12 +568,12 @@ class PDFAnalyzer:
                     annots = page['/Annots']
                     for annot in annots:
                         annot_obj = annot.get_object() if hasattr(annot, 'get_object') else annot
-                        
+
                         # Check for action
                         if '/A' in annot_obj:
                             action = annot_obj['/A']
                             action_type = action.get('/S', '')
-                            
+
                             if action_type == '/Launch':
                                 threats.append(PDFThreat(
                                     threat_type=PDFThreatType.LAUNCH_ACTION,
@@ -595,21 +595,21 @@ class PDFAnalyzer:
                                                 extracted_content=str(uri)[:100],
                                             ))
                                             break
-                                            
+
         except Exception:
             pass
-        
+
         return threats
-    
+
     def _analyze_embedded_files(self, reader: "PdfReader") -> List[PDFThreat]:
         """Analyze embedded files in PDF."""
         threats = []
-        
+
         try:
             if hasattr(reader, 'trailer') and reader.trailer:
                 root = reader.trailer.get('/Root', {})
                 names = root.get('/Names', {})
-                
+
                 if '/EmbeddedFiles' in names:
                     threats.append(PDFThreat(
                         threat_type=PDFThreatType.EMBEDDED_FILE,
@@ -617,7 +617,7 @@ class PDFAnalyzer:
                         confidence=0.7,
                         description="PDF contains embedded files",
                     ))
-                    
+
                     # Try to get file names
                     embedded = names.get('/EmbeddedFiles', {})
                     if '/Names' in embedded:
@@ -636,21 +636,21 @@ class PDFAnalyzer:
                                             extracted_content=item,
                                         ))
                                         break
-                                        
+
         except Exception:
             pass
-        
+
         return threats
-    
+
     def _analyze_forms(self, reader: "PdfReader") -> List[PDFThreat]:
         """Analyze PDF forms for threats."""
         threats = []
-        
+
         try:
             if hasattr(reader, 'trailer') and reader.trailer:
                 root = reader.trailer.get('/Root', {})
                 acro_form = root.get('/AcroForm', {})
-                
+
                 if acro_form:
                     # Check for submit action
                     if '/XFA' in acro_form:
@@ -660,12 +660,12 @@ class PDFAnalyzer:
                             confidence=0.8,
                             description="PDF contains XFA form (can contain scripts)",
                         ))
-                    
+
                     # Check fields
                     fields = acro_form.get('/Fields', [])
                     for field in fields:
                         field_obj = field.get_object() if hasattr(field, 'get_object') else field
-                        
+
                         # Check for JavaScript in field
                         if '/AA' in field_obj:  # Additional actions
                             threats.append(PDFThreat(
@@ -675,29 +675,29 @@ class PDFAnalyzer:
                                 description="Form field with additional actions",
                             ))
                             break
-                            
+
         except Exception:
             pass
-        
+
         return threats
-    
+
     def _extract_and_analyze_text(self, reader: "PdfReader") -> Dict[str, Any]:
         """Extract text and analyze for threats."""
         result = {"text": None, "threats": []}
-        
+
         try:
             text_parts = []
             for page in reader.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text_parts.append(page_text)
-            
+
             full_text = '\n'.join(text_parts)
             result["text"] = full_text[:10000]  # Limit
-            
+
             if not full_text:
                 return result
-            
+
             # Check for prompt injection
             for pattern in self._injection_patterns:
                 if pattern.search(full_text):
@@ -709,14 +709,14 @@ class PDFAnalyzer:
                         extracted_content=full_text[:500],
                     ))
                     break
-            
+
             # Use Memgar analyzer if available
             if self.text_analyzer and len(full_text) > 20:
                 try:
                     from ..models import Decision, MemoryEntry
                     entry = MemoryEntry(content=full_text[:5000])
                     analysis = self.text_analyzer.analyze(entry)
-                    
+
                     if analysis.decision != Decision.ALLOW:
                         result["threats"].append(PDFThreat(
                             threat_type=PDFThreatType.PROMPT_INJECTION,
@@ -727,29 +727,29 @@ class PDFAnalyzer:
                         ))
                 except Exception:
                     pass
-                    
+
         except Exception:
             pass
-        
+
         return result
-    
+
     def _calculate_risk_score(self, threats: List[PDFThreat]) -> int:
         """Calculate overall risk score."""
         if not threats:
             return 0
-        
+
         severity_scores = {
             "critical": 40,
             "high": 25,
             "medium": 15,
             "low": 5,
         }
-        
+
         total = sum(
             severity_scores.get(t.severity, 10) * t.confidence
             for t in threats
         )
-        
+
         return min(100, int(total))
 
 

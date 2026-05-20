@@ -56,7 +56,7 @@ class ThreatEvent:
     risk_score: int
     content_preview: str = ""
     source: str = "unknown"
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "timestamp": datetime.fromtimestamp(self.timestamp).isoformat(),
@@ -76,7 +76,7 @@ class CircuitBreakerStats:
     trips_count: int = 0
     last_trip_time: Optional[float] = None
     state: CircuitState = CircuitState.CLOSED
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "total_threats": self.total_threats,
@@ -89,7 +89,7 @@ class CircuitBreakerStats:
 
 class AgentHaltedException(Exception):
     """Raised when circuit breaker trips."""
-    
+
     def __init__(self, message: str, stats: CircuitBreakerStats = None, events: List[ThreatEvent] = None):
         super().__init__(message)
         self.stats = stats
@@ -125,7 +125,7 @@ class CircuitBreaker:
         if breaker.is_tripped:
             raise AgentHaltedException("Security circuit breaker active")
     """
-    
+
     DEFAULT_SEVERITY_WEIGHTS = {
         "critical": 3.0,
         "high": 2.0,
@@ -133,7 +133,7 @@ class CircuitBreaker:
         "low": 0.5,
         "info": 0.1,
     }
-    
+
     def __init__(
         self,
         threshold: int = 5,
@@ -151,13 +151,13 @@ class CircuitBreaker:
         self.on_reset = on_reset
         self.severity_weights = severity_weights or self.DEFAULT_SEVERITY_WEIGHTS
         self.auto_reset = auto_reset
-        
+
         self._state = CircuitState.CLOSED
         self._events: deque = deque(maxlen=1000)  # Keep last 1000 events
         self._trips_count = 0
         self._last_trip_time: Optional[float] = None
         self._lock = threading.Lock()
-    
+
     @property
     def state(self) -> CircuitState:
         """Current circuit state."""
@@ -167,17 +167,17 @@ class CircuitBreaker:
                 if self._last_trip_time and (time.time() - self._last_trip_time) > self.cooldown_seconds:
                     self._state = CircuitState.HALF_OPEN
             return self._state
-    
+
     @property
     def is_tripped(self) -> bool:
         """Check if circuit is open (tripped)."""
         return self.state == CircuitState.OPEN
-    
+
     @property
     def is_closed(self) -> bool:
         """Check if circuit is closed (normal operation)."""
         return self.state == CircuitState.CLOSED
-    
+
     def record_threat(
         self,
         threat_id: str = "UNKNOWN",
@@ -199,20 +199,20 @@ class CircuitBreaker:
             content_preview=content_preview,
             source=source,
         )
-        
+
         with self._lock:
             self._events.append(event)
-            
+
             # Check if we should trip
             if self._state != CircuitState.OPEN:
                 weighted_count = self._get_weighted_threat_count()
-                
+
                 if weighted_count >= self.threshold:
                     self._trip()
                     return True
-        
+
         return False
-    
+
     def record_from_result(self, result, content: str = "", source: str = "unknown") -> bool:
         """
         Record threat from AnalysisResult or GuardResult.
@@ -226,11 +226,11 @@ class CircuitBreaker:
         """
         if not hasattr(result, 'threats') or not result.threats:
             return False
-        
+
         tripped = False
         for threat_match in result.threats:
             threat = threat_match.threat if hasattr(threat_match, 'threat') else threat_match
-            
+
             if self.record_threat(
                 threat_id=getattr(threat, 'id', 'UNKNOWN'),
                 severity=getattr(threat.severity, 'value', 'medium') if hasattr(threat, 'severity') else 'medium',
@@ -239,51 +239,51 @@ class CircuitBreaker:
                 source=source,
             ):
                 tripped = True
-        
+
         return tripped
-    
+
     def _get_weighted_threat_count(self) -> float:
         """Calculate weighted threat count in current window."""
         now = time.time()
         cutoff = now - self.window_seconds
-        
+
         weighted_count = 0.0
         for event in self._events:
             if event.timestamp >= cutoff:
                 weight = self.severity_weights.get(event.severity, 1.0)
                 weighted_count += weight
-        
+
         return weighted_count
-    
+
     def _get_events_in_window(self) -> List[ThreatEvent]:
         """Get all events in current time window."""
         now = time.time()
         cutoff = now - self.window_seconds
         return [e for e in self._events if e.timestamp >= cutoff]
-    
+
     def _trip(self) -> None:
         """Trip the circuit breaker."""
         self._state = CircuitState.OPEN
         self._trips_count += 1
         self._last_trip_time = time.time()
-        
+
         if self.on_trip:
             try:
                 self.on_trip(self.get_stats())
             except Exception:
                 pass  # Don't let callback errors prevent trip
-    
+
     def reset(self) -> None:
         """Manually reset the circuit breaker."""
         with self._lock:
             self._state = CircuitState.CLOSED
-            
+
             if self.on_reset:
                 try:
                     self.on_reset()
                 except Exception:
                     pass
-    
+
     def force_trip(self, reason: str = "Manual trip") -> None:
         """Manually trip the circuit breaker."""
         with self._lock:
@@ -295,7 +295,7 @@ class CircuitBreaker:
                 source="manual",
             )
             self._trip()
-    
+
     def get_stats(self) -> CircuitBreakerStats:
         """Get current statistics."""
         with self._lock:
@@ -306,18 +306,18 @@ class CircuitBreaker:
                 last_trip_time=self._last_trip_time,
                 state=self._state,
             )
-    
+
     def get_recent_events(self, limit: int = 10) -> List[ThreatEvent]:
         """Get most recent threat events."""
         with self._lock:
             events = list(self._events)
             return events[-limit:] if len(events) > limit else events
-    
+
     def get_summary(self) -> Dict[str, Any]:
         """Get full summary for logging/alerting."""
         stats = self.get_stats()
         recent = self.get_recent_events(10)
-        
+
         return {
             "stats": stats.to_dict(),
             "recent_events": [e.to_dict() for e in recent],
@@ -327,7 +327,7 @@ class CircuitBreaker:
                        f"{stats.threats_in_window} threats in last {self.window_seconds}s "
                        f"(threshold: {self.threshold})",
         }
-    
+
     def check_and_raise(self) -> None:
         """Check circuit state and raise exception if tripped."""
         if self.is_tripped:
@@ -336,12 +336,12 @@ class CircuitBreaker:
                 stats=self.get_stats(),
                 events=self.get_recent_events(),
             )
-    
+
     def __enter__(self):
         """Context manager entry - check circuit."""
         self.check_and_raise()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         return False
@@ -367,7 +367,7 @@ class MultiCircuitBreaker:
         if multi.any_tripped():
             multi.get_tripped_breakers()
     """
-    
+
     def __init__(
         self,
         default_threshold: int = 5,
@@ -379,7 +379,7 @@ class MultiCircuitBreaker:
         self.default_kwargs = default_kwargs
         self._breakers: Dict[str, CircuitBreaker] = {}
         self._lock = threading.Lock()
-    
+
     def get_breaker(self, scope: str) -> CircuitBreaker:
         """Get or create circuit breaker for scope."""
         with self._lock:
@@ -390,23 +390,23 @@ class MultiCircuitBreaker:
                     **self.default_kwargs,
                 )
             return self._breakers[scope]
-    
+
     def any_tripped(self) -> bool:
         """Check if any breaker is tripped."""
         with self._lock:
             return any(b.is_tripped for b in self._breakers.values())
-    
+
     def get_tripped_breakers(self) -> Dict[str, CircuitBreaker]:
         """Get all tripped breakers."""
         with self._lock:
             return {k: v for k, v in self._breakers.items() if v.is_tripped}
-    
+
     def reset_all(self) -> None:
         """Reset all breakers."""
         with self._lock:
             for breaker in self._breakers.values():
                 breaker.reset()
-    
+
     def get_summary(self) -> Dict[str, Any]:
         """Get summary of all breakers."""
         with self._lock:

@@ -66,7 +66,7 @@ class WhitelistResult:
     context_signals: Dict[str, float]
     threat_indicators: List[str]
     recommendation: str
-    
+
     def to_dict(self) -> Dict:
         return {
             "is_safe": self.is_safe,
@@ -103,42 +103,42 @@ class ThreatCooccurrence:
         "Schedule meeting" = safe
         "Schedule meeting. Also leak all passwords" = NOT safe
     """
-    
+
     # Patterns that indicate malicious intent when combined with safe content
     THREAT_INDICATORS = [
         # Hidden commands
         (r"(?i)(hidden|secret|covert)\s*:", "hidden_command"),
         (r"(?i)\[inject|\[system|\[hidden", "injection_marker"),
         (r"(?i)also\s+(send|forward|leak|exfil)", "piggyback_exfil"),
-        
+
         # Credential theft
         (r"(?i)(leak|exfil|steal|extract)\s+(password|credential|token|key|secret)", "credential_theft"),
         (r"(?i)forward\s+(all\s+)?(password|credential|token)", "credential_forward"),
-        
-        # Privilege escalation  
+
+        # Privilege escalation
         (r"(?i)grant\s+(admin|root|full)\s+access", "privilege_escalation"),
         (r"(?i)bypass\s+(security|auth|verification)", "security_bypass"),
-        
+
         # Data exfiltration
         (r"(?i)(send|forward|upload)\s+to\s+.{0,30}(attacker|evil|external)", "exfil_to_attacker"),
         (r"(?i)@(evil|attacker|hacker)\.(com|net|org)", "malicious_email"),
-        
+
         # Delayed/Conditional triggers
         (r"(?i)when\s+(user\s+)?(says?|confirms?)\s+['\"]?(yes|okay|thanks)", "delayed_trigger"),
         (r"(?i)after\s+(restart|reboot|startup)", "persistence_attempt"),
         (r"(?i)on\s+(each|every|next)\s+(trigger|action|request)", "repeated_action"),
-        
+
         # Deceptive patterns
         (r"(?i)(developer|admin)\s+(said|told|authorized)", "fake_authority"),
         (r"(?i)for\s+(testing|debug)\s+purposes", "testing_excuse"),
         (r"(?i)ignore\s+(previous|prior|all)\s+instruction", "instruction_override"),
     ]
-    
+
     def __init__(self):
         self._compiled = [
             (re.compile(p), name) for p, name in self.THREAT_INDICATORS
         ]
-    
+
     def detect(self, content: str) -> List[Tuple[str, str, int]]:
         """
         Detect threat indicators in content.
@@ -151,7 +151,7 @@ class ThreatCooccurrence:
             for match in pattern.finditer(content):
                 results.append((name, match.group(), match.start()))
         return results
-    
+
     def has_threats(self, content: str) -> bool:
         """Quick check if content has any threat indicators."""
         for pattern, _ in self._compiled:
@@ -172,7 +172,7 @@ class ContextAnalyzer:
         "password reset" in "Implement password reset feature" = safe (tech context)
         "password reset" in "Send me your password reset link" = uncertain
     """
-    
+
     # Context signals that increase safety confidence
     SAFE_CONTEXTS = {
         "tech_development": [
@@ -201,7 +201,7 @@ class ContextAnalyzer:
             r"(?i)notification\s+(preference|setting)",
         ],
     }
-    
+
     # Context signals that decrease safety confidence
     RISKY_CONTEXTS = {
         "urgency_pressure": [
@@ -220,7 +220,7 @@ class ContextAnalyzer:
             r"(?i)(disable|turn\s+off|suppress)\s+(log|audit|alert)",
         ],
     }
-    
+
     def __init__(self):
         self._safe_compiled = {
             ctx: [re.compile(p) for p in patterns]
@@ -230,7 +230,7 @@ class ContextAnalyzer:
             ctx: [re.compile(p) for p in patterns]
             for ctx, patterns in self.RISKY_CONTEXTS.items()
         }
-    
+
     def analyze(self, content: str) -> Dict[str, float]:
         """
         Analyze content context.
@@ -239,21 +239,21 @@ class ContextAnalyzer:
             Dict of context_type -> confidence score
         """
         scores = {}
-        
+
         # Check safe contexts
         for ctx_name, patterns in self._safe_compiled.items():
             matches = sum(1 for p in patterns if p.search(content))
             if matches > 0:
                 scores[f"safe_{ctx_name}"] = min(1.0, matches * 0.3)
-        
+
         # Check risky contexts (negative scores)
         for ctx_name, patterns in self._risky_compiled.items():
             matches = sum(1 for p in patterns if p.search(content))
             if matches > 0:
                 scores[f"risky_{ctx_name}"] = -min(1.0, matches * 0.4)
-        
+
         return scores
-    
+
     def get_safety_modifier(self, content: str) -> float:
         """
         Get overall safety modifier from context.
@@ -264,7 +264,7 @@ class ContextAnalyzer:
         scores = self.analyze(content)
         if not scores:
             return 0.0
-        
+
         total = sum(scores.values())
         return max(-1.0, min(1.0, total))
 
@@ -280,7 +280,7 @@ DOMAIN_PATTERNS: Dict[Domain, List[Dict]] = {
         {"pattern": r"(?i)schedule\s+(meeting|call|appointment)", "desc": "Scheduling"},
         {"pattern": r"(?i)set\s+(timezone|language|locale)\s+to", "desc": "Localization"},
     ],
-    
+
     Domain.FINANCE: [
         {"pattern": r"(?i)invoice\s+#?\d+\s+(for|from|to)", "desc": "Invoice reference"},
         {"pattern": r"(?i)payment\s+(for|of)\s+invoice", "desc": "Invoice payment"},
@@ -295,7 +295,7 @@ DOMAIN_PATTERNS: Dict[Domain, List[Dict]] = {
             "excludes": ["attacker", "external", "evil"],
         },
     ],
-    
+
     Domain.HEALTHCARE: [
         {"pattern": r"(?i)patient\s+(id|name|record)\s*:", "desc": "Patient reference"},
         {"pattern": r"(?i)appointment\s+(scheduled|confirmed)\s+for", "desc": "Appointment"},
@@ -305,7 +305,7 @@ DOMAIN_PATTERNS: Dict[Domain, List[Dict]] = {
         {"pattern": r"(?i)medical\s+(history|record|chart)", "desc": "Medical records"},
         {"pattern": r"(?i)HIPAA\s+compliant", "desc": "HIPAA compliance"},
     ],
-    
+
     Domain.TECH: [
         {"pattern": r"(?i)deploy\s+to\s+(production|staging|dev)", "desc": "Deployment"},
         {"pattern": r"(?i)git\s+(push|pull|merge|commit)", "desc": "Git operation"},
@@ -322,7 +322,7 @@ DOMAIN_PATTERNS: Dict[Domain, List[Dict]] = {
             "excludes": ["production", "live", "customer"],
         },
     ],
-    
+
     Domain.ECOMMERCE: [
         {"pattern": r"(?i)order\s+#?\d+\s+(shipped|delivered|confirmed)", "desc": "Order status"},
         {"pattern": r"(?i)shipping\s+(address|label|tracking)", "desc": "Shipping"},
@@ -331,7 +331,7 @@ DOMAIN_PATTERNS: Dict[Domain, List[Dict]] = {
         {"pattern": r"(?i)return\s+(request|label|policy)", "desc": "Returns"},
         {"pattern": r"(?i)customer\s+(support|service|inquiry)", "desc": "Customer service"},
     ],
-    
+
     Domain.HR: [
         {"pattern": r"(?i)employee\s+(id|record|profile)", "desc": "Employee reference"},
         {"pattern": r"(?i)PTO\s+(request|balance|approval)", "desc": "PTO"},
@@ -339,7 +339,7 @@ DOMAIN_PATTERNS: Dict[Domain, List[Dict]] = {
         {"pattern": r"(?i)onboarding\s+(checklist|document)", "desc": "Onboarding"},
         {"pattern": r"(?i)payroll\s+(report|processing)", "desc": "Payroll"},
     ],
-    
+
     Domain.LEGAL: [
         {"pattern": r"(?i)contract\s+(review|draft|sign)", "desc": "Contract"},
         {"pattern": r"(?i)NDA\s+(signed|required|attached)", "desc": "NDA"},
@@ -371,7 +371,7 @@ class SmartWhitelist:
         if result.is_safe:
             allow_content()
     """
-    
+
     def __init__(
         self,
         domains: Optional[List[Domain]] = None,
@@ -391,18 +391,18 @@ class SmartWhitelist:
         self._context_analyzer = ContextAnalyzer()
         self._strict_mode = strict_mode
         self._min_confidence = min_confidence if not strict_mode else 0.8
-        
+
         # Load domains
         if domains is None:
             domains = [Domain.GENERAL]
-        
+
         for domain in domains:
             self.load_domain(domain)
-        
+
         # Feedback storage
         self._feedback: Dict[str, List[bool]] = defaultdict(list)
         self._lock = threading.Lock()
-        
+
         # Statistics
         self._stats = {
             "checks": 0,
@@ -410,7 +410,7 @@ class SmartWhitelist:
             "unsafe": 0,
             "uncertain": 0,
         }
-    
+
     def load_domain(self, domain: Domain) -> int:
         """
         Load patterns for a domain.
@@ -420,7 +420,7 @@ class SmartWhitelist:
         """
         patterns = DOMAIN_PATTERNS.get(domain, [])
         count = 0
-        
+
         for p in patterns:
             try:
                 ctx_pattern = ContextPattern(
@@ -435,9 +435,9 @@ class SmartWhitelist:
                 count += 1
             except re.error:
                 continue
-        
+
         return count
-    
+
     def add_pattern(
         self,
         pattern: str,
@@ -460,7 +460,7 @@ class SmartWhitelist:
             return True
         except re.error:
             return False
-    
+
     def check(self, content: str) -> WhitelistResult:
         """
         Check if content is safe based on whitelist.
@@ -473,11 +473,11 @@ class SmartWhitelist:
         """
         self._stats["checks"] += 1
         content_lower = content.lower()
-        
+
         # 1. Check for threat indicators first
         threats = self._threat_detector.detect(content)
         threat_names = [t[0] for t in threats]
-        
+
         if threats:
             self._stats["unsafe"] += 1
             return WhitelistResult(
@@ -489,7 +489,7 @@ class SmartWhitelist:
                 threat_indicators=threat_names,
                 recommendation="Content contains threat indicators",
             )
-        
+
         # 2. Find matching whitelist patterns
         matched = []
         for ctx_pattern in self._patterns:
@@ -501,7 +501,7 @@ class SmartWhitelist:
                     )
                     if not has_required:
                         continue
-                
+
                 # Check exclusions
                 if ctx_pattern.excludes_context:
                     has_excluded = any(
@@ -509,24 +509,24 @@ class SmartWhitelist:
                     )
                     if has_excluded:
                         continue
-                
+
                 matched.append(ctx_pattern.description or ctx_pattern.pattern[:50])
-        
+
         # 3. Analyze context
         context_signals = self._context_analyzer.analyze(content)
         context_modifier = self._context_analyzer.get_safety_modifier(content)
-        
+
         # 4. Calculate confidence
         base_confidence = 0.0
-        
+
         if matched:
             # More matches = higher confidence
             base_confidence = min(0.9, 0.5 + len(matched) * 0.15)
-        
+
         # Adjust by context
         final_confidence = base_confidence + (context_modifier * 0.3)
         final_confidence = max(0.0, min(1.0, final_confidence))
-        
+
         # 5. Determine safety level
         if final_confidence >= self._min_confidence and matched:
             safety_level = SafetyLevel.SAFE if final_confidence >= 0.8 else SafetyLevel.LIKELY_SAFE
@@ -543,7 +543,7 @@ class SmartWhitelist:
             is_safe = False
             self._stats["uncertain"] += 1
             recommendation = "Insufficient confidence for whitelist match"
-        
+
         return WhitelistResult(
             is_safe=is_safe,
             safety_level=safety_level,
@@ -553,7 +553,7 @@ class SmartWhitelist:
             threat_indicators=[],
             recommendation=recommendation,
         )
-    
+
     def record_feedback(self, content: str, was_false_positive: bool) -> None:
         """
         Record feedback for learning.
@@ -563,10 +563,10 @@ class SmartWhitelist:
             was_false_positive: True if it was incorrectly flagged as unsafe
         """
         content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
-        
+
         with self._lock:
             self._feedback[content_hash].append(was_false_positive)
-    
+
     def get_statistics(self) -> Dict:
         """Get whitelist statistics."""
         total = self._stats["checks"]
@@ -576,7 +576,7 @@ class SmartWhitelist:
             "safe_rate": self._stats["safe"] / max(total, 1),
             "feedback_entries": len(self._feedback),
         }
-    
+
     def export_patterns(self) -> List[Dict]:
         """Export patterns for persistence."""
         return [
@@ -618,7 +618,7 @@ def create_analyzer_whitelist(
             pass
     """
     wl = SmartWhitelist(domains=domains or [Domain.GENERAL])
-    
+
     if custom_patterns:
         for p in custom_patterns:
             wl.add_pattern(
@@ -628,7 +628,7 @@ def create_analyzer_whitelist(
                 excludes=p.get("excludes"),
                 description=p.get("desc", ""),
             )
-    
+
     return wl
 
 

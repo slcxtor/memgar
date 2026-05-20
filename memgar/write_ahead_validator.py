@@ -810,7 +810,7 @@ class WriteAheadValidator:
         """
         t0 = time.perf_counter()
         ctx = context or ValidationContext()
-        
+
         # Sanitizer yoksa içeriği biz sanitize et
         sanitized_content = content
         if sanitize_result is not None:

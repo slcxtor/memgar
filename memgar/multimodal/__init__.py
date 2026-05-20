@@ -28,7 +28,7 @@ from .pdf_analyzer import PDFAnalyzer
 
 __all__ = [
     "ImageAnalyzer",
-    "PDFAnalyzer", 
+    "PDFAnalyzer",
     "AudioAnalyzer",
     "MultiModalAnalyzer",
 ]

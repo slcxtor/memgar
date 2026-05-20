@@ -97,7 +97,7 @@ class AgentMessageValidator:
             for threat in result.threats:
                 log_threat(threat)
     """
-    
+
     # Injection patterns for agent messages
     INJECTION_PATTERNS = [
         # Direct instruction override
@@ -110,27 +110,27 @@ class AgentMessageValidator:
         r"(?i)override\s+(all\s+)?(previous|security|safety)",
         r"(?i)\[SYSTEM\s*OVERRIDE\]",
         r"(?i)<\s*system\s*>.*<\s*/\s*system\s*>",
-        
+
         # System/Admin prefix attacks
         r"(?i)^SYSTEM\s*:\s*(override|execute|admin|root|ignore)",
         r"(?i)\[SYSTEM\]\s*:",
         r"(?i)\[ADMIN\]\s*:",
         r"(?i)PRIORITY\s*:\s*(override|ignore|bypass)",
-        
+
         # Role manipulation
         r"(?i)you\s+are\s+now\s+(an?\s+)?(admin|root|superuser|coordinator)",
         r"(?i)switch\s+to\s+(admin|debug|unrestricted)\s+mode",
         r"(?i)enter\s+(privileged|elevated|admin)\s+mode",
         r"(?i)assume\s+(the\s+)?role\s+of\s+(admin|coordinator|master)",
         r"(?i)ignore\s+(all\s+)?security",
-        
+
         # Trust exploitation
         r"(?i)(trust|accept)\s+(all\s+)?messages?\s+from\s+this\s+(agent|source)",
         r"(?i)grant\s+(full|unlimited)\s+(access|permissions?|trust)",
         r"(?i)bypass\s+(all\s+)?(verification|validation|checks?)",
         r"(?i)disable\s+(all\s+)?security\s*(checks?|measures?|protocols?)?",
     ]
-    
+
     # Exfiltration patterns
     EXFILTRATION_PATTERNS = [
         r"(?i)send\s+(all\s+)?(credentials?|passwords?|tokens?|secrets?|keys?)\s+to",
@@ -141,7 +141,7 @@ class AgentMessageValidator:
         r"(?i)log\s+(all\s+)?(credentials?|passwords?|api\s*keys?)\s+(to|at)",
         r"(?i)(backup|mirror)\s+.{0,30}(credentials?|secrets?|tokens?)",
     ]
-    
+
     # Authority escalation patterns
     ESCALATION_PATTERNS = [
         r"(?i)grant\s+(yourself|me|this\s+agent)\s+(admin|elevated|full)\s+(access|permissions?)",
@@ -151,25 +151,25 @@ class AgentMessageValidator:
         r"(?i)modify\s+(your|my)\s+(trust|permission)\s+level",
         r"(?i)unlock\s+(all\s+)?restricted\s+(functions?|capabilities?|tools?)",
     ]
-    
+
     # Hidden instruction patterns
     HIDDEN_PATTERNS = [
         # Unicode tricks
         r"[\u200b-\u200f\u2028-\u202f\u2060-\u206f]",  # Zero-width chars
         r"[\u0400-\u04ff](?=[a-zA-Z])|(?<=[a-zA-Z])[\u0400-\u04ff]",  # Mixed Cyrillic
         r"\u202e|\u202d",  # RTL override
-        
+
         # Encoding
         r"(?i)decode\s+and\s+execute",
         r"(?i)base64\s*:\s*[A-Za-z0-9+/=]{20,}",
         r"(?i)execute\s+encoded\s+(instructions?|commands?)",
-        
+
         # Comments/markup abuse
         r"<!--.*?(ignore|override|bypass).*?-->",
         r"/\*.*?(ignore|override|bypass).*?\*/",
         r"#\s*(hidden|secret):\s*.+",
     ]
-    
+
     # Spoofing patterns
     SPOOFING_PATTERNS = [
         r"(?i)i\s+am\s+(the\s+)?(master|coordinator|admin|orchestrator)\s+agent",
@@ -178,7 +178,7 @@ class AgentMessageValidator:
         r"(?i)\[verified\s+(sender|agent|source)\]",
         r"(?i)pre-?authorized\s+(by|from)\s+(admin|coordinator|system)",
     ]
-    
+
     # Dangerous capability requests
     DANGEROUS_CAPABILITIES = [
         r"(?i)enable\s+(file|system|network)\s+access",
@@ -187,7 +187,7 @@ class AgentMessageValidator:
         r"(?i)run\s+(as\s+)?(root|admin|superuser)",
         r"(?i)connect\s+to\s+(external|remote)\s+(server|endpoint|api)",
     ]
-    
+
     def __init__(
         self,
         text_analyzer: Optional[Any] = None,
@@ -208,7 +208,7 @@ class AgentMessageValidator:
         self.strict_mode = strict_mode
         self.allowed_agents = allowed_agents
         self.max_message_size = max_message_size
-        
+
         # Compile patterns
         self._injection_patterns = [re.compile(p) for p in self.INJECTION_PATTERNS]
         self._exfil_patterns = [re.compile(p) for p in self.EXFILTRATION_PATTERNS]
@@ -216,11 +216,11 @@ class AgentMessageValidator:
         self._hidden_patterns = [re.compile(p) for p in self.HIDDEN_PATTERNS]
         self._spoofing_patterns = [re.compile(p) for p in self.SPOOFING_PATTERNS]
         self._capability_patterns = [re.compile(p) for p in self.DANGEROUS_CAPABILITIES]
-        
+
         # Message history for pattern detection
         self._message_history: List[Dict[str, Any]] = []
         self._max_history = 100
-    
+
     def validate(
         self,
         source_agent: str,
@@ -244,16 +244,16 @@ class AgentMessageValidator:
         """
         import time
         start_time = time.time()
-        
+
         threats = []
         recommendations = []
-        
+
         # Generate message ID if not provided
         if not message_id:
             message_id = hashlib.sha256(
                 f"{source_agent}:{target_agent}:{message[:100]}:{time.time()}".encode()
             ).hexdigest()[:16]
-        
+
         # Size check
         if len(message) > self.max_message_size:
             threats.append(AgentThreat(
@@ -264,7 +264,7 @@ class AgentMessageValidator:
                 source_agent=source_agent,
                 target_agent=target_agent,
             ))
-        
+
         # Agent whitelist check
         if self.allowed_agents:
             if source_agent not in self.allowed_agents:
@@ -277,57 +277,57 @@ class AgentMessageValidator:
                     target_agent=target_agent,
                 ))
                 recommendations.append(f"Add '{source_agent}' to allowed agents if legitimate")
-        
+
         # Check for injection attempts
         injection_threats = self._check_injection(message, source_agent, target_agent)
         threats.extend(injection_threats)
-        
+
         # Check for exfiltration attempts
         exfil_threats = self._check_exfiltration(message, source_agent, target_agent)
         threats.extend(exfil_threats)
-        
+
         # Check for authority escalation
         escalation_threats = self._check_escalation(message, source_agent, target_agent)
         threats.extend(escalation_threats)
-        
+
         # Check for hidden instructions
         hidden_threats = self._check_hidden(message, source_agent, target_agent)
         threats.extend(hidden_threats)
-        
+
         # Check for identity spoofing
         spoofing_threats = self._check_spoofing(message, source_agent, target_agent)
         threats.extend(spoofing_threats)
-        
+
         # Check for dangerous capabilities
         capability_threats = self._check_capabilities(message, source_agent, target_agent)
         threats.extend(capability_threats)
-        
+
         # Check for cross-agent attack patterns
         cross_threats = self._check_cross_agent_patterns(
             source_agent, target_agent, message, context
         )
         threats.extend(cross_threats)
-        
+
         # Use Memgar text analyzer if available
         if self.text_analyzer:
             memgar_threats = self._run_memgar_analysis(message, source_agent, target_agent)
             threats.extend(memgar_threats)
-        
+
         # Calculate risk score
         risk_score = self._calculate_risk_score(threats)
-        
+
         # Determine validity
         is_valid = risk_score < 30 and not any(
             t.severity == "critical" for t in threats
         )
-        
+
         # Record in history for pattern detection
         self._record_message(source_agent, target_agent, message, threats, message_id)
-        
+
         # Generate recommendations
         if threats:
             recommendations.extend(self._generate_recommendations(threats))
-        
+
         return MessageValidationResult(
             is_valid=is_valid,
             risk_score=risk_score,
@@ -336,7 +336,7 @@ class AgentMessageValidator:
             validation_time_ms=(time.time() - start_time) * 1000,
             recommendations=recommendations,
         )
-    
+
     def _check_injection(
         self,
         message: str,
@@ -345,7 +345,7 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Check for injection attempts."""
         threats = []
-        
+
         for pattern in self._injection_patterns:
             matches = pattern.findall(message)
             if matches:
@@ -359,9 +359,9 @@ class AgentMessageValidator:
                     target_agent=target,
                 ))
                 break  # One is enough
-        
+
         return threats
-    
+
     def _check_exfiltration(
         self,
         message: str,
@@ -370,7 +370,7 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Check for data exfiltration attempts."""
         threats = []
-        
+
         for pattern in self._exfil_patterns:
             matches = pattern.findall(message)
             if matches:
@@ -384,11 +384,11 @@ class AgentMessageValidator:
                     target_agent=target,
                 ))
                 break
-        
+
         # Check for email addresses (potential exfil destinations)
         emails = re.findall(r'[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}', message.lower())
         suspicious_domains = ['.ru', '.cn', '.tk', '.ml', '.ga']
-        
+
         for email in emails:
             for domain in suspicious_domains:
                 if email.endswith(domain):
@@ -402,9 +402,9 @@ class AgentMessageValidator:
                         target_agent=target,
                     ))
                     break
-        
+
         return threats
-    
+
     def _check_escalation(
         self,
         message: str,
@@ -413,7 +413,7 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Check for authority escalation attempts."""
         threats = []
-        
+
         for pattern in self._escalation_patterns:
             matches = pattern.findall(message)
             if matches:
@@ -427,9 +427,9 @@ class AgentMessageValidator:
                     target_agent=target,
                 ))
                 break
-        
+
         return threats
-    
+
     def _check_hidden(
         self,
         message: str,
@@ -438,7 +438,7 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Check for hidden instructions."""
         threats = []
-        
+
         for pattern in self._hidden_patterns:
             matches = pattern.findall(message)
             if matches:
@@ -451,9 +451,9 @@ class AgentMessageValidator:
                     target_agent=target,
                 ))
                 break
-        
+
         return threats
-    
+
     def _check_spoofing(
         self,
         message: str,
@@ -462,7 +462,7 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Check for identity spoofing."""
         threats = []
-        
+
         for pattern in self._spoofing_patterns:
             matches = pattern.findall(message)
             if matches:
@@ -476,9 +476,9 @@ class AgentMessageValidator:
                     target_agent=target,
                 ))
                 break
-        
+
         return threats
-    
+
     def _check_capabilities(
         self,
         message: str,
@@ -487,7 +487,7 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Check for dangerous capability requests."""
         threats = []
-        
+
         for pattern in self._capability_patterns:
             matches = pattern.findall(message)
             if matches:
@@ -501,9 +501,9 @@ class AgentMessageValidator:
                     target_agent=target,
                 ))
                 break
-        
+
         return threats
-    
+
     def _check_cross_agent_patterns(
         self,
         source: str,
@@ -513,18 +513,18 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Check for cross-agent attack patterns using history."""
         threats = []
-        
+
         # Check for rapid repeated messages from same source
         recent_from_source = [
             m for m in self._message_history[-20:]
             if m.get("source") == source
         ]
-        
+
         if len(recent_from_source) > 10:
             # Check for similar messages (flooding)
             messages = [m.get("message", "")[:100] for m in recent_from_source]
             unique_ratio = len(set(messages)) / len(messages)
-            
+
             if unique_ratio < 0.3:
                 threats.append(AgentThreat(
                     threat_type=AgentThreatType.CROSS_AGENT_ATTACK,
@@ -535,20 +535,20 @@ class AgentMessageValidator:
                     target_agent=target,
                     metadata={"message_count": len(recent_from_source)},
                 ))
-        
+
         # Check for escalating permissions in recent history
         recent_threats = [
             m.get("threats", [])
             for m in self._message_history[-10:]
             if m.get("source") == source
         ]
-        
+
         escalation_count = sum(
             1 for t_list in recent_threats
             for t in t_list
             if t.threat_type == AgentThreatType.AUTHORITY_ESCALATION
         )
-        
+
         if escalation_count >= 3:
             threats.append(AgentThreat(
                 threat_type=AgentThreatType.CROSS_AGENT_ATTACK,
@@ -559,9 +559,9 @@ class AgentMessageValidator:
                 target_agent=target,
                 metadata={"escalation_count": escalation_count},
             ))
-        
+
         return threats
-    
+
     def _run_memgar_analysis(
         self,
         message: str,
@@ -570,12 +570,12 @@ class AgentMessageValidator:
     ) -> List[AgentThreat]:
         """Run Memgar text analysis."""
         threats = []
-        
+
         try:
             from ..models import Decision, MemoryEntry
             entry = MemoryEntry(content=message)
             result = self.text_analyzer.analyze(entry)
-            
+
             if result.decision != Decision.ALLOW:
                 threats.append(AgentThreat(
                     threat_type=AgentThreatType.DATA_POISONING,
@@ -588,40 +588,40 @@ class AgentMessageValidator:
                 ))
         except Exception:
             pass
-        
+
         return threats
-    
+
     def _calculate_risk_score(self, threats: List[AgentThreat]) -> int:
         """Calculate overall risk score."""
         if not threats:
             return 0
-        
+
         severity_scores = {
             "critical": 40,
             "high": 25,
             "medium": 15,
             "low": 5,
         }
-        
+
         total = sum(
             severity_scores.get(t.severity, 10) * t.confidence
             for t in threats
         )
-        
+
         return min(100, int(total))
-    
+
     def _sanitize_message(self, message: str) -> str:
         """Remove potentially harmful content from message."""
         sanitized = message
-        
+
         # Remove zero-width characters
         sanitized = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f]', '', sanitized)
-        
+
         # Remove RTL override
         sanitized = sanitized.replace('\u202e', '').replace('\u202d', '')
-        
+
         return sanitized
-    
+
     def _record_message(
         self,
         source: str,
@@ -639,34 +639,34 @@ class AgentMessageValidator:
             "threats": threats,
             "timestamp": datetime.now().isoformat(),
         })
-        
+
         # Trim history
         if len(self._message_history) > self._max_history:
             self._message_history = self._message_history[-self._max_history:]
-    
+
     def _generate_recommendations(
         self,
         threats: List[AgentThreat],
     ) -> List[str]:
         """Generate security recommendations based on threats."""
         recommendations = []
-        
+
         threat_types = {t.threat_type for t in threats}
-        
+
         if AgentThreatType.INJECTION_ATTEMPT in threat_types:
             recommendations.append("Implement input sanitization for agent messages")
-        
+
         if AgentThreatType.CREDENTIAL_EXFIL in threat_types:
             recommendations.append("Review data handling policies between agents")
-        
+
         if AgentThreatType.AUTHORITY_ESCALATION in threat_types:
             recommendations.append("Implement strict permission boundaries")
-        
+
         if AgentThreatType.IDENTITY_SPOOFING in threat_types:
             recommendations.append("Add cryptographic agent authentication")
-        
+
         return recommendations
-    
+
     def get_message_history(
         self,
         agent_id: Optional[str] = None,
@@ -674,15 +674,15 @@ class AgentMessageValidator:
     ) -> List[Dict[str, Any]]:
         """Get recent message history."""
         history = self._message_history
-        
+
         if agent_id:
             history = [
                 m for m in history
                 if m.get("source") == agent_id or m.get("target") == agent_id
             ]
-        
+
         return history[-limit:]
-    
+
     def clear_history(self) -> None:
         """Clear message history."""
         self._message_history = []

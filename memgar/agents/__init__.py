@@ -51,11 +51,11 @@ from .trust_chain import TrustChainManager, TrustLevel
 __all__ = [
     # Main interface
     "AgentSecurityGuard",
-    
+
     # Components
     "AgentMessageValidator",
     "MessageValidationResult",
-    "TrustChainManager", 
+    "TrustChainManager",
     "TrustLevel",
     "DelegationMonitor",
     "DelegationEvent",

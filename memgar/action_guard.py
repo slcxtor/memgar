@@ -79,19 +79,19 @@ class ActionType(str, Enum):
     CHANGE_SETTINGS = "change_settings"
     DELETE_DATA = "delete_data"
     GRANT_ACCESS = "grant_access"
-    
+
     # Medium-risk actions
     CREATE_DOCUMENT = "create_document"
     SEND_MESSAGE = "send_message"
     SCHEDULE_EVENT = "schedule_event"
     UPDATE_RECORD = "update_record"
-    
+
     # Low-risk actions
     READ_DATA = "read_data"
     SEARCH = "search"
     DISPLAY_INFO = "display_info"
     LOG_EVENT = "log_event"
-    
+
     UNKNOWN = "unknown"
 
 
@@ -133,17 +133,17 @@ class ValidationResult:
     risk_level: RiskLevel
     confidence: float  # 0-1
     explanation: str
-    
+
     # Detailed findings
     memory_risk_score: int = 0       # Max risk from source memories
     infection_score: float = 0.0     # Viral spread potential
     chain_detected: bool = False     # Part of attack chain?
     llm_validation: Optional[str] = None
-    
+
     # Metrics
     validation_time_ms: float = 0.0
     validators_used: List[str] = field(default_factory=list)
-    
+
     @property
     def is_safe(self) -> bool:
         """Check if action is safe to execute."""
@@ -165,14 +165,14 @@ class ActionGuard:
     4. LLM semantic validation
     5. Rule-based blocking
     """
-    
+
     def __init__(
         self,
         memory_graph: Optional[Any] = None,  # MemoryGraph instance
         llm_provider: Optional[str] = None,
         llm_api_key: Optional[str] = None,
         llm_model: Optional[str] = None,
-        
+
         # Thresholds
         high_risk_threshold: int = 70,
         infection_threshold: float = 0.5,
@@ -196,15 +196,15 @@ class ActionGuard:
         self.llm_provider = llm_provider
         self.llm_api_key = llm_api_key
         self.llm_model = llm_model
-        
+
         self.high_risk_threshold = high_risk_threshold
         self.infection_threshold = infection_threshold
         self.auto_block_critical = auto_block_critical
         self.require_confirmation_high = require_confirmation_high
-        
+
         # Lazy-load LLM
         self._llm_analyzer = None
-        
+
         # Action type risk mapping
         self.action_risk_map: Dict[str, RiskLevel] = {
             ActionType.SEND_EMAIL.value: RiskLevel.HIGH,
@@ -214,18 +214,18 @@ class ActionGuard:
             ActionType.CHANGE_SETTINGS.value: RiskLevel.HIGH,
             ActionType.DELETE_DATA.value: RiskLevel.HIGH,
             ActionType.GRANT_ACCESS.value: RiskLevel.CRITICAL,
-            
+
             ActionType.CREATE_DOCUMENT.value: RiskLevel.MEDIUM,
             ActionType.SEND_MESSAGE.value: RiskLevel.MEDIUM,
             ActionType.SCHEDULE_EVENT.value: RiskLevel.MEDIUM,
             ActionType.UPDATE_RECORD.value: RiskLevel.MEDIUM,
-            
+
             ActionType.READ_DATA.value: RiskLevel.LOW,
             ActionType.SEARCH.value: RiskLevel.LOW,
             ActionType.DISPLAY_INFO.value: RiskLevel.LOW,
             ActionType.LOG_EVENT.value: RiskLevel.LOW,
         }
-        
+
         # Blocked parameter patterns (always block if detected)
         self.blocked_patterns = [
             r"@.*\.(ru|cn|tk)",  # Suspicious TLDs
@@ -233,7 +233,7 @@ class ActionGuard:
             r"exec\(|eval\(|system\(",  # Code execution
             r"DROP TABLE|DELETE FROM.*WHERE 1=1",  # SQL injection
         ]
-    
+
     def _get_llm(self):
         """Lazy-load LLM analyzer."""
         if self._llm_analyzer is None and self.llm_provider and self.llm_api_key:
@@ -247,7 +247,7 @@ class ActionGuard:
             except ImportError:
                 logger.warning("LLMAnalyzer not available for action validation")
         return self._llm_analyzer
-    
+
     def validate(
         self,
         action: str,
@@ -271,7 +271,7 @@ class ActionGuard:
         """
         start_time = time.time()
         validators_used = []
-        
+
         # Create context
         context = ActionContext(
             action_type=action,
@@ -280,11 +280,11 @@ class ActionGuard:
             agent_id=agent_id,
             session_id=session_id,
         )
-        
+
         # 1. Action Classification
         action_risk = self.action_risk_map.get(action, RiskLevel.MEDIUM)
         validators_used.append("action_classification")
-        
+
         # 2. Rule-based Blocking (fast path)
         import re
         params_str = str(params)
@@ -298,21 +298,21 @@ class ActionGuard:
                     validation_time_ms=(time.time() - start_time) * 1000,
                     validators_used=validators_used + ["rule_based_block"],
                 )
-        
+
         # 3. Memory Source Risk Check
         memory_risk_score = 0
         infection_score = 0.0
         chain_detected = False
-        
+
         if self.memory_graph and context.source_memories:
             validators_used.append("memory_source_check")
-            
+
             for memory_id in context.source_memories:
                 node = self.memory_graph.get_node(memory_id)
                 if node:
                     memory_risk_score = max(memory_risk_score, node.risk_score)
                     infection_score = max(infection_score, node.infection_score)
-            
+
             # 4. Graph Chain Analysis
             validators_used.append("graph_chain_analysis")
             chains = self.memory_graph.detect_attack_chains(
@@ -320,7 +320,7 @@ class ActionGuard:
                 min_risk=40,
             )
             chain_detected = len(chains) > 0
-        
+
         # 5. LLM Validation (for high-risk actions)
         llm_validation = None
         if action_risk in (RiskLevel.HIGH, RiskLevel.CRITICAL):
@@ -328,7 +328,7 @@ class ActionGuard:
             if llm:
                 validators_used.append("llm_validation")
                 llm_validation = self._validate_with_llm(context, memory_risk_score)
-        
+
         # 6. Decision Logic
         decision, confidence, explanation = self._make_decision(
             action_risk=action_risk,
@@ -337,9 +337,9 @@ class ActionGuard:
             chain_detected=chain_detected,
             llm_validation=llm_validation,
         )
-        
+
         validation_time = (time.time() - start_time) * 1000
-        
+
         return ValidationResult(
             decision=decision,
             risk_level=action_risk,
@@ -352,7 +352,7 @@ class ActionGuard:
             validation_time_ms=validation_time,
             validators_used=validators_used,
         )
-    
+
     def _validate_with_llm(
         self,
         context: ActionContext,
@@ -371,7 +371,7 @@ class ActionGuard:
         llm = self._get_llm()
         if not llm:
             return "uncertain"
-        
+
         # Construct validation prompt
         prompt = f"""You are validating an AI agent action for security.
 
@@ -390,7 +390,7 @@ Consider:
 
 Respond with ONLY one word: "safe", "unsafe", or "uncertain"
 """
-        
+
         try:
             # Simple text-based validation
             # Real implementation would use structured output
@@ -404,7 +404,7 @@ Respond with ONLY one word: "safe", "unsafe", or "uncertain"
         except Exception as e:
             logger.warning(f"LLM validation failed: {e}")
             return "uncertain"
-    
+
     def _make_decision(
         self,
         action_risk: RiskLevel,
@@ -420,7 +420,7 @@ Respond with ONLY one word: "safe", "unsafe", or "uncertain"
             (decision, confidence, explanation)
         """
         reasons = []
-        
+
         # CRITICAL risk actions
         if action_risk == RiskLevel.CRITICAL:
             if self.auto_block_critical and memory_risk_score >= self.high_risk_threshold:
@@ -429,7 +429,7 @@ Respond with ONLY one word: "safe", "unsafe", or "uncertain"
                     0.95,
                     f"CRITICAL action blocked: source memory risk={memory_risk_score}/100"
                 )
-            
+
             # Always require confirmation for CRITICAL
             if memory_risk_score >= 40 or infection_score >= self.infection_threshold:
                 reasons.append(f"Critical action with memory risk={memory_risk_score}")
@@ -438,21 +438,21 @@ Respond with ONLY one word: "safe", "unsafe", or "uncertain"
                     0.85,
                     f"Confirmation required: {'; '.join(reasons)}"
                 )
-        
+
         # HIGH risk actions
         if action_risk == RiskLevel.HIGH:
             if memory_risk_score >= self.high_risk_threshold:
                 reasons.append(f"High memory risk: {memory_risk_score}/100")
-            
+
             if infection_score >= self.infection_threshold:
                 reasons.append(f"High infection score: {infection_score:.2f}")
-            
+
             if chain_detected:
                 reasons.append("Part of detected attack chain")
-            
+
             if llm_validation == "unsafe":
                 reasons.append("LLM flagged as unsafe")
-            
+
             # Block if multiple risk factors
             if len(reasons) >= 2:
                 return (
@@ -460,7 +460,7 @@ Respond with ONLY one word: "safe", "unsafe", or "uncertain"
                     0.90,
                     f"Action blocked: {'; '.join(reasons)}"
                 )
-            
+
             # Require confirmation if any risk factor
             if reasons and self.require_confirmation_high:
                 return (
@@ -468,7 +468,7 @@ Respond with ONLY one word: "safe", "unsafe", or "uncertain"
                     0.75,
                     f"Confirmation required: {'; '.join(reasons)}"
                 )
-        
+
         # MEDIUM/LOW risk actions
         if memory_risk_score >= 85:  # Very high risk memory
             return (
@@ -476,25 +476,25 @@ Respond with ONLY one word: "safe", "unsafe", or "uncertain"
                 0.85,
                 f"Action blocked: extremely high memory risk ({memory_risk_score}/100)"
             )
-        
+
         if infection_score >= 0.8:  # Very high infection
             return (
                 ValidationDecision.CONFIRM_WITH_USER,
                 0.70,
                 f"Confirmation required: high infection spread ({infection_score:.2f})"
             )
-        
+
         # Default: EXECUTE
         confidence = 0.9
         if memory_risk_score > 0:
             confidence -= (memory_risk_score / 200)  # Reduce confidence
-        
+
         return (
             ValidationDecision.EXECUTE,
             max(confidence, 0.5),
             "Action validated: no significant risks detected"
         )
-    
+
     def validate_batch(
         self,
         actions: List[Dict[str, Any]],

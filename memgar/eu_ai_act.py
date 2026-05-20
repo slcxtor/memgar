@@ -78,7 +78,7 @@ class Requirement:
     status: ComplianceStatus = ComplianceStatus.PENDING
     evidence: List[str] = field(default_factory=list)
     notes: Optional[str] = None
-    
+
     def __post_init__(self):
         """Validate and normalize data after initialization"""
         if isinstance(self.status, str):
@@ -87,15 +87,15 @@ class Requirement:
             self.category = RequirementCategory(self.category)
         if self.risk_level and isinstance(self.risk_level, str):
             self.risk_level = RiskLevel(self.risk_level)
-    
+
     def is_compliant(self) -> bool:
         """Check if requirement is met"""
         return self.status == ComplianceStatus.COMPLIANT
-    
+
     def add_evidence(self, evidence: str) -> None:
         """Add evidence of compliance"""
         self.evidence.append(evidence)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
@@ -129,7 +129,7 @@ class ComplianceConfig:
     contact_email: Optional[str] = None
     reporting_period: str = "monthly"
     retention_days: int = 730  # 2 years as per EU AI Act
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
@@ -164,32 +164,32 @@ class ComplianceReport:
     pending_count: int = 0
     summary: Optional[str] = None
     recommendations: List[str] = field(default_factory=list)
-    
+
     def __post_init__(self):
         """Calculate statistics after initialization"""
         self._calculate_stats()
-    
+
     def _calculate_stats(self):
         """Calculate compliance statistics"""
         self.compliant_count = sum(
-            1 for r in self.requirements 
+            1 for r in self.requirements
             if r.status == ComplianceStatus.COMPLIANT
         )
         self.non_compliant_count = sum(
-            1 for r in self.requirements 
+            1 for r in self.requirements
             if r.status == ComplianceStatus.NON_COMPLIANT
         )
         self.pending_count = sum(
-            1 for r in self.requirements 
+            1 for r in self.requirements
             if r.status == ComplianceStatus.PENDING
         )
-    
+
     def compliance_rate(self) -> float:
         """Calculate overall compliance rate"""
         if not self.requirements:
             return 0.0
         return (self.compliant_count / len(self.requirements)) * 100
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
@@ -226,20 +226,20 @@ class EUAIActReporter:
         reporter.add_requirement(requirement)
         report = reporter.generate_report()
     """
-    
+
     def __init__(self, config: Optional[ComplianceConfig] = None):
         """Initialize reporter with configuration"""
         self.config = config or ComplianceConfig()
         self.requirements: List[Requirement] = []
         self.reports: List[ComplianceReport] = []
-    
+
     def add_requirement(self, requirement: Requirement) -> None:
         """Add a compliance requirement to track"""
         self.requirements.append(requirement)
-    
+
     def update_requirement_status(
-        self, 
-        requirement_id: str, 
+        self,
+        requirement_id: str,
         status: ComplianceStatus,
         evidence: Optional[str] = None
     ) -> bool:
@@ -251,35 +251,35 @@ class EUAIActReporter:
                     req.add_evidence(evidence)
                 return True
         return False
-    
+
     def get_requirement(self, requirement_id: str) -> Optional[Requirement]:
         """Get a specific requirement by ID"""
         for req in self.requirements:
             if req.requirement_id == requirement_id:
                 return req
         return None
-    
+
     def get_requirements_by_status(
-        self, 
+        self,
         status: ComplianceStatus
     ) -> List[Requirement]:
         """Get all requirements with a specific status"""
         return [r for r in self.requirements if r.status == status]
-    
+
     def get_requirements_by_category(
-        self, 
+        self,
         category: RequirementCategory
     ) -> List[Requirement]:
         """Get all requirements in a category"""
         return [r for r in self.requirements if r.category == category]
-    
+
     def generate_report(
-        self, 
+        self,
         organization: Optional[str] = None
     ) -> ComplianceReport:
         """Generate a compliance report"""
         import uuid
-        
+
         # Determine overall status
         if all(r.is_compliant() for r in self.requirements):
             overall_status = ComplianceStatus.COMPLIANT
@@ -287,7 +287,7 @@ class EUAIActReporter:
             overall_status = ComplianceStatus.NON_COMPLIANT
         else:
             overall_status = ComplianceStatus.PARTIALLY_COMPLIANT
-        
+
         # Create report
         report = ComplianceReport(
             report_id=str(uuid.uuid4()),
@@ -297,7 +297,7 @@ class EUAIActReporter:
             requirements=self.requirements.copy(),
             overall_status=overall_status,
         )
-        
+
         # Generate recommendations
         non_compliant = self.get_requirements_by_status(
             ComplianceStatus.NON_COMPLIANT
@@ -306,13 +306,13 @@ class EUAIActReporter:
             report.recommendations.append(
                 f"Address requirement {req.requirement_id}: {req.description}"
             )
-        
+
         self.reports.append(report)
         return report
-    
+
     def export_report(
-        self, 
-        report: ComplianceReport, 
+        self,
+        report: ComplianceReport,
         format: str = "json"
     ) -> str:
         """Export report in specified format"""
@@ -323,7 +323,7 @@ class EUAIActReporter:
             return self._format_text_report(report)
         else:
             raise ValueError(f"Unsupported format: {format}")
-    
+
     def _format_text_report(self, report: ComplianceReport) -> str:
         """Format report as human-readable text"""
         lines = [
@@ -345,14 +345,14 @@ class EUAIActReporter:
             f"  ⏳ Pending: {report.pending_count}",
             "",
         ]
-        
+
         if report.recommendations:
             lines.append("RECOMMENDATIONS")
             lines.append("-" * 60)
             for i, rec in enumerate(report.recommendations, 1):
                 lines.append(f"{i}. {rec}")
             lines.append("")
-        
+
         lines.append("=" * 60)
         return "\n".join(lines)
 

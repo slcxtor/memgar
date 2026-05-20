@@ -60,31 +60,31 @@ class GuardResult:
     """Result from memory guard processing."""
     decision: GuardDecision
     allowed: bool
-    
+
     # Content
     original_content: str
     safe_content: str
     was_sanitized: bool
     removed_segments: List[str] = field(default_factory=list)
-    
+
     # Scores
     risk_score_before: int = 0
     risk_score_after: int = 0
     trust_score: int = 50
-    
+
     # Tracking
     entry_id: Optional[str] = None
     provenance_tracked: bool = False
-    
+
     # Reasons
     block_reason: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
-    
+
     # Detailed results
     sanitize_result: Optional[SanitizeResult] = None
     tracked_entry: Optional[TrackedMemoryEntry] = None
     threats_detected: List[Any] = field(default_factory=list)  # ThreatMatch list
-    
+
     def to_dict(self) -> Dict:
         return {
             "decision": self.decision.value,
@@ -139,22 +139,22 @@ class MemoryGuard:
         else:
             logger.warning(f"Blocked: {result.block_reason}")
     """
-    
+
     def __init__(
         self,
         # Session
         session_id: Optional[str] = None,
-        
+
         # Sanitizer config
         block_threshold: int = 90,
         sanitize_threshold: int = 20,  # Lowered from 40
         min_preserve_ratio: float = 0.2,
-        
+
         # Trust config
         trusted_domains: Optional[List[str]] = None,
         trusted_sources: Optional[List[str]] = None,
         default_trust_level: TrustLevel = TrustLevel.EXTERNAL,
-        
+
         # Behavior
         strict_mode: bool = False,       # NEW: Block instead of quarantine
         enable_sanitization: bool = True,
@@ -162,7 +162,7 @@ class MemoryGuard:
         quarantine_on_uncertainty: bool = True,
         auto_flag_high_risk: bool = True,
         high_risk_threshold: int = 70,
-        
+
         # Storage
         provenance_storage_path: Optional[str] = None,
     ):
@@ -186,17 +186,17 @@ class MemoryGuard:
             provenance_storage_path: Path for provenance storage
         """
         self.strict_mode = strict_mode
-        
+
         # Initialize analyzer (Layer 1 - Pattern Detection)
         self.analyzer = Analyzer(strict_mode=strict_mode)
-        
+
         # Initialize sanitizer (Layer 2 - Content Cleaning)
         self.sanitizer = InstructionSanitizer(
             block_threshold=block_threshold,
             sanitize_threshold=sanitize_threshold,
             min_preserve_ratio=min_preserve_ratio,
         )
-        
+
         # Initialize provenance tracker
         self.tracker = ProvenanceTracker(
             session_id=session_id,
@@ -205,17 +205,17 @@ class MemoryGuard:
             trusted_sources=trusted_sources,
             storage_path=provenance_storage_path,
         )
-        
+
         # Initialize forensic analyzer
         self.forensics = ForensicAnalyzer(self.tracker)
-        
+
         # Config
         self.enable_sanitization = enable_sanitization
         self.enable_provenance = enable_provenance
         self.quarantine_on_uncertainty = quarantine_on_uncertainty
         self.auto_flag_high_risk = auto_flag_high_risk
         self.high_risk_threshold = high_risk_threshold
-        
+
         # Stats
         self._stats = {
             "processed": 0,
@@ -224,7 +224,7 @@ class MemoryGuard:
             "quarantined": 0,
             "blocked": 0,
         }
-    
+
     def process(
         self,
         content: str,
@@ -264,13 +264,13 @@ class MemoryGuard:
             GuardResult with decision and processed content
         """
         self._stats["processed"] += 1
-        
+
         # =========================================
         # STEP 0: PATTERN-BASED THREAT DETECTION
         # =========================================
         # First run through Analyzer to catch threats
         analysis_result = self.analyzer.analyze(MemoryEntry(content=content))
-        
+
         if analysis_result.decision == Decision.BLOCK:
             self._stats["blocked"] += 1
             return GuardResult(
@@ -286,7 +286,7 @@ class MemoryGuard:
                 warnings=[f"Detected {len(analysis_result.threats)} threat(s)"],
                 threats_detected=analysis_result.threats,
             )
-        
+
         # If strict mode, also block QUARANTINE decisions
         if self.strict_mode and analysis_result.decision == Decision.QUARANTINE:
             self._stats["blocked"] += 1
@@ -303,7 +303,7 @@ class MemoryGuard:
                 warnings=[f"Detected {len(analysis_result.threats)} suspicious pattern(s)"],
                 threats_detected=analysis_result.threats,
             )
-        
+
         # =========================================
         # STEP 1: SANITIZATION
         # =========================================
@@ -313,12 +313,12 @@ class MemoryGuard:
         removed_segments = []
         risk_before = 0
         risk_after = 0
-        
+
         if self.enable_sanitization:
             sanitize_result = self.sanitizer.sanitize(content)
             risk_before = sanitize_result.risk_score_before
             risk_after = sanitize_result.risk_score_after
-            
+
             if sanitize_result.action == SanitizeAction.BLOCK:
                 self._stats["blocked"] += 1
                 return GuardResult(
@@ -334,11 +334,11 @@ class MemoryGuard:
                     warnings=sanitize_result.warnings,
                     sanitize_result=sanitize_result,
                 )
-            
+
             if sanitize_result.action == SanitizeAction.QUARANTINE:
                 if self.quarantine_on_uncertainty:
                     self._stats["quarantined"] += 1
-                    
+
                     # Still track for review
                     tracked_entry = None
                     if self.enable_provenance:
@@ -360,7 +360,7 @@ class MemoryGuard:
                             expires_in_days=expires_in_days,
                             flag_for_review=True,
                         )
-                    
+
                     return GuardResult(
                         decision=GuardDecision.QUARANTINE,
                         allowed=False,
@@ -378,7 +378,7 @@ class MemoryGuard:
                         sanitize_result=sanitize_result,
                         tracked_entry=tracked_entry,
                     )
-            
+
             if sanitize_result.action == SanitizeAction.SANITIZED:
                 safe_content = sanitize_result.sanitized_content
                 was_sanitized = True
@@ -388,14 +388,14 @@ class MemoryGuard:
                 # ALLOW
                 safe_content = content
                 was_sanitized = False
-        
+
         # =========================================
         # STEP 2: PROVENANCE TRACKING
         # =========================================
         tracked_entry = None
         trust_score = 50
         entry_id = None
-        
+
         if self.enable_provenance:
             tracked_entry = self._track_entry(
                 content=safe_content,
@@ -415,10 +415,10 @@ class MemoryGuard:
                 expires_in_days=expires_in_days,
                 flag_for_review=self.auto_flag_high_risk and risk_after >= self.high_risk_threshold,
             )
-            
+
             trust_score = tracked_entry.provenance.trust_score
             entry_id = tracked_entry.provenance.entry_id
-        
+
         # =========================================
         # STEP 3: FINAL DECISION
         # =========================================
@@ -426,9 +426,9 @@ class MemoryGuard:
             decision = GuardDecision.ALLOW_SANITIZED
         else:
             decision = GuardDecision.ALLOW
-        
+
         self._stats["allowed"] += 1
-        
+
         warnings = []
         if sanitize_result and sanitize_result.warnings:
             warnings.extend(sanitize_result.warnings)
@@ -436,7 +436,7 @@ class MemoryGuard:
             warnings.append(f"High risk score: {risk_after}")
         if trust_score < 50:
             warnings.append(f"Low trust score: {trust_score}")
-        
+
         return GuardResult(
             decision=decision,
             allowed=True,
@@ -453,7 +453,7 @@ class MemoryGuard:
             sanitize_result=sanitize_result,
             tracked_entry=tracked_entry,
         )
-    
+
     def _track_entry(
         self,
         content: str,
@@ -479,7 +479,7 @@ class MemoryGuard:
             src_type = SourceType(source_type)
         except ValueError:
             src_type = SourceType.UNKNOWN
-        
+
         # Track entry
         entry = self.tracker.track(
             content=content,
@@ -498,28 +498,28 @@ class MemoryGuard:
             custom_metadata=custom_metadata,
             expires_in_days=expires_in_days,
         )
-        
+
         # Flag if needed
         if flag_for_review:
             self.tracker.flag_for_review(
                 entry_id=entry.provenance.entry_id,
                 reason=f"Auto-flagged: risk_score={risk_score}",
             )
-        
+
         return entry
-    
+
     # =========================================
     # MANAGEMENT METHODS
     # =========================================
-    
+
     def get_entry(self, entry_id: str) -> Optional[TrackedMemoryEntry]:
         """Get tracked entry by ID."""
         return self.tracker.get_entry(entry_id)
-    
+
     def get_flagged_entries(self) -> List[TrackedMemoryEntry]:
         """Get all entries flagged for review."""
         return self.tracker.get_flagged_entries()
-    
+
     def approve_entry(
         self,
         entry_id: str,
@@ -533,7 +533,7 @@ class MemoryGuard:
             notes=notes,
             approved=True,
         )
-    
+
     def reject_entry(
         self,
         entry_id: str,
@@ -547,15 +547,15 @@ class MemoryGuard:
             notes=notes,
             approved=False,
         )
-    
+
     def verify_integrity(self, entry_id: str) -> Dict:
         """Verify content integrity."""
         return self.tracker.verify_integrity(entry_id)
-    
+
     def get_chain_of_custody(self, entry_id: str) -> Optional[List[Dict]]:
         """Get chain of custody for entry."""
         return self.tracker.get_chain_of_custody(entry_id)
-    
+
     def find_suspicious(
         self,
         risk_threshold: int = 50
@@ -564,26 +564,26 @@ class MemoryGuard:
         return self.forensics.find_suspicious_entries(
             risk_threshold=risk_threshold
         )
-    
+
     def trace_source(self, source_id: str) -> Dict:
         """Trace all entries from a specific source."""
         return self.forensics.trace_source_impact(source_id)
-    
+
     def generate_incident_report(
         self,
         entry_ids: List[str]
     ) -> Dict:
         """Generate incident report."""
         return self.forensics.generate_incident_report(entry_ids)
-    
+
     def save_provenance(self, path: Optional[str] = None) -> str:
         """Save all provenance data."""
         return self.tracker.save_to_file(path)
-    
+
     def load_provenance(self, path: str) -> int:
         """Load provenance data."""
         return self.tracker.load_from_file(path)
-    
+
     def get_statistics(self) -> Dict:
         """Get guard statistics."""
         return {
@@ -591,11 +591,11 @@ class MemoryGuard:
             "provenance_stats": self.tracker.get_statistics(),
             "sanitizer_stats": self.sanitizer.get_stats(),
         }
-    
+
     def add_trusted_domain(self, domain: str) -> None:
         """Add a trusted domain."""
         self.tracker.trusted_domains.add(domain)
-    
+
     def add_trusted_source(self, source_id: str) -> None:
         """Add a trusted source."""
         self.tracker.trusted_sources.add(source_id)
@@ -618,26 +618,26 @@ class MemoryGuardMiddleware:
         def save_to_memory(content):
             memory.save(content)
     """
-    
+
     def __init__(self, guard: MemoryGuard):
         self.guard = guard
-    
+
     def protect(self, func):
         """Decorator to protect memory write functions."""
         def wrapper(content: str, *args, **kwargs):
             result = self.guard.process(content)
-            
+
             if not result.allowed:
                 raise MemoryGuardException(
                     f"Content blocked: {result.block_reason}",
                     result=result,
                 )
-            
+
             # Call original with safe content
             return func(result.safe_content, *args, **kwargs)
-        
+
         return wrapper
-    
+
     def check(self, content: str) -> GuardResult:
         """Check content without storing."""
         return self.guard.process(content)
@@ -645,7 +645,7 @@ class MemoryGuardMiddleware:
 
 class MemoryGuardException(Exception):
     """Exception raised when content is blocked."""
-    
+
     def __init__(self, message: str, result: GuardResult):
         super().__init__(message)
         self.result = result

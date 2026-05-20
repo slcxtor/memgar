@@ -186,66 +186,66 @@ PROVIDER_BASE_URLS: Dict[str, Optional[str]] = {
 @dataclass
 class LLMConfig:
     """LLM provider and model configuration."""
-    
+
     # Provider settings
     provider: str = "auto"
     model: Optional[str] = None
     api_key: Optional[str] = None
     base_url: Optional[str] = None
-    
+
     # Request settings
     timeout: float = 30.0
     max_retries: int = 2
     max_tokens: int = 500
-    
+
     # Fallback settings
     enable_fallback: bool = True
     fallback_providers: List[str] = field(default_factory=list)
     fallback_models: bool = True
-    
+
     # Cache settings
     cache_enabled: bool = True
     cache_ttl: int = 3600  # seconds
     cache_max_size: int = 1000
-    
+
     # Custom models (override defaults)
     custom_models: Dict[str, List[str]] = field(default_factory=dict)
-    
+
     def get_models(self, provider: str) -> List[str]:
         """Get models for provider, with custom override."""
         if provider in self.custom_models:
             return self.custom_models[provider]
         return DEFAULT_MODELS.get(provider, [])
-    
+
     def get_api_key(self, provider: str) -> Optional[str]:
         """Get API key for provider."""
         # First check explicit key
         if self.api_key:
             return self.api_key
-        
+
         # Then check MEMGAR_LLM_API_KEY
         memgar_key = os.environ.get("MEMGAR_LLM_API_KEY")
         if memgar_key:
             return memgar_key
-        
+
         # Finally check provider-specific env var
         env_var = PROVIDER_ENV_KEYS.get(provider)
         if env_var:
             return os.environ.get(env_var)
-        
+
         return None
-    
+
     def get_base_url(self, provider: str) -> Optional[str]:
         """Get base URL for provider."""
         # First check explicit URL
         if self.base_url:
             return self.base_url
-        
+
         # Then check MEMGAR_LLM_BASE_URL
         memgar_url = os.environ.get("MEMGAR_LLM_BASE_URL")
         if memgar_url:
             return memgar_url
-        
+
         # Check provider-specific env vars
         if provider == "azure":
             return os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -253,7 +253,7 @@ class LLMConfig:
             return os.environ.get("LITELLM_BASE_URL")
         elif provider == "openai_compatible":
             return os.environ.get("OPENAI_COMPATIBLE_BASE_URL")
-        
+
         # Return default
         return PROVIDER_BASE_URLS.get(provider)
 
@@ -291,7 +291,7 @@ class AnalysisConfig:
 @dataclass
 class OutputConfig:
     """Output and display configuration."""
-    
+
     output_format: str = "text"
     verbose: bool = False
     color: bool = True
@@ -302,7 +302,7 @@ class OutputConfig:
 @dataclass
 class IgnoreConfig:
     """Ignore rules for false positive reduction."""
-    
+
     patterns: List[str] = field(default_factory=list)
     threat_ids: List[str] = field(default_factory=list)
     domains: List[str] = field(default_factory=list)
@@ -399,23 +399,23 @@ def get_config_path() -> Path:
     # Check env var first
     if "MEMGAR_CONFIG" in os.environ:
         return Path(os.environ["MEMGAR_CONFIG"])
-    
+
     # Check current directory
     for filename in ["memgar.json", "memgar.yaml", "memgar.yml", "memgar.toml"]:
         path = Path.cwd() / filename
         if path.exists():
             return path
-    
+
     # Check home directory
     home_config = Path.home() / ".memgarrc"
     if home_config.exists():
         return home_config
-    
+
     # Check XDG config
     xdg_config = Path.home() / ".config" / "memgar" / "config.json"
     if xdg_config.exists():
         return xdg_config
-    
+
     # Default to home directory
     return home_config
 
@@ -441,7 +441,7 @@ def _load_toml(path: Path) -> Dict[str, Any]:
         except ImportError:
             logger.warning("TOML support not available. Install with: pip install tomli")
             return {}
-    
+
     with open(path, "rb") as f:
         return tomllib.load(f)
 
@@ -456,9 +456,9 @@ def _load_config_file(path: Path) -> Dict[str, Any]:
     """Load config from file based on extension."""
     if not path.exists():
         return {}
-    
+
     suffix = path.suffix.lower()
-    
+
     try:
         if suffix in [".yaml", ".yml"]:
             return _load_yaml(path)
@@ -498,59 +498,59 @@ def _parse_float(value: Any, default: float) -> float:
 
 def _apply_env_overrides(config: MemgarConfig) -> MemgarConfig:
     """Apply environment variable overrides to config."""
-    
+
     # LLM settings
     if "MEMGAR_LLM_PROVIDER" in os.environ:
         config.llm.provider = os.environ["MEMGAR_LLM_PROVIDER"]
-    
+
     if "MEMGAR_LLM_MODEL" in os.environ:
         config.llm.model = os.environ["MEMGAR_LLM_MODEL"]
-    
+
     if "MEMGAR_LLM_API_KEY" in os.environ:
         config.llm.api_key = os.environ["MEMGAR_LLM_API_KEY"]
-    
+
     if "MEMGAR_LLM_BASE_URL" in os.environ:
         config.llm.base_url = os.environ["MEMGAR_LLM_BASE_URL"]
-    
+
     if "MEMGAR_LLM_TIMEOUT" in os.environ:
         config.llm.timeout = _parse_float(os.environ["MEMGAR_LLM_TIMEOUT"], 30.0)
-    
+
     if "MEMGAR_LLM_MAX_RETRIES" in os.environ:
         config.llm.max_retries = _parse_int(os.environ["MEMGAR_LLM_MAX_RETRIES"], 2)
-    
+
     if "MEMGAR_LLM_FALLBACK" in os.environ:
         config.llm.enable_fallback = _parse_bool(os.environ["MEMGAR_LLM_FALLBACK"])
-    
+
     # Cache settings
     if "MEMGAR_CACHE_ENABLED" in os.environ:
         config.llm.cache_enabled = _parse_bool(os.environ["MEMGAR_CACHE_ENABLED"])
-    
+
     if "MEMGAR_CACHE_TTL" in os.environ:
         config.llm.cache_ttl = _parse_int(os.environ["MEMGAR_CACHE_TTL"], 3600)
-    
+
     # Analysis settings
     if "MEMGAR_SLIDING_WINDOW" in os.environ:
         config.analysis.use_sliding_window = _parse_bool(os.environ["MEMGAR_SLIDING_WINDOW"])
-    
+
     if "MEMGAR_WINDOW_SIZE" in os.environ:
         config.analysis.window_size = _parse_int(os.environ["MEMGAR_WINDOW_SIZE"], 1000)
-    
+
     if "MEMGAR_STRICT_MODE" in os.environ:
         config.analysis.strict_mode = _parse_bool(os.environ["MEMGAR_STRICT_MODE"])
-    
+
     if "MEMGAR_USE_LLM" in os.environ:
         config.analysis.use_llm = _parse_bool(os.environ["MEMGAR_USE_LLM"])
-    
+
     # Output settings
     if "MEMGAR_OUTPUT_FORMAT" in os.environ:
         config.output.output_format = os.environ["MEMGAR_OUTPUT_FORMAT"]
-    
+
     if "MEMGAR_VERBOSE" in os.environ:
         config.output.verbose = _parse_bool(os.environ["MEMGAR_VERBOSE"])
-    
+
     if "MEMGAR_COLOR" in os.environ:
         config.output.color = _parse_bool(os.environ["MEMGAR_COLOR"])
-    
+
     # Logging
     if "MEMGAR_LOG_LEVEL" in os.environ:
         config.log_level = os.environ["MEMGAR_LOG_LEVEL"].upper()
@@ -599,7 +599,7 @@ def _apply_env_overrides(config: MemgarConfig) -> MemgarConfig:
 def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
     """Convert dictionary to MemgarConfig."""
     config = MemgarConfig()
-    
+
     # LLM config
     if "llm" in data:
         llm_data = data["llm"]
@@ -619,7 +619,7 @@ def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
             cache_max_size=llm_data.get("cache_max_size", 1000),
             custom_models=llm_data.get("custom_models", {}),
         )
-    
+
     # Analysis config
     if "analysis" in data:
         analysis_data = data["analysis"]
@@ -635,7 +635,7 @@ def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
             max_content_length=analysis_data.get("max_content_length", 1000000),
             batch_size=analysis_data.get("batch_size", 10),
         )
-    
+
     # Output config
     if "output" in data:
         output_data = data["output"]
@@ -646,7 +646,7 @@ def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
             show_threats=output_data.get("show_threats", True),
             show_explanation=output_data.get("show_explanation", True),
         )
-    
+
     # Ignore config
     if "ignore" in data:
         ignore_data = data["ignore"]
@@ -655,7 +655,7 @@ def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
             threat_ids=ignore_data.get("threat_ids", []),
             domains=ignore_data.get("domains", []),
         )
-    
+
     # Cloud config
     if "cloud" in data:
         cloud_data = data["cloud"]
@@ -665,7 +665,7 @@ def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
             api_url=cloud_data.get("api_url", "https://api.memgar.com"),
             sync_enabled=cloud_data.get("sync_enabled", False),
         )
-    
+
     # Feed config
     if "feed" in data:
         fd = data["feed"]
@@ -702,22 +702,22 @@ def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
     config.log_level = data.get("log_level", "WARNING")
     config.custom_rules_path = data.get("custom_rules_path")
     config.config_version = data.get("config_version", "2.0")
-    
+
     # Legacy format support (v1.x)
     if "output_format" in data and "output" not in data:
         config.output.output_format = data.get("output_format", "text")
         config.output.verbose = data.get("verbose", False)
         config.output.color = data.get("color", True)
-    
+
     if "risk_threshold_block" in data and "analysis" not in data:
         config.analysis.risk_threshold_block = data.get("risk_threshold_block", 80)
         config.analysis.risk_threshold_quarantine = data.get("risk_threshold_quarantine", 40)
         config.analysis.enable_semantic = data.get("enable_semantic", False)
-    
+
     if "ignore_patterns" in data and "ignore" not in data:
         config.ignore.patterns = data.get("ignore_patterns", [])
         config.ignore.threat_ids = data.get("ignore_threat_ids", [])
-    
+
     return config
 
 
@@ -741,16 +741,16 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> MemgarConfig:
         path = Path(config_path)
     else:
         path = get_config_path()
-    
+
     # Load from file
     file_data = _load_config_file(path)
-    
+
     # Convert to config object
     config = _dict_to_config(file_data)
-    
+
     # Apply environment overrides
     config = _apply_env_overrides(config)
-    
+
     return config
 
 
@@ -769,10 +769,10 @@ def save_config(config: MemgarConfig, path: Optional[Union[str, Path]] = None) -
         config_path = Path(path)
     else:
         config_path = get_config_path()
-    
+
     # Ensure directory exists
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Convert to dict
     data = {
         "config_version": config.config_version,
@@ -784,10 +784,10 @@ def save_config(config: MemgarConfig, path: Optional[Union[str, Path]] = None) -
         "ignore": asdict(config.ignore),
         "cloud": asdict(config.cloud),
     }
-    
+
     # Save based on extension
     suffix = config_path.suffix.lower()
-    
+
     if suffix in [".yaml", ".yml"]:
         try:
             import yaml
@@ -811,7 +811,7 @@ def save_config(config: MemgarConfig, path: Optional[Union[str, Path]] = None) -
     else:
         with open(config_path, "w") as f:
             json.dump(data, f, indent=2)
-    
+
     return config_path
 
 
@@ -829,10 +829,10 @@ def init_config(path: Optional[Union[str, Path]] = None) -> Path:
         config_path = Path(path)
     else:
         config_path = get_config_path()
-    
+
     if config_path.exists():
         return config_path
-    
+
     default_config = MemgarConfig()
     return save_config(default_config, config_path)
 

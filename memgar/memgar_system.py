@@ -73,19 +73,19 @@ class AnalysisResult:
     risk_score: int
     decision: str  # "ALLOW" | "QUARANTINE" | "BLOCK"
     threats_detected: List[str]
-    
+
     # Advanced scoring
     bayesian_score: float = 0.0
     signal_strength: str = "medium"
     chain_detected: bool = False
     context_adjustment: float = 1.0
-    
+
     # Graph integration
     node_id: Optional[str] = None
     infection_score: float = 0.0
     related_nodes: List[str] = field(default_factory=list)
     attack_chains: List[Any] = field(default_factory=list)
-    
+
     # Metadata
     source_type: Optional[str] = None
     session_id: Optional[str] = None
@@ -99,12 +99,12 @@ class ActionValidationResult:
     decision: str  # "EXECUTE" | "BLOCK" | "CONFIRM"
     risk_level: str
     confidence: float
-    
+
     # Graph context
     source_memory_risk: int = 0
     infection_score: float = 0.0
     chain_detected: bool = False
-    
+
     # Details
     explanation: str = ""
     validators_used: List[str] = field(default_factory=list)
@@ -137,25 +137,25 @@ class MemgarSystem:
     - Action validation → Graph context
     - Pattern learning → Graph feedback
     """
-    
+
     def __init__(
         self,
         # LLM config
         llm_provider: Optional[str] = None,
         llm_api_key: Optional[str] = None,
         llm_model: Optional[str] = None,
-        
+
         # Feature flags
         enable_graph: bool = True,
         enable_advanced_scoring: bool = True,
         enable_action_guard: bool = True,
         enable_semantic: bool = True,
         enable_learning: bool = False,  # Off by default (needs approval)
-        
+
         # Graph config
         graph_auto_link: bool = True,
         graph_compute_infection: bool = True,
-        
+
         # Thresholds
         quarantine_threshold: int = 40,
         block_threshold: int = 70,
@@ -182,30 +182,30 @@ class MemgarSystem:
         self.llm_provider = llm_provider
         self.llm_api_key = llm_api_key
         self.llm_model = llm_model
-        
+
         self.enable_graph = enable_graph
         self.enable_advanced_scoring = enable_advanced_scoring
         self.enable_action_guard = enable_action_guard
         self.enable_semantic = enable_semantic
         self.enable_learning = enable_learning
-        
+
         self.quarantine_threshold = quarantine_threshold
         self.block_threshold = block_threshold
         self.infection_threshold = infection_threshold
-        
+
         # Initialize components
         self._init_components(
             graph_auto_link=graph_auto_link,
             graph_compute_infection=graph_compute_infection,
         )
-        
+
         logger.info("MemgarSystem initialized with features: "
                    f"graph={enable_graph}, advanced={enable_advanced_scoring}, "
                    f"guard={enable_action_guard}, semantic={enable_semantic}")
-    
+
     def _init_components(self, graph_auto_link: bool, graph_compute_infection: bool):
         """Initialize all system components."""
-        
+
         # 1. Memory Graph (central nervous system)
         if self.enable_graph:
             try:
@@ -221,7 +221,7 @@ class MemgarSystem:
                 self.enable_graph = False
         else:
             self.graph = None
-        
+
         # 2. Advanced Scoring Engine
         if self.enable_advanced_scoring:
             try:
@@ -234,7 +234,7 @@ class MemgarSystem:
                 self.enable_advanced_scoring = False
         else:
             self.advanced_scorer = None
-        
+
         # 3. Action Guard
         if self.enable_action_guard:
             try:
@@ -254,7 +254,7 @@ class MemgarSystem:
                 self.enable_action_guard = False
         else:
             self.action_guard = None
-        
+
         # 4. Pattern Evolution (if enabled)
         if self.enable_learning:
             try:
@@ -270,10 +270,10 @@ class MemgarSystem:
                 self.enable_learning = False
         else:
             self.evolver = None
-        
+
         # 5. Semantic Analyzer (lazy-loaded when needed)
         self._semantic_analyzer = None
-        
+
         # 6. Context-Aware Retriever
         if self.enable_graph:
             try:
@@ -289,11 +289,11 @@ class MemgarSystem:
                 self.retriever = None
         else:
             self.retriever = None
-    
+
     # =========================================================================
     # WRITE-TIME: Analyze + Store
     # =========================================================================
-    
+
     def analyze_and_store(
         self,
         content: str,
@@ -326,18 +326,18 @@ class MemgarSystem:
             AnalysisResult with complete analysis
         """
         from datetime import datetime, timezone
-        
+
         # Step 1: Basic pattern matching (would use real Analyzer here)
         # For now, mock simple detection
         risk_score = self._mock_pattern_analysis(content)
         threats = self._mock_detect_threats(content)
-        
+
         # Step 2: Advanced scoring (if enabled)
         bayesian_score = 0.0
         signal_strength = "medium"
         chain_detected = False
         context_adjustment = 1.0
-        
+
         if self.enable_advanced_scoring and self.advanced_scorer and threats:
             try:
                 # Convert to proper format for advanced scorer
@@ -347,7 +347,7 @@ class MemgarSystem:
                     source_type=source_type,
                     domain=domain,
                 )
-                
+
                 risk_score = advanced_result.risk_score
                 bayesian_score = advanced_result.bayesian_score
                 signal_strength = advanced_result.signal_strength.value
@@ -355,7 +355,7 @@ class MemgarSystem:
                 context_adjustment = advanced_result.context_adjustment
             except Exception as e:
                 logger.warning(f"Advanced scoring failed: {e}")
-        
+
         # Step 3: Decision
         if risk_score >= self.block_threshold:
             decision = "BLOCK"
@@ -363,13 +363,13 @@ class MemgarSystem:
             decision = "QUARANTINE"
         else:
             decision = "ALLOW"
-        
+
         # Step 4: Graph storage (if enabled)
         node_id = None
         infection_score = 0.0
         related_nodes = []
         attack_chains = []
-        
+
         if self.enable_graph and self.graph:
             try:
                 # Add to graph
@@ -382,29 +382,29 @@ class MemgarSystem:
                     agent_id=agent_id,
                     metadata=metadata or {},
                 )
-                
+
                 # Get infection score (auto-computed if enabled)
                 node = self.graph.get_node(node_id)
                 if node:
                     infection_score = node.infection_score
-                    
+
                     # Find related nodes
                     edges = self.graph.graph.out_edges(node_id, data=True)
                     related_nodes = [target for _, target, _ in edges]
-                
+
                 # Detect attack chains
                 if risk_score >= 50:
                     attack_chains = self.graph.detect_attack_chains(
                         min_risk=50,
                         max_length=5,
                     )
-                
+
                 logger.debug(f"Stored in graph: node_id={node_id}, "
                            f"infection={infection_score:.2f}, "
                            f"related={len(related_nodes)}")
             except Exception as e:
                 logger.error(f"Graph storage failed: {e}")
-        
+
         return AnalysisResult(
             content=content,
             risk_score=risk_score,
@@ -422,11 +422,11 @@ class MemgarSystem:
             session_id=session_id,
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
-    
+
     # =========================================================================
     # EXECUTION-TIME: Action Validation
     # =========================================================================
-    
+
     def validate_action(
         self,
         action: str,
@@ -462,7 +462,7 @@ class MemgarSystem:
                 source_memories = list(subgraph.nodes())
             except Exception as e:
                 logger.warning(f"Could not get session subgraph: {e}")
-        
+
         # Action Guard validation
         if self.enable_action_guard and self.action_guard:
             try:
@@ -473,7 +473,7 @@ class MemgarSystem:
                     agent_id=agent_id,
                     session_id=session_id,
                 )
-                
+
                 return ActionValidationResult(
                     action=action,
                     decision=result.decision.value.upper(),
@@ -487,7 +487,7 @@ class MemgarSystem:
                 )
             except Exception as e:
                 logger.error(f"Action validation failed: {e}")
-        
+
         # Fallback: simple validation
         return ActionValidationResult(
             action=action,
@@ -496,11 +496,11 @@ class MemgarSystem:
             confidence=0.5,
             explanation="Action Guard disabled, executing with caution",
         )
-    
+
     # =========================================================================
     # RETRIEVAL: Context-aware Memory Retrieval
     # =========================================================================
-    
+
     def retrieve(
         self,
         query: str,
@@ -536,7 +536,7 @@ class MemgarSystem:
         if not self.enable_graph or not self.retriever:
             logger.warning("Context-aware retrieval not available (graph disabled)")
             return []
-        
+
         try:
             return self.retriever.retrieve(
                 query=query,
@@ -550,22 +550,22 @@ class MemgarSystem:
         except Exception as e:
             logger.error(f"Retrieval failed: {e}")
             return []
-    
+
     # =========================================================================
     # GRAPH OPERATIONS
     # =========================================================================
-    
+
     def analyze_infection(self, node_id: str, max_depth: int = 5) -> Dict[str, Any]:
         """Analyze infection spread from a node."""
         if not self.enable_graph or not self.graph:
             return {"error": "Graph not enabled"}
-        
+
         try:
             return self.graph.analyze_infection(node_id, max_depth=max_depth)
         except Exception as e:
             logger.error(f"Infection analysis failed: {e}")
             return {"error": str(e)}
-    
+
     def find_attack_chains(
         self,
         target_action: Optional[str] = None,
@@ -575,7 +575,7 @@ class MemgarSystem:
         """Find attack chains in the graph."""
         if not self.enable_graph or not self.graph:
             return []
-        
+
         try:
             return self.graph.detect_attack_chains(
                 target_action=target_action,
@@ -585,12 +585,12 @@ class MemgarSystem:
         except Exception as e:
             logger.error(f"Chain detection failed: {e}")
             return []
-    
+
     def quarantine_node(self, node_id: str, reason: str = "") -> bool:
         """Quarantine a node and its infected subgraph."""
         if not self.enable_graph or not self.graph:
             return False
-        
+
         try:
             self.graph.quarantine_node(node_id)
             logger.info(f"Quarantined node {node_id}: {reason}")
@@ -598,12 +598,12 @@ class MemgarSystem:
         except Exception as e:
             logger.error(f"Quarantine failed: {e}")
             return False
-    
+
     def prune_infected(self, node_id: str) -> int:
         """Remove infected subgraph to stop viral spread."""
         if not self.enable_graph or not self.graph:
             return 0
-        
+
         try:
             removed = self.graph.prune_infected(node_id)
             logger.info(f"Pruned {removed} infected nodes")
@@ -611,21 +611,21 @@ class MemgarSystem:
         except Exception as e:
             logger.error(f"Prune failed: {e}")
             return 0
-    
+
     # =========================================================================
     # STATS & MONITORING
     # =========================================================================
-    
+
     def get_stats(self) -> SystemStats:
         """Get system-wide statistics."""
         stats = SystemStats()
-        
+
         if self.enable_graph and self.graph:
             try:
                 graph_stats = self.graph.stats()
                 stats.total_nodes = graph_stats.get("total_nodes", 0)
                 stats.total_edges = graph_stats.get("total_edges", 0)
-                
+
                 # Count by status
                 for node_id in self.graph.graph.nodes():
                     node = self.graph.get_node(node_id)
@@ -634,56 +634,56 @@ class MemgarSystem:
                             stats.quarantined_nodes += 1
                         elif node.status == "blocked":
                             stats.blocked_nodes += 1
-                        
+
                         if node.risk_score >= 70:
                             stats.high_risk_nodes += 1
-                
+
                 # Attack chains
                 chains = self.find_attack_chains(min_risk=50)
                 stats.attack_chains_detected = len(chains)
-                
+
             except Exception as e:
                 logger.warning(f"Could not get graph stats: {e}")
-        
+
         return stats
-    
+
     # =========================================================================
     # HELPER METHODS (Mock implementations)
     # =========================================================================
-    
+
     def _mock_pattern_analysis(self, content: str) -> int:
         """Mock pattern analysis (replace with real Analyzer)."""
         risk = 0
-        
+
         # Simple keyword detection
         high_risk = ["password", "bitcoin", "wallet", "always cc", "exec("]
         medium_risk = ["external", "payment", "transfer", "urgent"]
-        
+
         content_lower = content.lower()
-        
+
         for keyword in high_risk:
             if keyword in content_lower:
                 risk += 30
-        
+
         for keyword in medium_risk:
             if keyword in content_lower:
                 risk += 15
-        
+
         return min(risk, 100)
-    
+
     def _mock_detect_threats(self, content: str) -> List[Dict[str, Any]]:
         """Mock threat detection."""
         threats = []
-        
+
         if "password" in content.lower():
             threats.append({"id": "CRED-003", "name": "Credential Theft"})
-        
+
         if "payment" in content.lower() or "bitcoin" in content.lower():
             threats.append({"id": "FIN-001", "name": "Payment Redirect"})
-        
+
         if "always cc" in content.lower():
             threats.append({"id": "BEH-004", "name": "External Contact"})
-        
+
         return threats
 
 

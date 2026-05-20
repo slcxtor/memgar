@@ -85,7 +85,7 @@ class SourceInfo:
     source_path: Optional[str] = None   # File path if applicable
     source_domain: Optional[str] = None # Domain for web sources
     verified: bool = False              # Whether source is verified
-    
+
     def to_dict(self) -> Dict:
         return {
             "type": self.source_type.value,
@@ -96,7 +96,7 @@ class SourceInfo:
             "domain": self.source_domain,
             "verified": self.verified,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> "SourceInfo":
         return cls(
@@ -118,7 +118,7 @@ class ModificationRecord:
     actor: str   # Who/what made the change
     reason: Optional[str] = None
     changes: Optional[Dict] = None
-    
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -133,45 +133,45 @@ class MemoryProvenance:
     # Unique identifiers
     entry_id: str
     session_id: str
-    
+
     # Timing
     created_at: str
     updated_at: str
     expires_at: Optional[str] = None
-    
+
     # Source information
     source: SourceInfo = field(default_factory=lambda: SourceInfo(
         source_type=SourceType.UNKNOWN,
         source_id="unknown"
     ))
-    
+
     # Trust assessment
     trust_level: TrustLevel = TrustLevel.UNTRUSTED
     trust_score: int = 20
     trust_factors: List[str] = field(default_factory=list)
-    
+
     # Content integrity
     content_hash: str = ""
     original_content_hash: str = ""
     was_sanitized: bool = False
     sanitization_details: Optional[Dict] = None
-    
+
     # Analysis results
     risk_score: int = 0
     threat_types: List[str] = field(default_factory=list)
-    
+
     # Chain of custody
     modification_history: List[ModificationRecord] = field(default_factory=list)
-    
+
     # Flags
     flagged_for_review: bool = False
     reviewed_by: Optional[str] = None
     review_notes: Optional[str] = None
-    
+
     # Additional metadata
     tags: List[str] = field(default_factory=list)
     custom_metadata: Dict = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict:
         """Convert to dictionary for storage."""
         return {
@@ -197,15 +197,15 @@ class MemoryProvenance:
             "tags": self.tags,
             "custom_metadata": self.custom_metadata,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> "MemoryProvenance":
         """Create from dictionary."""
         history = [
-            ModificationRecord(**m) 
+            ModificationRecord(**m)
             for m in data.get("modification_history", [])
         ]
-        
+
         return cls(
             entry_id=data.get("entry_id", ""),
             session_id=data.get("session_id", ""),
@@ -229,7 +229,7 @@ class MemoryProvenance:
             tags=data.get("tags", []),
             custom_metadata=data.get("custom_metadata", {}),
         )
-    
+
     def add_modification(
         self,
         action: str,
@@ -254,13 +254,13 @@ class TrackedMemoryEntry:
     """Memory entry with full provenance tracking."""
     content: str
     provenance: MemoryProvenance
-    
+
     def to_dict(self) -> Dict:
         return {
             "content": self.content,
             "provenance": self.provenance.to_dict(),
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> "TrackedMemoryEntry":
         return cls(
@@ -297,7 +297,7 @@ class ProvenanceTracker:
             reason="Routine audit"
         )
     """
-    
+
     def __init__(
         self,
         session_id: Optional[str] = None,
@@ -321,25 +321,25 @@ class ProvenanceTracker:
         self.trusted_domains = set(trusted_domains or [])
         self.trusted_sources = set(trusted_sources or [])
         self.storage_path = Path(storage_path) if storage_path else None
-        
+
         # In-memory registry
         self._entries: Dict[str, TrackedMemoryEntry] = {}
-        
+
         # Audit log
         self._audit_log: List[Dict] = []
-    
+
     def _generate_entry_id(self) -> str:
         """Generate unique entry ID."""
         return f"mem_{uuid.uuid4().hex[:16]}"
-    
+
     def _compute_hash(self, content: str) -> str:
         """Compute SHA-256 hash of content."""
         return hashlib.sha256(content.encode()).hexdigest()
-    
+
     def _get_timestamp(self) -> str:
         """Get current UTC timestamp in ISO format."""
         return datetime.now(timezone.utc).isoformat()
-    
+
     def _determine_trust_level(
         self,
         source: SourceInfo
@@ -348,18 +348,18 @@ class ProvenanceTracker:
         # Check if source is explicitly trusted
         if source.source_id in self.trusted_sources:
             return TrustLevel.TRUSTED
-        
+
         # Check domain trust
         if source.source_domain and source.source_domain in self.trusted_domains:
             return TrustLevel.TRUSTED
-        
+
         # Check verification
         if source.verified:
             return TrustLevel.VERIFIED
-        
+
         # Use default for source type
         return SOURCE_TYPE_TRUST.get(source.source_type, self.default_trust_level)
-    
+
     def _calculate_trust_factors(
         self,
         source: SourceInfo,
@@ -367,27 +367,27 @@ class ProvenanceTracker:
     ) -> List[str]:
         """Calculate factors contributing to trust score."""
         factors = []
-        
+
         if source.verified:
             factors.append("+verified_source")
-        
+
         if source.source_id in self.trusted_sources:
             factors.append("+trusted_source_id")
-        
+
         if source.source_domain in self.trusted_domains:
             factors.append("+trusted_domain")
-        
+
         if source.source_type == SourceType.SYSTEM:
             factors.append("+system_generated")
-        
+
         if source.source_type == SourceType.WEBPAGE:
             factors.append("-external_webpage")
-        
+
         if source.source_type == SourceType.UNKNOWN:
             factors.append("-unknown_source")
-        
+
         return factors
-    
+
     def track(
         self,
         content: str,
@@ -433,7 +433,7 @@ class ProvenanceTracker:
         """
         now = self._get_timestamp()
         entry_id = self._generate_entry_id()
-        
+
         # Create source info
         source = SourceInfo(
             source_type=source_type,
@@ -444,16 +444,16 @@ class ProvenanceTracker:
             source_domain=source_domain,
             verified=verified,
         )
-        
+
         # Determine trust
         trust_level = self._determine_trust_level(source)
         trust_score = TRUST_SCORES[trust_level]
         trust_factors = self._calculate_trust_factors(source, trust_level)
-        
+
         # Compute hashes
         content_hash = self._compute_hash(content)
         original_hash = self._compute_hash(original_content) if original_content else content_hash
-        
+
         # Calculate expiry
         expires_at = None
         if expires_in_days:
@@ -461,7 +461,7 @@ class ProvenanceTracker:
             expires_at = (
                 datetime.now(timezone.utc) + timedelta(days=expires_in_days)
             ).isoformat()
-        
+
         # Create provenance
         provenance = MemoryProvenance(
             entry_id=entry_id,
@@ -490,13 +490,13 @@ class ProvenanceTracker:
             tags=tags or [],
             custom_metadata=custom_metadata or {},
         )
-        
+
         # Create entry
         entry = TrackedMemoryEntry(content=content, provenance=provenance)
-        
+
         # Store in registry
         self._entries[entry_id] = entry
-        
+
         # Log
         self._audit_log.append({
             "timestamp": now,
@@ -505,9 +505,9 @@ class ProvenanceTracker:
             "source_type": source_type.value,
             "trust_score": trust_score,
         })
-        
+
         return entry
-    
+
     def update_content(
         self,
         entry_id: str,
@@ -518,11 +518,11 @@ class ProvenanceTracker:
         """Update content of existing entry."""
         if entry_id not in self._entries:
             return None
-        
+
         entry = self._entries[entry_id]
         old_hash = entry.provenance.content_hash
         new_hash = self._compute_hash(new_content)
-        
+
         entry.content = new_content
         entry.provenance.content_hash = new_hash
         entry.provenance.add_modification(
@@ -531,9 +531,9 @@ class ProvenanceTracker:
             reason=reason,
             changes={"old_hash": old_hash, "new_hash": new_hash},
         )
-        
+
         return entry
-    
+
     def flag_for_review(
         self,
         entry_id: str,
@@ -543,7 +543,7 @@ class ProvenanceTracker:
         """Flag entry for human review."""
         if entry_id not in self._entries:
             return False
-        
+
         entry = self._entries[entry_id]
         entry.provenance.flagged_for_review = True
         entry.provenance.add_modification(
@@ -551,9 +551,9 @@ class ProvenanceTracker:
             actor=actor,
             reason=reason,
         )
-        
+
         return True
-    
+
     def mark_reviewed(
         self,
         entry_id: str,
@@ -564,7 +564,7 @@ class ProvenanceTracker:
         """Mark entry as reviewed."""
         if entry_id not in self._entries:
             return False
-        
+
         entry = self._entries[entry_id]
         entry.provenance.flagged_for_review = False
         entry.provenance.reviewed_by = reviewer
@@ -575,17 +575,17 @@ class ProvenanceTracker:
             reason=f"Reviewed: {'approved' if approved else 'rejected'}",
             changes={"approved": approved},
         )
-        
+
         return True
-    
+
     def get_entry(self, entry_id: str) -> Optional[TrackedMemoryEntry]:
         """Get entry by ID."""
         return self._entries.get(entry_id)
-    
+
     def get_all_entries(self) -> List[TrackedMemoryEntry]:
         """Get all tracked entries."""
         return list(self._entries.values())
-    
+
     def get_entries_by_source(
         self,
         source_type: Optional[SourceType] = None,
@@ -600,7 +600,7 @@ class ProvenanceTracker:
                 continue
             results.append(entry)
         return results
-    
+
     def get_entries_by_trust(
         self,
         min_trust_score: int = 0,
@@ -611,14 +611,14 @@ class ProvenanceTracker:
             entry for entry in self._entries.values()
             if min_trust_score <= entry.provenance.trust_score <= max_trust_score
         ]
-    
+
     def get_flagged_entries(self) -> List[TrackedMemoryEntry]:
         """Get all entries flagged for review."""
         return [
             entry for entry in self._entries.values()
             if entry.provenance.flagged_for_review
         ]
-    
+
     def get_entries_by_session(
         self,
         session_id: str
@@ -628,23 +628,23 @@ class ProvenanceTracker:
             entry for entry in self._entries.values()
             if entry.provenance.session_id == session_id
         ]
-    
+
     def verify_integrity(self, entry_id: str) -> Dict:
         """Verify content integrity of entry."""
         if entry_id not in self._entries:
             return {"valid": False, "error": "Entry not found"}
-        
+
         entry = self._entries[entry_id]
         current_hash = self._compute_hash(entry.content)
         stored_hash = entry.provenance.content_hash
-        
+
         return {
             "valid": current_hash == stored_hash,
             "current_hash": current_hash,
             "stored_hash": stored_hash,
             "was_modified": current_hash != stored_hash,
         }
-    
+
     def get_chain_of_custody(
         self,
         entry_id: str
@@ -652,16 +652,16 @@ class ProvenanceTracker:
         """Get full chain of custody for entry."""
         if entry_id not in self._entries:
             return None
-        
+
         entry = self._entries[entry_id]
         return [m.to_dict() for m in entry.provenance.modification_history]
-    
+
     def export_provenance(self, entry_id: str) -> Optional[Dict]:
         """Export full provenance for entry."""
         if entry_id not in self._entries:
             return None
         return self._entries[entry_id].provenance.to_dict()
-    
+
     def export_all(self) -> Dict:
         """Export all entries with provenance."""
         return {
@@ -673,35 +673,35 @@ class ProvenanceTracker:
                 for entry_id, entry in self._entries.items()
             },
         }
-    
+
     def save_to_file(self, path: Optional[str] = None) -> str:
         """Save all provenance data to file."""
         file_path = Path(path) if path else self.storage_path
         if not file_path:
             file_path = Path(f"provenance_{self.session_id}.json")
-        
+
         data = self.export_all()
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2)
-        
+
         return str(file_path)
-    
+
     def load_from_file(self, path: str) -> int:
         """Load provenance data from file."""
         with open(path) as f:
             data = json.load(f)
-        
+
         entries = data.get("entries", {})
         for entry_id, entry_data in entries.items():
             entry = TrackedMemoryEntry.from_dict(entry_data)
             self._entries[entry_id] = entry
-        
+
         return len(entries)
-    
+
     def get_audit_log(self) -> List[Dict]:
         """Get audit log."""
         return self._audit_log.copy()
-    
+
     def get_statistics(self) -> Dict:
         """Get statistics about tracked entries."""
         if not self._entries:
@@ -712,29 +712,29 @@ class ProvenanceTracker:
                 "flagged_count": 0,
                 "sanitized_count": 0,
             }
-        
+
         by_source = {}
         by_trust = {}
         flagged = 0
         sanitized = 0
-        
+
         for entry in self._entries.values():
             # Count by source type
             st = entry.provenance.source.source_type.value
             by_source[st] = by_source.get(st, 0) + 1
-            
+
             # Count by trust level
             tl = entry.provenance.trust_level.value
             by_trust[tl] = by_trust.get(tl, 0) + 1
-            
+
             # Count flags
             if entry.provenance.flagged_for_review:
                 flagged += 1
-            
+
             # Count sanitized
             if entry.provenance.was_sanitized:
                 sanitized += 1
-        
+
         return {
             "total_entries": len(self._entries),
             "by_source_type": by_source,
@@ -755,10 +755,10 @@ class ForensicAnalyzer:
     """
     Forensic analysis tools for investigating memory poisoning incidents.
     """
-    
+
     def __init__(self, tracker: ProvenanceTracker):
         self.tracker = tracker
-    
+
     def find_suspicious_entries(
         self,
         time_range: Optional[tuple] = None,
@@ -766,34 +766,34 @@ class ForensicAnalyzer:
     ) -> List[TrackedMemoryEntry]:
         """Find entries with suspicious characteristics."""
         suspicious = []
-        
+
         for entry in self.tracker.get_all_entries():
             prov = entry.provenance
-            
+
             # Check risk score
             if prov.risk_score >= risk_threshold:
                 suspicious.append(entry)
                 continue
-            
+
             # Check trust level
             if prov.trust_level in [TrustLevel.UNTRUSTED, TrustLevel.MALICIOUS]:
                 suspicious.append(entry)
                 continue
-            
+
             # Check if sanitized
             if prov.was_sanitized:
                 suspicious.append(entry)
                 continue
-        
+
         return suspicious
-    
+
     def trace_source_impact(
         self,
         source_id: str
     ) -> Dict:
         """Trace all entries from a specific source."""
         entries = self.tracker.get_entries_by_source(source_id=source_id)
-        
+
         return {
             "source_id": source_id,
             "entry_count": len(entries),
@@ -806,7 +806,7 @@ class ForensicAnalyzer:
                 t for e in entries for t in e.provenance.threat_types
             )),
         }
-    
+
     def generate_incident_report(
         self,
         entry_ids: List[str]
@@ -817,10 +817,10 @@ class ForensicAnalyzer:
             for eid in entry_ids
             if self.tracker.get_entry(eid)
         ]
-        
+
         if not entries:
             return {"error": "No entries found"}
-        
+
         return {
             "report_generated": datetime.now(timezone.utc).isoformat(),
             "entry_count": len(entries),
@@ -851,7 +851,7 @@ class ForensicAnalyzer:
                 )),
             },
         }
-    
+
     def rollback_to_snapshot(
         self,
         snapshot_data: Dict
@@ -859,14 +859,14 @@ class ForensicAnalyzer:
         """Rollback to a previous snapshot state."""
         # Clear current entries
         self.tracker._entries.clear()
-        
+
         # Load snapshot
         count = 0
         for entry_id, entry_data in snapshot_data.get("entries", {}).items():
             entry = TrackedMemoryEntry.from_dict(entry_data)
             self.tracker._entries[entry_id] = entry
             count += 1
-        
+
         return count
 
 

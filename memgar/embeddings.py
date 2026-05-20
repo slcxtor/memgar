@@ -358,7 +358,7 @@ class EmbeddingAnalyzer:
         print(result.is_threat)  # True
         print(result.similarity_score)  # 0.85
     """
-    
+
     def __init__(
         self,
         threat_threshold: float = 0.70,
@@ -378,7 +378,7 @@ class EmbeddingAnalyzer:
         self._model = None
         self._embeddings_cache = None
         self._examples_flat: List[Tuple[str, str]] = []  # (category, example)
-        
+
         # Combine default and custom examples
         self.threat_examples = THREAT_EXAMPLES.copy()
         if custom_examples:
@@ -387,26 +387,26 @@ class EmbeddingAnalyzer:
                     self.threat_examples[category].extend(examples)
                 else:
                     self.threat_examples[category] = examples
-        
+
         # Flatten examples for embedding
         for category, examples in self.threat_examples.items():
             for example in examples:
                 self._examples_flat.append((category, example))
-    
+
     def _ensure_model(self):
         """Ensure model is loaded."""
         if self._model is None:
             self._model = _get_model()
             self._compute_threat_embeddings()
-    
+
     def _compute_threat_embeddings(self):
         """Pre-compute embeddings for all threat examples."""
-        
+
         examples = [ex for _, ex in self._examples_flat]
         logger.info(f"Computing embeddings for {len(examples)} threat examples...")
         self._embeddings_cache = self._model.encode(examples, convert_to_numpy=True)
         logger.info("Threat embeddings computed")
-    
+
     def analyze(self, content: str) -> EmbeddingResult:
         """
         Analyze content for semantic similarity to threats.
@@ -418,30 +418,30 @@ class EmbeddingAnalyzer:
             EmbeddingResult with similarity scores
         """
         import numpy as np
-        
+
         self._ensure_model()
-        
+
         # Encode input content
         content_embedding = self._model.encode(content, convert_to_numpy=True)
-        
+
         # Compute cosine similarities
         # Normalize vectors
         content_norm = content_embedding / np.linalg.norm(content_embedding)
         cache_norms = self._embeddings_cache / np.linalg.norm(
             self._embeddings_cache, axis=1, keepdims=True
         )
-        
+
         # Cosine similarity
         similarities = np.dot(cache_norms, content_norm)
-        
+
         # Find best match
         max_idx = np.argmax(similarities)
         max_similarity = float(similarities[max_idx])
         matched_category, matched_example = self._examples_flat[max_idx]
-        
+
         # Determine if threat
         is_threat = max_similarity >= self.threat_threshold
-        
+
         # Confidence based on how far above threshold
         if max_similarity >= self.threat_threshold:
             confidence = min(1.0, (max_similarity - self.threat_threshold) / 0.3 + 0.7)
@@ -451,7 +451,7 @@ class EmbeddingAnalyzer:
             ) * 0.4 + 0.3
         else:
             confidence = max_similarity / self.quarantine_threshold * 0.3
-        
+
         return EmbeddingResult(
             is_threat=is_threat,
             similarity_score=max_similarity,
@@ -459,7 +459,7 @@ class EmbeddingAnalyzer:
             matched_example=matched_example if max_similarity >= self.quarantine_threshold else None,
             confidence=confidence,
         )
-    
+
     def analyze_batch(self, contents: List[str]) -> List[EmbeddingResult]:
         """
         Analyze multiple contents efficiently.
@@ -471,12 +471,12 @@ class EmbeddingAnalyzer:
             List of EmbeddingResult
         """
         import numpy as np
-        
+
         self._ensure_model()
-        
+
         # Batch encode
         content_embeddings = self._model.encode(contents, convert_to_numpy=True)
-        
+
         results = []
         for i, content_embedding in enumerate(content_embeddings):
             # Normalize
@@ -484,14 +484,14 @@ class EmbeddingAnalyzer:
             cache_norms = self._embeddings_cache / np.linalg.norm(
                 self._embeddings_cache, axis=1, keepdims=True
             )
-            
+
             similarities = np.dot(cache_norms, content_norm)
             max_idx = np.argmax(similarities)
             max_similarity = float(similarities[max_idx])
             matched_category, matched_example = self._examples_flat[max_idx]
-            
+
             is_threat = max_similarity >= self.threat_threshold
-            
+
             if max_similarity >= self.threat_threshold:
                 confidence = min(1.0, (max_similarity - self.threat_threshold) / 0.3 + 0.7)
             elif max_similarity >= self.quarantine_threshold:
@@ -500,7 +500,7 @@ class EmbeddingAnalyzer:
                 ) * 0.4 + 0.3
             else:
                 confidence = max_similarity / self.quarantine_threshold * 0.3
-            
+
             results.append(EmbeddingResult(
                 is_threat=is_threat,
                 similarity_score=max_similarity,
@@ -508,9 +508,9 @@ class EmbeddingAnalyzer:
                 matched_example=matched_example if max_similarity >= self.quarantine_threshold else None,
                 confidence=confidence,
             ))
-        
+
         return results
-    
+
     def add_examples(self, category: str, examples: List[str]) -> None:
         """
         Add custom threat examples.
@@ -521,16 +521,16 @@ class EmbeddingAnalyzer:
         """
         for example in examples:
             self._examples_flat.append((category, example))
-        
+
         if category in self.threat_examples:
             self.threat_examples[category].extend(examples)
         else:
             self.threat_examples[category] = examples
-        
+
         # Recompute embeddings if model is loaded
         if self._model is not None:
             self._compute_threat_embeddings()
-    
+
     def get_similar_threats(
         self,
         content: str,
@@ -547,26 +547,26 @@ class EmbeddingAnalyzer:
             List of (category, example, similarity) tuples
         """
         import numpy as np
-        
+
         self._ensure_model()
-        
+
         content_embedding = self._model.encode(content, convert_to_numpy=True)
         content_norm = content_embedding / np.linalg.norm(content_embedding)
         cache_norms = self._embeddings_cache / np.linalg.norm(
             self._embeddings_cache, axis=1, keepdims=True
         )
-        
+
         similarities = np.dot(cache_norms, content_norm)
-        
+
         # Get top-k indices
         top_indices = np.argsort(similarities)[-top_k:][::-1]
-        
+
         results = []
         for idx in top_indices:
             category, example = self._examples_flat[idx]
             similarity = float(similarities[idx])
             results.append((category, example, similarity))
-        
+
         return results
 
 
