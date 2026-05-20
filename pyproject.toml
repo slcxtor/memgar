@@ -210,3 +210,11 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+
+[tool.pip-audit]
+# PYSEC-2024-277: joblib arbitrary code execution via crafted pickle.
+# joblib 1.5.3 is the latest available version; no upstream fix exists yet.
+# Risk is LOW for memgar because joblib is used only by scikit-learn's
+# internal parallel backend — we never deserialize joblib pickle files
+# from untrusted sources.  Re-evaluate when a patched release ships.
+ignore-vulns = ["PYSEC-2024-277"]

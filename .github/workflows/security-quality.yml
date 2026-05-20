@@ -35,4 +35,5 @@ jobs:
       - name: Bandit high-severity security gate
         run: python -m bandit -q -r memgar ml -x tests,docs,examples --severity-level high --confidence-level medium
       - name: Dependency vulnerability audit
-        run: python -m pip_audit . --progress-spinner off
+        # PYSEC-2024-277: joblib 1.5.3 (scikit-learn transitive dep) — no fix available yet
+        run: pip-audit . --progress-spinner off --ignore-vuln PYSEC-2024-277
