@@ -41,7 +41,8 @@ class FeedVerifier:
         # cryptography (e.g. distro package with mismatched libffi) doesn't
         # leak a Rust backtrace into the user's terminal — we surface a
         # clean ImportError instead.
-        import contextlib, io, os
+        import contextlib
+        import io
         with contextlib.redirect_stderr(io.StringIO()):
             try:
                 from cryptography.exceptions import InvalidSignature

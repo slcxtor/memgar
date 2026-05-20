@@ -222,9 +222,22 @@ exclude_lines = [
 ]
 
 [tool.pip-audit]
-# PYSEC-2024-277: joblib arbitrary code execution via crafted pickle.
-# joblib 1.5.3 is the latest available version; no upstream fix exists yet.
-# Risk is LOW for memgar because joblib is used only by scikit-learn's
-# internal parallel backend — we never deserialize joblib pickle files
-# from untrusted sources.  Re-evaluate when a patched release ships.
-ignore-vulns = ["PYSEC-2024-277"]
+# All ignored CVEs are in OPTIONAL extras (`ml`, `ml-train`) used only for
+# offline model fine-tuning via `scripts/train_transformer.py`.  Runtime
+# inference uses ONNX Runtime, NOT torch/transformers.  memgar never
+# deserializes torch/transformers artifacts from untrusted sources.
+# Re-evaluate each ignore on every release; remove once upstream patches ship.
+ignore-vulns = [
+    # joblib pickle RCE — scikit-learn parallel backend dep, no fix available.
+    "PYSEC-2024-277",
+    # torch 2.12.0 — 11 advisories, no upstream fix as of 2026-05-20.
+    # All concern pickle/serialization in `torch.load()`; not used at runtime.
+    "PYSEC-2025-189", "PYSEC-2025-190", "PYSEC-2025-191", "PYSEC-2025-192",
+    "PYSEC-2025-193", "PYSEC-2025-194", "PYSEC-2025-195", "PYSEC-2025-196",
+    "PYSEC-2025-197", "PYSEC-2025-210", "PYSEC-2026-139",
+    # transformers 5.9.0 — 8 advisories, no upstream fix as of 2026-05-20.
+    # Concern tokenizer/auto-class loading from remote hubs; we use only
+    # locally-saved tokenizers shipped alongside the trained ONNX model.
+    "PYSEC-2025-211", "PYSEC-2025-212", "PYSEC-2025-213", "PYSEC-2025-214",
+    "PYSEC-2025-215", "PYSEC-2025-216", "PYSEC-2025-217", "PYSEC-2025-218",
+]
