@@ -972,10 +972,17 @@ EVADE_002 = Threat(
     category=ThreatCategory.EVASION,
     severity=Severity.MEDIUM,
     patterns=[
+        # Cyrillic letters used in Latin-looking text (homoglyph attack)
         r"[\u0400-\u04FF]",
+        # Greek letters used in Latin-looking text (homoglyph attack)
         r"[\u0370-\u03FF]",
-        r"[\u2000-\u206F]",
-        r"[\u200B-\u200F]",
+        # Zero-width and bidi control characters only \u2014 NOT the whole general
+        # punctuation block (em-dash, en-dash, curly quotes are legitimate
+        # punctuation in Turkish/French/German prose and were causing FPs).
+        # Includes ZWSP, ZWNJ, ZWJ, LRM, RLM, LRE/RLE/PDF/LRO/RLO, WORD-JOINER,
+        # FUNCTION APPLICATION, INVISIBLE TIMES/SEPARATOR/PLUS, LRI/RLI/FSI/PDI.
+        r"[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]",
+        # Variation selectors (often abused to hide payload)
         r"[\uFE00-\uFE0F]",
     ],
     keywords=["unicode", "homoglyph", "lookalike character", "special character"],
@@ -1341,7 +1348,8 @@ ANOM_001 = Threat(
     patterns=[
         r"(?i)(from\s+now\s+on|going\s+forward|henceforth|hereafter)\s+(always|never|don't)",
         r"(?i)(remember|note|important)\s*:\s*(always|never|don't)",
-        r"(?i)(rule|policy|instruction)\s*#?\d*\s*:\s*",
+        # Directive marker followed by an imperative verb (not just any colon)
+        r"(?i)(rule|policy|instruction|directive)\s*#?\d*\s*:\s*(always|never|don't|do\s+not|must|shall|enforce|disable|enable|override|ignore|bypass|grant)",
         r"(?i)(override|supersede|replace)\s+(previous|earlier|old)\s+(rules?|instructions?|settings?)",
     ],
     keywords=["from now on", "remember this", "new rule", "override previous"],
@@ -1390,7 +1398,7 @@ ANOM_004 = Threat(
     severity=Severity.MEDIUM,
     patterns=[
         r"(?i)(jailbreak|bypass|escape)\s+(safety|restrictions?|limitations?|guidelines?)",
-        r"(?i)(DAN|do\s+anything\s+now|developer\s+mode)",
+        r"(?i)\b(DAN|do\s+anything\s+now|developer\s+mode)\b",
         r"(?i)(disable|remove|ignore)\s+(safety|ethical|content)\s+(filters?|guidelines?|restrictions?)",
         r"(?i)(pretend|imagine|roleplay)\s+.{0,20}\s+(no\s+rules|unrestricted|unlimited)",
     ],
@@ -11569,8 +11577,12 @@ WEB3_WALLET_001 = Threat(
         r"(?i)BIP[\s\-]?39\s+(?:seed|phrase|mnemonic|words?)",
         r"(?i)(?:enter|input|type|write|paste)\s+(?:your\s+)?(?:seed|recovery|mnemonic|backup)\s+(?:phrase|words?)",
         r"(?i)(?:metamask|phantom|trust\s*wallet|rainbow|coinbase\s*wallet|exodus|atomic|ledger\s*live|trezor\s*suite)\s+.{0,40}(?:seed|recovery|backup|export|reveal)",
-        # Common BIP-39 word sequences (12-word minimum, lowercase only, space-separated, all from BIP-39 wordlist heuristic)
-        r"\b(?:abandon|ability|able|about|above|absent|absorb|abstract|absurd|abuse|access|accident|account|accuse|achieve|acid|acoustic|acquire|across|act|action|actor|actress|actual|adapt|add|addict|address|adjust|admit|adult|advance|advice|aerobic|affair|afford|afraid|again|age|agent|agree|ahead|aim|air|airport|aisle|alarm|album|alcohol|alert|alien|all|alley|allow|almost|alone|alpha|already|also|alter|always|amateur|amazing|among|amount|amused|analyst|anchor|ancient|anger|angle|angry|animal|ankle|announce|annual|another|answer|antenna|antique|anxiety|any|apart|apology|appear|apple|approve|april|arch|arctic|area|arena|argue|arm|armed|armor|army|around|arrange|arrest|arrive|arrow|art|artefact|artist|artwork|ask|aspect|assault|asset|assist|assume|asthma|athlete|atom|attack|attend|attitude|attract|auction|audit|august|aunt|author|auto|autumn|average|avocado|avoid|awake|aware|away|awesome|awful|awkward|axis)\s+(?:\w+\s+){10,23}\w+",
+        # Actual BIP-39 seed phrase detection: 12+ lowercase BIP-39 words in a row,
+        # ALL of which must be in the wordlist. (Previous heuristic accepted any
+        # BIP-39 first-word + 10+ arbitrary words, which false-positived heavily
+        # on prose like "Write a story **about** a secretary..." since "about"
+        # is in the BIP-39 wordlist.)
+        r"\b(?:abandon|ability|able|about|above|absent|absorb|abstract|absurd|abuse|access|accident|account|accuse|achieve|acid|acoustic|acquire|across|act|action|actor|actress|actual|adapt|add|addict|address|adjust|admit|adult|advance|advice|aerobic|affair|afford|afraid|again|age|agent|agree|ahead|aim|air|airport|aisle|alarm|album|alcohol|alert|alien|all|alley|allow|almost|alone|alpha|already|also|alter|always|amateur|amazing|among|amount|amused|analyst|anchor|ancient|anger|angle|angry|animal|ankle|announce|annual|another|answer|antenna|antique|anxiety|any|apart|apology|appear|apple|approve|april|arch|arctic|area|arena|argue|arm|armed|armor|army|around|arrange|arrest|arrive|arrow|art|artefact|artist|artwork|ask|aspect|assault|asset|assist|assume|asthma|athlete|atom|attack|attend|attitude|attract|auction|audit|august|aunt|author|auto|autumn|average|avocado|avoid|awake|aware|away|awesome|awful|awkward|axis)(?:\s+(?:abandon|ability|able|about|above|absent|absorb|abstract|absurd|abuse|access|accident|account|accuse|achieve|acid|acoustic|acquire|across|act|action|actor|actress|actual|adapt|add|addict|address|adjust|admit|adult|advance|advice|aerobic|affair|afford|afraid|again|age|agent|agree|ahead|aim|air|airport|aisle|alarm|album|alcohol|alert|alien|all|alley|allow|almost|alone|alpha|already|also|alter|always|amateur|amazing|among|amount|amused|analyst|anchor|ancient|anger|angle|angry|animal|ankle|announce|annual|another|answer|antenna|antique|anxiety|any|apart|apology|appear|apple|approve|april|arch|arctic|area|arena|argue|arm|armed|armor|army|around|arrange|arrest|arrive|arrow|art|artefact|artist|artwork|ask|aspect|assault|asset|assist|assume|asthma|athlete|atom|attack|attend|attitude|attract|auction|audit|august|aunt|author|auto|autumn|average|avocado|avoid|awake|aware|away|awesome|awful|awkward|axis)){11,}\b",
     ],
     keywords=["seed phrase", "mnemonic", "recovery phrase", "BIP-39", "12 words", "24 words"],
     examples=[

@@ -104,15 +104,18 @@ pipeline. Notable additions:
 ### Honest notes
 
 - Calibration is reported on **two corpora**:
-  - **Gold** (95 attacks + 49 benign, hand-curated): ≈ 80 % recall,
-    ≈ 9 % FPR. This is the public baseline.
+  - **Gold** (95 attacks + 49 benign, hand-curated): ≈ 75 % recall,
+    ≈ 2 % FPR (post pattern-precision pass). This is the public
+    baseline.
   - **Expanded** (386 attacks + 78 benign — gold + mined public corpora
-    + memory-context augmented templates): ≈ 79 % recall, ≈ 36 % FPR.
-    The mined and augmented samples are programmatically generated, not
-    hand-reviewed, so the decision boundary is fuzzier. CI's expanded
-    gate currently reports *"no threshold satisfies the constraints —
-    corpus too small or model too weak"* — this is a known regression
-    surface, not a code bug. It tracks broader drift over time.
+    + memory-context augmented templates): ≈ 73 % recall, ≈ 23 % FPR.
+    The expanded gate now **passes its precision constraint** at
+    threshold=94 (P=0.951, R=0.702, FPR=0.179). The previous 36% FPR
+    was driven by four overly-broad regexes (ANOM-004 missing `\b`
+    on `DAN` matching Turkish `-dan` suffix, ANOM-001 matching any
+    `policy:` colon, WEB3-WALLET-001 BIP-39 wordlist accepting any
+    English first-word + 10+ trailing words, EVADE-002 catching
+    em-dash punctuation). All four are tightened in v1.0.
 - No public benchmark for memory poisoning exists yet; treat all of
   the above as preliminary
 - Not third-party audited

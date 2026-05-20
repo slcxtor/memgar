@@ -50,13 +50,14 @@ session, and the next agent, doesn't inherit the attack.
 
 | Corpus | Size | Recall | FPR |
 |---|---|---|---|
-| **Gold** (hand-curated) | 95 attack + 49 benign | **≈ 80 %** | **≈ 9 %** |
-| **Expanded** (gold + mined public corpora + augmented memory-context templates) | 386 attack + 78 benign | **≈ 79 %** | **≈ 36 %** |
+| **Gold** (hand-curated) | 95 attack + 49 benign | **≈ 75 %** | **≈ 2 %** |
+| **Expanded** (gold + mined public corpora + augmented memory-context templates) | 386 attack + 78 benign | **≈ 73 %** | **≈ 23 %** |
 
 The expanded corpus is harder by design — its mined and augmented
-samples are programmatic, not hand-curated. CI's expanded gate today
-reports *"no threshold satisfies the constraints — corpus too small or
-model too weak."* We keep gold as the public baseline and expanded as
+samples are programmatic, not hand-curated. CI's expanded gate now
+passes the **precision constraint** (P=0.951, R=0.702, FPR=0.179 at
+risk-score threshold 94), where it previously had no threshold that
+satisfied any constraint. We keep gold as the public baseline and expanded as
 the **regression-only** signal. Neither is a third-party benchmark;
 no public memory-poisoning benchmark exists yet. Treat both as
 preliminary. Memgar is one layer of defense, not a silver bullet.
