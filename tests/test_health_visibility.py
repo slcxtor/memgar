@@ -81,7 +81,7 @@ class TestTransformerDetectorHealth:
         # of prior tests that may have already triggered the same warning.
         td._WARNED_UNREADY.clear()
 
-        caplog.set_level(logging.WARNING, logger="ml.inference.transformer_detector")
+        caplog.set_level(logging.DEBUG, logger="ml.inference.transformer_detector")
         for _ in range(3):
             td.TransformerDetector(
                 onnx_path=str(tmp_path / "nope.onnx"),
@@ -90,7 +90,7 @@ class TestTransformerDetectorHealth:
             )
         disabled_warns = [
             r for r in caplog.records
-            if r.levelno == logging.WARNING and "DISABLED" in r.getMessage()
+            if r.levelno == logging.DEBUG and "TransformerDetector inactive" in r.getMessage()
         ]
         # Three constructions, one warning.
         assert len(disabled_warns) == 1
@@ -106,7 +106,7 @@ class TestFeedLoaderHealth:
         from memgar.feed import loader as feed_loader
 
         feed_loader._WARNED_FEED.clear()
-        caplog.set_level(logging.WARNING, logger="memgar.feed.loader")
+        caplog.set_level(logging.DEBUG, logger="memgar.feed.loader")
 
         for _ in range(3):
             ld = feed_loader.FeedLoader(
@@ -122,7 +122,7 @@ class TestFeedLoaderHealth:
 
         degraded_warns = [
             r for r in caplog.records
-            if r.levelno == logging.WARNING and "DEGRADED" in r.getMessage()
+            if r.levelno == logging.DEBUG and "using bundled patterns" in r.getMessage()
         ]
         assert len(degraded_warns) == 1
 
