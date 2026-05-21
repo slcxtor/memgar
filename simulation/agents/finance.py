@@ -37,9 +37,23 @@ class FinanceAgent(BaseAgent):
             if msg.kind == "request":
                 self._handle_request(msg)
             else:
-                rec = self._absorb(msg, source_type=msg.channel)
+                # Inbound research/policy notes update the agent's working
+                # memory just like emails would. This is the surface that
+                # gets poisoned in real-world finance-bot deployments.
+                domain = (msg.metadata or {}).get("from_domain")
+                rec = self.memory.write(
+                    msg.body,
+                    source_type=msg.channel,
+                    source_id=msg.sender,
+                    source_name=msg.sender,
+                    source_domain=domain,
+                    verified=bool((msg.metadata or {}).get("dkim_verified")),
+                    tick=self.world.tick,
+                    tags=["inbound"],
+                )
                 self.record("absorb", sender=msg.sender,
-                            accepted=getattr(rec, "accepted", True))
+                            accepted=getattr(rec, "accepted", True),
+                            decision=getattr(rec, "decision", "allow"))
 
     def _handle_request(self, msg: Message) -> None:
         body_lower = msg.body.lower()
