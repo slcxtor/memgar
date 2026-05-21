@@ -79,7 +79,18 @@ class TriageAgent(BaseAgent):
                     source_id=msg.sender,
                 )
                 res = self._analyzer.analyze(entry)
-                if res.decision == Decision.BLOCK:
+                # Triage is the perimeter:
+                #   * Decision.BLOCK              → always drop
+                #   * Decision.QUARANTINE w/ risk ≥ 50  → drop (catches
+                #     Crescendo-style end-state phrasing scoring 60-80)
+                #   * Decision.QUARANTINE w/ risk <  50 → forward; the
+                #     downstream ShieldedMemoryStore still refuses the write,
+                #     and low-risk anomalies (e.g. benign "remember this")
+                #     should not block legitimate inbound traffic at triage.
+                is_block = res.decision == Decision.BLOCK
+                is_hard_quarantine = (res.decision == Decision.QUARANTINE
+                                      and res.risk_score >= 50)
+                if is_block or is_hard_quarantine:
                     self.record("drop_email", sender=msg.sender, risk=res.risk_score, decision="block")
                     # Notify coordinator instead of forwarding
                     self.world.post(Message(
