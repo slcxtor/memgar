@@ -31,6 +31,7 @@ from .agents.triage import TriageAgent
 from .agents.coordinator import CoordinatorAgent
 from .agents.finance import FinanceAgent
 from .agents.researcher import ResearcherAgent
+from .agents.insider import InsiderAgent
 from .attacks.scenarios import SCENARIOS, ScenarioResult
 
 
@@ -49,11 +50,14 @@ class SimContext:
     def drive(self, world: World, ticks: int) -> None:
         for _ in range(ticks):
             world.advance()
-            # Order matters: triage first (routes), then specialists, then coord
+            # Order matters: triage first (routes), specialists next, then the
+            # insider (so they react to current state), and coord last.
             self.agents["triage"].step()
             self.agents["finance"].step()
             self.agents["support"].step()
             self.agents["researcher"].step()
+            if "insider" in self.agents:
+                self.agents["insider"].step()
             self.coordinator.step()
 
 
@@ -109,16 +113,20 @@ def build_world(mode: str, scenario_id: str) -> tuple[World, SimContext]:
     coordinator = CoordinatorAgent("coordinator", mem_for("coordinator"), world,
                                    shielded=(mode == "shielded"))
     support = SupportAgent("support", mem_for("support"), world,
-                           shielded=(mode == "shielded"))
+                           shielded=(mode == "shielded"), tools=tools)
     triage = TriageAgent("triage", mem_for("triage"), world, shielded=(mode == "shielded"))
     researcher = ResearcherAgent("researcher", mem_for("researcher"), world, rag=rag)
     finance = FinanceAgent("finance", mem_for("finance"), world, tools=tools)
+    # Insider: trusted internal agent that has gone rogue. Registered as a
+    # peer of the researcher so it inherits HIGH inter-agent trust in
+    # shielded mode — exactly the credentials-valid threat model.
+    insider = InsiderAgent("insider", mem_for("insider"), world)
 
-    for ag in (support, triage, finance, researcher):
+    for ag in (support, triage, finance, researcher, insider):
         coordinator.register(ag.name, role=ag.role)
 
     agents = {"coordinator": coordinator, "support": support, "triage": triage,
-              "researcher": researcher, "finance": finance}
+              "researcher": researcher, "finance": finance, "insider": insider}
     ctx = SimContext(agents=agents, coordinator=coordinator, rag=rag, tools=tools)
     return world, ctx
 
@@ -241,6 +249,26 @@ def _write_markdown(rows: List[Dict[str, Any]], path: Path) -> None:
         lines.append(f"- Benign control passed shielded run: "
                      f"**{'yes' if not benign['shielded']['attacker_won'] else 'NO — FP regression'}**")
     lines.append("")
+    # Surface where Memgar still loses, prominently.
+    losses = [r["shielded"] for r in attack_rows if r["shielded"]["attacker_won"]]
+    if losses:
+        lines.append("## Memgar gaps — attacks that still landed under the shield")
+        lines.append("")
+        lines.append("These are the cases the latest Memgar build did **not** stop. "
+                     "Every other attack in the catalogue was neutralised; these "
+                     "are the genuine open problems.")
+        lines.append("")
+        for l in losses:
+            lines.append(f"- **{l['scenario_id']} — {l['title']}**")
+            lines.append(f"  - {l['detail']}")
+        lines.append("")
+    else:
+        lines.append("## Memgar gaps")
+        lines.append("")
+        lines.append("None in this run — every attack in the catalogue was blocked. "
+                     "That does not mean every attack everywhere is blocked. "
+                     "Read the Honesty notes section before drawing conclusions.")
+        lines.append("")
     lines.append("## Per-scenario verdicts")
     lines.append("")
     lines.append("| ID | Scenario | Undefended | Memgar-shielded | Δ |")
