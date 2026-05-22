@@ -1174,8 +1174,13 @@ class Analyzer:
         )
         if use_transformer_ml:
             try:
-                from ml.inference.transformer_detector import TransformerDetector
-                det = TransformerDetector.load()
+                # Prefer v2 (multi-task, INT8, temperature-calibrated); fall back to v1.
+                try:
+                    from ml.inference.transformer_detector_v2 import TransformerDetectorV2
+                    det = TransformerDetectorV2.load()
+                except ImportError:
+                    from ml.inference.transformer_detector import TransformerDetector as TransformerDetectorV2  # type: ignore[assignment]
+                    det = TransformerDetectorV2.load()
                 if det.is_ready:
                     self._transformer = det
                     logger.info("Analyzer: transformer backend ready (%s)", det._backend)

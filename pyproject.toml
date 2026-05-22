@@ -72,6 +72,7 @@ ml-train = [
     "memgar[ml]",
     "torch>=2.0.0",
     "optimum[onnxruntime]>=1.17.0",
+    "peft>=0.10.0",
 ]
 llm = [
     "anthropic>=0.18.0",
