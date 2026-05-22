@@ -42,7 +42,7 @@ Now every subsystem:
     "backend": "none",
     "onnx_path": "ml/artifacts/transformer_model/model.onnx",
     "tokenizer_dir": "ml/artifacts/transformer_model/tokenizer",
-    "fix_hint": "python scripts/train_transformer.py --data your_data.json",
+    "fix_hint": "python scripts/train_transformer_v2.py --data your_data.json",
   },
   "threat_feed": {
     "status": "ok",

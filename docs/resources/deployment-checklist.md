@@ -109,10 +109,20 @@ data-source change.
 ## 9. Trained transformer (optional)
 
 By default Layer 2-ML is **disabled** — memgar doesn't ship a pre-trained
-ONNX. If your agent has domain-specific traffic:
+ONNX artifact. To activate it:
+
+**Option A — install a published release artifact:**
 
 ```bash
-python scripts/train_transformer.py --data path/to/your_labeled_data.json
+python -m memgar.ml_release_loader
+```
+
+**Option B — train on your own domain data:**
+
+```bash
+pip install -e ".[ml-train]" peft
+python scripts/prepare_v2_dataset.py --primary path/to/your_data.json --out-dir ml/data/v2
+python scripts/train_transformer_v2.py --data ml/data/v2/train.json
 ```
 
 Then verify:
@@ -124,7 +134,10 @@ python scripts/check_calibration_gate.py
 ```
 
 The gold gate must still PASS with the new model in the ensemble. If FPR
-rises, your training data is overfit — retrain with more benign samples.
+rises, your training data is overfit — retrain with more benign samples or
+raise `MEMGAR_TRANSFORMER_THRESHOLD` (default `0.92`).
+
+See `docs/development/training.md` for the full v2 pipeline reference.
 
 ## 10. Behavioral baseline warm-up
 
