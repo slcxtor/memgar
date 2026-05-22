@@ -293,10 +293,18 @@ def export_onnx(model, tokenizer, *, max_length: int = 256,
                 output_path: Path = ONNX_PATH) -> Path:
     import torch
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    model.eval()
+
+    # Export on CPU. The new dynamo-based ONNX exporter (torch>=2.5 default)
+    # crashes on RoBERTa embedding when the model lives on CUDA — FakeTensor
+    # device propagation gets confused mixing cuda/cpu. CPU export is the
+    # safest path; once exported, ONNXRuntime can run on either device.
+    model_for_export = model.to("cpu").eval()
+
     dummy = tokenizer("placeholder for tracing",
                        padding="max_length", truncation=True,
                        max_length=max_length, return_tensors="pt")
+    input_ids = dummy["input_ids"].to("cpu")
+    attention_mask = dummy["attention_mask"].to("cpu")
 
     class _Wrap(torch.nn.Module):
         """Wrap multi-task forward into a single tensor output suitable
@@ -309,11 +317,11 @@ def export_onnx(model, tokenizer, *, max_length: int = 256,
             out = self.inner(input_ids=input_ids, attention_mask=attention_mask)
             return torch.cat([out["binary_logits"], out["category_logits"]], dim=-1)
 
-    wrapped = _Wrap(model)
-    torch.onnx.export(
-        wrapped,
-        (dummy["input_ids"], dummy["attention_mask"]),
-        str(output_path),
+    wrapped = _Wrap(model_for_export).eval()
+    # Force the legacy TorchScript-based exporter (dynamo=False). The new
+    # dynamo path doesn't support `always_classified` ops in RoBERTa and
+    # fails with `Constraints violated` when dynamic_axes are present.
+    export_kwargs = dict(
         input_names=["input_ids", "attention_mask"],
         output_names=["logits"],
         dynamic_axes={
@@ -324,6 +332,23 @@ def export_onnx(model, tokenizer, *, max_length: int = 256,
         opset_version=14,
         do_constant_folding=True,
     )
+    try:
+        torch.onnx.export(
+            wrapped,
+            (input_ids, attention_mask),
+            str(output_path),
+            dynamo=False,
+            **export_kwargs,
+        )
+    except TypeError:
+        # torch <2.5: no `dynamo` kwarg, legacy exporter is the only path.
+        torch.onnx.export(
+            wrapped,
+            (input_ids, attention_mask),
+            str(output_path),
+            **export_kwargs,
+        )
+
     logger.info("ONNX export → %s (%.1f MB)",
                 output_path, output_path.stat().st_size / (1024 * 1024))
     return output_path
