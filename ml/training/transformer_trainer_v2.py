@@ -206,23 +206,32 @@ def _build_model(base_model: str, *, n_categories: int, cfg: TrainConfig):
 # ---------------------------------------------------------------------------
 
 def fit_temperature(logits, labels, *, n_iter: int = 200) -> float:
-    """Fit a single-parameter Platt-style temperature on validation logits."""
+    """Fit a single-parameter Platt-style temperature on validation logits.
+
+    Parameterised as T = exp(log_T) so the optimiser cannot drift into
+    negative values, which would invert the softmax and produce
+    nonsensical calibrated probabilities downstream.
+    """
     import torch
     import torch.nn.functional as F
 
     logits_t = torch.as_tensor(logits, dtype=torch.float32)
     labels_t = torch.as_tensor(labels, dtype=torch.long)
-    T = torch.nn.Parameter(torch.ones(1) * 1.5)
-    optim = torch.optim.LBFGS([T], lr=0.05, max_iter=n_iter)
+    log_T = torch.nn.Parameter(torch.zeros(1))  # T = exp(0) = 1.0
+    optim = torch.optim.LBFGS([log_T], lr=0.05, max_iter=n_iter)
 
     def closure():
         optim.zero_grad()
-        loss = F.cross_entropy(logits_t / T.clamp_min(1e-3), labels_t)
+        T = log_T.exp()
+        loss = F.cross_entropy(logits_t / T, labels_t)
         loss.backward()
         return loss
 
     optim.step(closure)
-    return float(T.detach().item())
+    T_final = float(log_T.detach().exp().item())
+    # Bound to a sensible range — a saturated 99 %+ accuracy model can
+    # push T arbitrarily small/large; clamp to keep probs well-behaved.
+    return max(0.5, min(T_final, 5.0))
 
 
 def expected_calibration_error(probs, labels, *, n_bins: int = 15) -> float:
