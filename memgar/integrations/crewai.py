@@ -147,7 +147,7 @@ class MemgarCrewGuard:
 
             return result
 
-        agent.execute_task = secured_execute
+        self._replace_method(agent, "execute_task", secured_execute)
 
     def _scan_content(
         self,
@@ -248,7 +248,20 @@ class MemgarCrewGuard:
         try:
             setattr(target, name, value)
         except Exception:
-            logger.debug("Memgar: unable to replace CrewAI %s with sanitized content", name)
+            try:
+                object.__setattr__(target, name, value)
+            except Exception:
+                logger.debug("Memgar: unable to replace CrewAI %s with sanitized content", name)
+
+    @staticmethod
+    def _replace_method(target: Any, name: str, value: Any) -> None:
+        try:
+            setattr(target, name, value)
+        except Exception:
+            try:
+                object.__setattr__(target, name, value)
+            except Exception:
+                logger.debug("Memgar: unable to wrap CrewAI %s method", name)
 
     @staticmethod
     def _scan_result_from_protection(
@@ -327,7 +340,7 @@ class MemgarAgentGuard:
                     MemgarCrewGuard._replace_attr(task, "description", protected.safe_content)
                 return original(task, *args, **kwargs)
 
-            self._agent.execute_task = secured
+            MemgarCrewGuard._replace_method(self._agent, "execute_task", secured)
 
     def __getattr__(self, name: str) -> Any:
         """Delegate to underlying agent."""
