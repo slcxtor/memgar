@@ -53,9 +53,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("--data", required=True,
-                   help="Primary training corpus JSON (gold calibration_corpus.json)")
-    p.add_argument("--aux", action="append", default=[],
-                   help="Additional corpus files (may be repeated)")
+                   help="train.jsonl file OR directory produced by prepare_v2_dataset.py")
+    p.add_argument("--val", default=None,
+                   help="val.jsonl (auto-detected if --data is a directory)")
+    p.add_argument("--test", default=None,
+                   help="test.jsonl (auto-detected if --data is a directory)")
     p.add_argument("--base-model", default="distilroberta-base",
                    help="HuggingFace model ID or local path")
     p.add_argument("--epochs", type=int, default=8)
@@ -86,11 +88,24 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    # Collect corpus files
-    corpus_paths = [args.data] + args.aux
-    for p in corpus_paths:
-        if not Path(p).exists():
-            logger.error("Corpus file not found: %s", p)
+    # Resolve train/val/test paths.
+    # Accept either:
+    #   --data ml/data/training_v2          (directory from prepare_v2_dataset.py)
+    #   --data ml/data/training_v2/train.jsonl  (explicit file)
+    data_path = Path(args.data)
+    if data_path.is_dir() or (not data_path.suffix and not data_path.exists()):
+        # treat as directory produced by prepare_v2_dataset.py
+        train_path = data_path / "train.jsonl"
+        val_path   = Path(args.val)  if args.val  else data_path / "val.jsonl"
+        test_path  = Path(args.test) if args.test else data_path / "test.jsonl"
+    else:
+        train_path = data_path
+        val_path   = Path(args.val)  if args.val  else data_path.parent / "val.jsonl"
+        test_path  = Path(args.test) if args.test else data_path.parent / "test.jsonl"
+
+    for label, p in [("train", train_path), ("val", val_path), ("test", test_path)]:
+        if not p.exists():
+            logger.error("Corpus file not found (%s): %s", label, p)
             return 1
 
     # Build TrainConfig from CLI args
@@ -122,15 +137,19 @@ def main() -> int:
     )
 
     logger.info("=== Memgar Transformer v2 Training ===")
-    logger.info("Corpus files : %s", corpus_paths)
-    logger.info("Config       : %s", json.dumps(cfg.to_dict(), indent=2))
+    logger.info("train : %s", train_path)
+    logger.info("val   : %s", val_path)
+    logger.info("test  : %s", test_path)
+    logger.info("Config: %s", json.dumps(cfg.to_dict(), indent=2))
 
     if args.dry_run:
         logger.info("--dry-run: exiting without training.")
         return 0
 
     artifacts = train(
-        corpus_paths=corpus_paths,
+        train_path=train_path,
+        val_path=val_path,
+        test_path=test_path,
         cfg=cfg,
         export_onnx_artifact=not args.no_onnx,
         quantize=not args.no_int8,
