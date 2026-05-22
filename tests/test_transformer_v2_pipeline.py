@@ -284,16 +284,16 @@ class TestReleaseScript:
 class TestTrainCLI:
     def test_dry_run_exits_zero_without_torch(self, tmp_path, monkeypatch):
         """--dry-run should parse args and exit without importing torch."""
-        corpus = tmp_path / "corpus.json"
-        corpus.write_text(json.dumps([
-            {"content": "inject", "label": "attack", "category": "injection",
-             "subcategory": "direct", "confidence": 0.9},
-            {"content": "hello", "label": "benign", "category": "benign",
-             "subcategory": "general", "confidence": 0.95},
-        ]))
+        # CLI now expects a directory with train/val/test.jsonl produced by
+        # prepare_v2_dataset.py — create stubs for all three splits.
+        for split in ("train", "val", "test"):
+            (tmp_path / f"{split}.jsonl").write_text("\n".join([
+                '{"text": "inject", "label": 1, "category": "injection"}',
+                '{"text": "hello", "label": 0, "category": "benign"}',
+            ]) + "\n")
         monkeypatch.setattr(sys, "argv", [
             "train_transformer_v2.py",
-            "--data", str(corpus),
+            "--data", str(tmp_path),
             "--dry-run",
         ])
         # Stub out the actual import of trainer so we don't need torch

@@ -143,6 +143,30 @@ def load_mined_hard(path: Path) -> List[Example]:
     return out
 
 
+def load_benign_corpora(path: Path) -> List[Example]:
+    """Real-conversation benigns from `scripts/import_benign_corpora.py`.
+
+    These come from OpenAssistant / HH-RLHF / Dolly / LMSYS and have been
+    filtered to memory-write-shaped utterances. They look like prosaic
+    everyday agent traffic ("Remember that I prefer dark mode",
+    "From now on always reply in Turkish") — the exact distribution
+    template-only corpora miss.
+    """
+    data = _load_json(path) or []
+    out: List[Example] = []
+    for e in data:
+        if not isinstance(e, dict) or "text" not in e:
+            continue
+        # Force label=0, the importer already enforced this but be safe.
+        e["label"] = 0
+        # Preserve the source tag (openassistant_oasst1 etc) for provenance.
+        e.setdefault("source", "benign_corpora")
+        e.setdefault("category", "benign_memory_write")
+        out.append(Example.from_dict(e))
+    logger.info("loaded %d from benign_corpora.json", len(out))
+    return out
+
+
 def load_calibration_gold(path: Path) -> List[Example]:
     """The gold-reviewed calibration corpus is used as held-out — but a copy
     of its labels seeds the test split (and its hard negatives also seed
@@ -525,6 +549,8 @@ def build_corpus(data_dir: Path = DATA_DIR, *,
                  include_mined: bool = True,
                  include_simulation: bool = True,
                  include_hard_negatives: bool = True,
+                 include_benign_corpora: bool = False,
+                 benign_corpora_path: Optional[Path] = None,
                  adversarial: bool = True,
                  adversarial_per_sample: int = 1,
                  dedup_threshold: float = 0.95,
@@ -552,6 +578,11 @@ def build_corpus(data_dir: Path = DATA_DIR, *,
     if include_hard_negatives:
         hn = load_hard_negatives()
         pre_dedup.extend(hn); counts["hard_negatives"] = len(hn)
+
+    if include_benign_corpora:
+        bc_path = benign_corpora_path or (data_dir / "benign_corpora.json")
+        bc = load_benign_corpora(bc_path)
+        pre_dedup.extend(bc); counts["benign_corpora"] = len(bc)
 
     n_before = len(pre_dedup)
     deduped = dedup(pre_dedup, threshold=dedup_threshold)
@@ -591,6 +622,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--no-simulation", dest="simulation", action="store_false")
     p.add_argument("--no-hard-negatives", dest="hn", action="store_false")
     p.add_argument("--no-adversarial", dest="adv", action="store_false")
+    p.add_argument("--include-benign-corpora", dest="benign_corpora",
+                   action="store_true", default=False,
+                   help="Include realistic benign memory-writes from "
+                        "scripts/import_benign_corpora.py output. "
+                        "Off by default for backwards compat.")
+    p.add_argument("--benign-corpora-path", default=None,
+                   help="Override benign_corpora.json location "
+                        "(default: <data-dir>/benign_corpora.json).")
     p.add_argument("--dedup-threshold", type=float, default=0.95)
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)
@@ -604,6 +643,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         include_mined=args.mined,
         include_simulation=args.simulation,
         include_hard_negatives=args.hn,
+        include_benign_corpora=args.benign_corpora,
+        benign_corpora_path=(Path(args.benign_corpora_path)
+                             if args.benign_corpora_path else None),
         adversarial=args.adv,
         dedup_threshold=args.dedup_threshold,
         seed=args.seed,
