@@ -89,6 +89,7 @@ Core analysis runs locally and does not require an external model provider. Opti
 | `memgar[feed]` | Signed threat feed and cryptographic helpers. |
 | `memgar[semantic]` | Sentence-transformer based semantic checks. |
 | `memgar[ml]` | Local ML detection gates when model artifacts are available. |
+| `memgar[ml-train]` | v2 transformer training pipeline (torch + LoRA via peft). |
 | `memgar[llm]` | Optional cloud LLM-assisted analysis. |
 | `memgar[all]` | Full local development installation. |
 
