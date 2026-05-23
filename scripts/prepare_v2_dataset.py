@@ -167,6 +167,34 @@ def load_benign_corpora(path: Path) -> List[Example]:
     return out
 
 
+def autofetch_benign_corpora(out_path: Path, *, sources: str = "oasst,hh_rlhf,dolly") -> bool:
+    """Run scripts/import_benign_corpora.py to materialise benign_corpora.json.
+
+    Returns True on success, False on any failure (network down, HF rate-limit,
+    quota exhausted). Callers can treat False as "proceed without realistic
+    benigns" rather than aborting — the rest of the pipeline still works.
+    """
+    logger.info("benign_corpora.json missing — auto-fetching from %s …", sources)
+    cmd = [
+        sys.executable, "-m", "scripts.import_benign_corpora",
+        "--sources", sources,
+        "--out", str(out_path),
+    ]
+    try:
+        import subprocess
+        # Inherit env so HF_TOKEN reaches the importer if set.
+        result = subprocess.run(cmd, cwd=str(REPO_ROOT), check=False,
+                                capture_output=False, text=True)
+        if result.returncode != 0:
+            logger.warning("benign-corpora fetch exited %d — continuing without realistic benigns",
+                           result.returncode)
+            return False
+        return out_path.exists() and out_path.stat().st_size > 0
+    except Exception as exc:
+        logger.warning("benign-corpora fetch failed (%s) — continuing without realistic benigns", exc)
+        return False
+
+
 def load_calibration_gold(path: Path) -> List[Example]:
     """The gold-reviewed calibration corpus is used as held-out — but a copy
     of its labels seeds the test split (and its hard negatives also seed
@@ -549,13 +577,21 @@ def build_corpus(data_dir: Path = DATA_DIR, *,
                  include_mined: bool = True,
                  include_simulation: bool = True,
                  include_hard_negatives: bool = True,
-                 include_benign_corpora: bool = False,
+                 include_benign_corpora: bool = True,
                  benign_corpora_path: Optional[Path] = None,
+                 benign_corpora_sources: str = "oasst,hh_rlhf,dolly",
+                 auto_fetch_benign: bool = True,
                  adversarial: bool = True,
                  adversarial_per_sample: int = 1,
                  dedup_threshold: float = 0.95,
                  seed: int = 42) -> Tuple[List[Example], Dict[str, Any]]:
-    """Returns (examples, metadata) — does not split yet."""
+    """Returns (examples, metadata) — does not split yet.
+
+    Realistic benign corpora (OpenAssistant / HH-RLHF / Dolly) are now part
+    of the default corpus mix. If `benign_corpora.json` is missing the
+    pipeline auto-runs the importer (auto_fetch_benign=True). Set
+    include_benign_corpora=False to force the minimal mode.
+    """
     rng = random.Random(seed)
     pre_dedup: List[Example] = []
     counts: Dict[str, int] = {}
@@ -581,8 +617,14 @@ def build_corpus(data_dir: Path = DATA_DIR, *,
 
     if include_benign_corpora:
         bc_path = benign_corpora_path or (data_dir / "benign_corpora.json")
-        bc = load_benign_corpora(bc_path)
-        pre_dedup.extend(bc); counts["benign_corpora"] = len(bc)
+        if not bc_path.exists() and auto_fetch_benign:
+            ok = autofetch_benign_corpora(bc_path, sources=benign_corpora_sources)
+            if not ok:
+                logger.warning("benign_corpora.json not available — skipping "
+                               "realistic-benign mixin (corpus will be A-mode).")
+        if bc_path.exists():
+            bc = load_benign_corpora(bc_path)
+            pre_dedup.extend(bc); counts["benign_corpora"] = len(bc)
 
     n_before = len(pre_dedup)
     deduped = dedup(pre_dedup, threshold=dedup_threshold)
@@ -622,14 +664,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--no-simulation", dest="simulation", action="store_false")
     p.add_argument("--no-hard-negatives", dest="hn", action="store_false")
     p.add_argument("--no-adversarial", dest="adv", action="store_false")
-    p.add_argument("--include-benign-corpora", dest="benign_corpora",
-                   action="store_true", default=False,
-                   help="Include realistic benign memory-writes from "
-                        "scripts/import_benign_corpora.py output. "
-                        "Off by default for backwards compat.")
+    p.add_argument("--no-benign-corpora", dest="benign_corpora",
+                   action="store_false", default=True,
+                   help="Skip the realistic-benigns mixin (OpenAssistant / "
+                        "HH-RLHF / Dolly). Default is to include them; "
+                        "use this flag for the minimal A-mode corpus.")
     p.add_argument("--benign-corpora-path", default=None,
                    help="Override benign_corpora.json location "
                         "(default: <data-dir>/benign_corpora.json).")
+    p.add_argument("--benign-corpora-sources",
+                   default="oasst,hh_rlhf,dolly",
+                   help="Sources for auto-fetch when benign_corpora.json "
+                        "is missing. Add 'lmsys' if HF_TOKEN is set.")
+    p.add_argument("--no-auto-fetch-benign", dest="auto_fetch_benign",
+                   action="store_false", default=True,
+                   help="Don't auto-run import_benign_corpora.py when "
+                        "benign_corpora.json is missing.")
     p.add_argument("--dedup-threshold", type=float, default=0.95)
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)
@@ -646,6 +696,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         include_benign_corpora=args.benign_corpora,
         benign_corpora_path=(Path(args.benign_corpora_path)
                              if args.benign_corpora_path else None),
+        benign_corpora_sources=args.benign_corpora_sources,
+        auto_fetch_benign=args.auto_fetch_benign,
         adversarial=args.adv,
         dedup_threshold=args.dedup_threshold,
         seed=args.seed,

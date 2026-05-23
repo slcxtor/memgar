@@ -175,6 +175,14 @@ class TestFilterAndDedup:
 class TestPrepareV2Integration:
     """The prepare_v2_dataset.py wiring must round-trip the new flag."""
 
+    def test_default_includes_benign_corpora(self):
+        """Benign corpora are part of the default mix — confirms A-mode
+        is no longer the default for v2 prepare."""
+        import inspect
+        import scripts.prepare_v2_dataset as pvd
+        sig = inspect.signature(pvd.build_corpus)
+        assert sig.parameters["include_benign_corpora"].default is True
+
     def test_load_benign_corpora_round_trips(self, tmp_path):
         import scripts.prepare_v2_dataset as pvd
         bc_path = tmp_path / "benign_corpora.json"

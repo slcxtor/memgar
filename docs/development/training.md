@@ -19,18 +19,16 @@ Layer 2-ML activates automatically. When absent it disables gracefully and
 
 ```bash
 # 1. Install training dependencies (includes peft for LoRA)
-pip install -e ".[ml-train]" peft
+pip install -e ".[ml-train]" peft onnxscript
 
-# 2. Prepare the dataset (dedup + adversarial augmentation + stratified split)
-python scripts/prepare_v2_dataset.py \
-    --primary ml/data/calibration_corpus.json \
-    --aux     ml/data/mined_hard_subset.json \
-    --aux     ml/data/augmented_memory_context.json \
-    --out-dir ml/data/v2_prepared
+# 2. Prepare the dataset — auto-fetches realistic benigns from
+#    OpenAssistant / HH-RLHF / Dolly the first time (~5 min download,
+#    cached at ml/data/_corpus_cache/ for subsequent runs).
+python scripts/prepare_v2_dataset.py --output ml/data/training_v2
 
-# 3. Train
+# 3. Train (~25 min on a T4 GPU)
 python scripts/train_transformer_v2.py \
-    --data ml/data/v2_prepared/train.json \
+    --data ml/data/training_v2 \
     --epochs 8 --batch-size 32
 
 # 4. Verify — gold gate must still pass
@@ -38,6 +36,18 @@ python scripts/calibrate_fpfn.py \
     --corpus ml/data/calibration_corpus.json \
     --output /tmp/post_tx.json --no-llm
 python scripts/check_calibration_gate.py --report /tmp/post_tx.json
+```
+
+The default corpus is the **B-mode mix**: synthetic attack seeds + memory-context
+envelopes + mined hard negatives + adversarial augmentation + **realistic benigns
+filtered from OpenAssistant / HH-RLHF / Dolly via the memory-write surface
+heuristic** (see `scripts/import_benign_corpora.py`). LMSYS Chat-1M is also
+supported as an opt-in via `HF_TOKEN` + `--benign-corpora-sources oasst,hh_rlhf,dolly,lmsys`.
+
+To skip the realistic-benigns mixin (A-mode, smaller corpus, faster iteration):
+
+```bash
+python scripts/prepare_v2_dataset.py --output ml/data/training_v2 --no-benign-corpora
 ```
 
 ## What the v2 trainer does differently from v1
@@ -85,18 +95,37 @@ only sees samples with confidence ≥ 0.9).
 
 ## Dataset preparation script
 
-`scripts/prepare_v2_dataset.py` takes one or more raw corpus files and:
+`scripts/prepare_v2_dataset.py` builds the training corpus by merging:
 
-1. Deduplicates with TF-IDF cosine similarity (threshold 0.95)
-2. Generates 6 adversarial mutations per attack seed (homoglyph, leetspeak, base64,
-   zero-width injection, passive rewrite, unicode tag block)
-3. Splits 80/10/10 train/val/test (stratified by label)
+1. **`training_data.json`** — canonical Memgar attack seeds + benigns
+2. **`simulation_gold`** — hand-curated multi-agent simulation labels
+3. **`augmented_memory_context.json`** — 8 memory-injection envelopes wrapping attack seeds
+4. **`mined_hard_subset.json`** — auto-mined FN/FP from public corpora (AdvBench / JBB / HarmBench / Gandalf / WildJailbreak)
+5. **Hard negatives** — bounded set of policy-language benigns that pattern-only systems mis-flag
+6. **`benign_corpora.json`** — **realistic memory-writes** from OpenAssistant / HH-RLHF / Dolly, filtered via the memory-write surface heuristic (auto-fetched on first run)
+7. **Adversarial mutations** — 6 obfuscations per attack seed (homoglyph, leetspeak, base64, ROT13, zero-width, unicode-tag)
+
+Then deduplicates with TF-IDF cosine (threshold 0.95) and splits 80/10/10
+train/val/test stratified by (label, category).
 
 ```bash
-python scripts/prepare_v2_dataset.py \
-    --primary ml/data/calibration_corpus.json \
-    --out-dir ml/data/v2_prepared \
-    --no-augment   # skip adversarial mutations (faster iteration)
+# Default — full B-mode mix with auto-fetch
+python scripts/prepare_v2_dataset.py --output ml/data/training_v2
+
+# Minimal A-mode (no realistic benigns) — useful for fast iteration
+python scripts/prepare_v2_dataset.py --output ml/data/training_v2 --no-benign-corpora
+
+# Include LMSYS Chat-1M (gated, requires HF_TOKEN)
+HF_TOKEN=hf_xxx python scripts/prepare_v2_dataset.py \
+    --output ml/data/training_v2 \
+    --benign-corpora-sources oasst,hh_rlhf,dolly,lmsys
+```
+
+To pre-fetch the realistic benigns separately (e.g. in CI before training):
+
+```bash
+python scripts/import_benign_corpora.py --sources oasst,hh_rlhf,dolly
+# → writes ml/data/benign_corpora.json
 ```
 
 ## Training options

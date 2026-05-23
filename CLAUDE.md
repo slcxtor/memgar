@@ -119,10 +119,15 @@ python scripts/red_team_run.py --n-seeds 10 --n-variants 5 --dry-run --offline
 
 # Corpus expansion pipeline (Phase 1 + 2 of corpus growth)
 python scripts/import_public_corpora.py            # AdvBench/JBB/HarmBench/gandalf/deepset → external_corpus_*.json
+python scripts/import_benign_corpora.py            # OpenAssistant/HH-RLHF/Dolly → benign_corpora.json (memory-write-shaped benigns)
 python scripts/mine_hard_negatives.py              # Diagnostic subset: all FPs + top-N FN per category → mined_hard_subset.json
 python scripts/augment_memory_context.py           # Wrap attack seeds in 8 memory-injection envelopes → augmented_memory_context.json
 python scripts/merge_corpus.py --aux ml/data/mined_hard_subset.json \
     --aux ml/data/augmented_memory_context.json    # Dry-run: see merged stats (gold stays untouched)
+
+# v2 transformer training (B-mode is default — auto-fetches benign_corpora.json on first run)
+python scripts/prepare_v2_dataset.py --output ml/data/training_v2
+python scripts/train_transformer_v2.py --data ml/data/training_v2 --epochs 8
 
 # Calibration (two-tier)
 python scripts/calibrate_fpfn.py \
@@ -145,6 +150,7 @@ python scripts/check_expanded_gate.py              # Merged: 6 regression-only g
 | Gold | `ml/data/calibration_corpus.json` | hand-curated | yes | CI gate (strict) |
 | Mined | `ml/data/mined_hard_subset.json` | auto from public-corpus FN/FP | algorithmic | Expanded gate |
 | Augmented | `ml/data/augmented_memory_context.json` | template wrappers on seeds | deterministic | Expanded gate |
+| Benign realism | `ml/data/benign_corpora.json` | OpenAssistant / HH-RLHF / Dolly, filtered to memory-write surface | heuristic + license-clean | v2 transformer training (default) |
 | Review queue | `ml/data/mined_review_queue.json` | boundary cases | pending | manual import only |
 | Raw external | `ml/data/external_corpus_raw.json` | full public-corpus dump | none | reference only |
 
@@ -166,6 +172,9 @@ python scripts/check_expanded_gate.py              # Merged: 6 regression-only g
 | `scripts/publish_feed.py` | Maintainer tool: sign + publish feed bundle |
 | `scripts/red_team_run.py` | CLI: generate + inject adversarial variants |
 | `scripts/import_public_corpora.py` | Pull + normalize public datasets (AdvBench, JBB, HarmBench, Gandalf, deepset) |
+| `scripts/import_benign_corpora.py` | Pull realistic benign memory-writes (OpenAssistant, HH-RLHF, Dolly, LMSYS) — license-clean only |
+| `scripts/prepare_v2_dataset.py` | Build v2 training corpus; auto-fetches benign_corpora.json on first run |
+| `scripts/train_transformer_v2.py` | Train v2 LoRA transformer + ONNX/INT8 export + quality gate |
 | `scripts/mine_hard_negatives.py` | Stratify hard subset → auto-merge-safe selection + review queue |
 | `scripts/augment_memory_context.py` | Wrap attack seeds in 8 memory-injection envelopes |
 | `scripts/merge_corpus.py` | Combine gold + auxiliary corpora (dry-run by default) |
