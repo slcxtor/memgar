@@ -24,6 +24,10 @@ concurrency:
 
 jobs:
   build:
+    # The repo ships two release lines sharing the GitHub release feed:
+    # the PyPI package (v1.x.y) and the transformer artifact (v2.x.y).
+    # Only the PyPI line is published from this workflow.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v1.')
     name: Build distributions
     runs-on: ubuntu-latest
     steps:
@@ -33,6 +37,11 @@ jobs:
           python-version: "3.12"
       - name: Install build tooling
         run: python -m pip install --upgrade build twine
+      - name: Clean dist/ before build
+        # dist/release_manifest.json is committed (transformer-release
+        # source-of-truth) but twine treats every dist/* file as a Python
+        # distribution — wipe first so only freshly built wheel+sdist remain.
+        run: rm -rf dist/
       - name: Build source and wheel distributions
         run: python -m build
       - name: Show built artefacts
