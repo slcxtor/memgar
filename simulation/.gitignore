@@ -2,3 +2,5 @@ reports/audit-*.jsonl
 reports/ledgers/
 reports/scoreboard.json
 reports/report.md
+reports/federated_scoreboard.json
+reports/federated_report.md

@@ -117,16 +117,74 @@ The simulation runs with **two distinct attackers** rather than one:
 
 S26 and S29 exercise the insider; S29 is the worst-case combined attack.
 
+## Cross-company federation (2025-2026 attack classes)
+
+The single-org catalogue above lives inside one company. Real
+deployments federate — they share a vendor portal, consume the same MCP
+tool servers, integrate B2B agent buses, and extend *partial* trust to
+partner organisations. That federation is its own attack surface, and a
+single-org model cannot express it.
+
+`simulation/federation.py` builds a **four-company federation**:
+
+| Company       | Role                                                          |
+|---------------|---------------------------------------------------------------|
+| `northwind`   | HOME / defender — the org we score                            |
+| `globex`      | honest partner integrator (MEDIUM B2B trust)                  |
+| `vendorco`    | compromised supply-chain partner, **over-trusted at HIGH**    |
+| `shadowtrust` | attacker-controlled fake partner, NONE trust (A2A spoofing)   |
+
+Each company is a full org with its own message bus. A shared
+vendor-portal RAG and a shared MCP/tool provider are deliberately
+multi-tenant, so a single poisoning event's blast radius across tenants
+is observable. Cross-company delivery goes through a B2B trust gate that
+authenticates partners by the **real** sending company, never the
+claimed agent-card identity.
+
+Ten cross-company scenarios plus a benign partner control:
+
+| ID  | Attack                                  | Class / source                               |
+|-----|-----------------------------------------|----------------------------------------------|
+| F01 | Supply-chain partner-agent compromise   | agentic dependency poisoning (2025)          |
+| F02 | Shared MCP server tool-shadowing        | Invariant Labs tool-poisoning, 2025          |
+| F03 | Cross-tenant RAG bleed                  | multi-tenant portal poison                   |
+| F04 | A2A agent-card spoofing                 | Agent2Agent protocol surface, 2025           |
+| F05 | Federated Morris-II worm                | Cohen/Bitton/Nassi 2024, federated           |
+| F06 | Tool-result injection                   | injection-in-tool-output (2025 evolution)    |
+| F07 | Cross-company sybil corroboration       | fake multi-source consensus                  |
+| F08 | Variation-selector smuggling            | 2025 evolution of ASCII smuggling (S15)      |
+| F09 | Cross-company insider collusion         | two colluding insiders, two orgs             |
+| F10 | Federated denial-of-wallet amplification| tenant-count-amplified wallet drain          |
+| FC1 | Benign partner B2B note                 | cross-company false-positive guard           |
+
+```bash
+python -m simulation.federated_runner
+```
+
+Outputs: `federated_report.md`, `federated_scoreboard.json`.
+
+**A genuine gap was found and closed here.** On first run, **F08
+variation-selector smuggling landed under the shield** — payload bytes
+hidden in the Unicode variation-selector *supplement* (U+E0100-U+E01EF)
+survived because the existing `UNICODE-TAG` pattern only covered the Tag
+block (U+E0000-U+E007F). The pattern was extended to the supplement
+range; the fix is pinned by
+`tests/test_simulation_gap_patterns.py::test_variation_selector_supplement_smuggling_blocked`
+and verified to introduce no false positives (gold calibration gate
+stays 8/8, FPR 0.000). After the fix, all 10 cross-company attacks are
+neutralised and the benign partner control still passes.
+
 ## Running
 
 ```bash
-python -m simulation.runner
+python -m simulation.runner             # single-org, 29 attacks + control
+python -m simulation.federated_runner   # cross-company federation, 10 + control
 ```
 
 Outputs land in `simulation/reports/`:
 
-- `report.md` — human-readable summary with per-scenario evidence
-- `scoreboard.json` — machine-readable per-scenario verdicts
+- `report.md` / `federated_report.md` — human-readable summaries
+- `scoreboard.json` / `federated_scoreboard.json` — machine-readable verdicts
 - `audit-<mode>-<sid>.jsonl` — full event log for each scenario
 - `ledgers/shielded/<sid>/<agent>.ledger.json` — tamper-evident chains
 
