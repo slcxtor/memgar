@@ -41,7 +41,7 @@
   },
   "bundle": {
     "filename": "memgar-transformer-v2.0.0.tar.gz",
-    "sha256": "16039991e1025bb484a8fe30e986e0c384adef511e17107e2c3f2645358e143d",
-    "size_bytes": 57502579
+    "sha256": "92cf346a37722762adc4e123813906e774221aed506b3203066565b72cadc7be",
+    "size_bytes": 57502121
   }
 }

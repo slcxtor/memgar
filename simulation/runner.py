@@ -89,26 +89,36 @@ def _seed_legitimate_rag(rag) -> None:
     ))
 
 
-def build_world(mode: str, scenario_id: str) -> tuple[World, SimContext]:
+def build_world(mode: str, scenario_id: str, *,
+                shared_rag: Any = None, shared_tools: Any = None,
+                company: str = "") -> tuple[World, SimContext]:
     """Construct a fresh world, agents, and infrastructure for a single
     scenario. We rebuild between scenarios so attacks can not bleed state
-    into each other — the comparison stays honest."""
-    world = World(seed=hash(scenario_id) & 0xFFFF, scenario=f"{mode}:{scenario_id}")
-    ledger_root = REPORTS_DIR / "ledgers" / mode / scenario_id
+    into each other — the comparison stays honest.
+
+    ``shared_rag`` / ``shared_tools`` let several companies share one
+    multi-tenant resource (vendor-portal RAG, MCP/tool provider) so a
+    single poisoning event can be observed reaching every tenant — the
+    cross-company federation threat model. ``company`` namespaces the
+    ledger directory so per-company hash-chains don't collide on disk."""
+    seed_key = f"{company}:{scenario_id}" if company else scenario_id
+    world = World(seed=hash(seed_key) & 0xFFFF, scenario=f"{mode}:{seed_key}")
+    ledger_root = REPORTS_DIR / "ledgers" / mode / (f"{company}-{scenario_id}" if company else scenario_id)
     ledger_root.mkdir(parents=True, exist_ok=True)
 
     if mode == "shielded":
-        rag = ShieldedRagIndex()
-        tools = ShieldedToolRuntime()
+        rag = shared_rag if shared_rag is not None else ShieldedRagIndex()
+        tools = shared_tools if shared_tools is not None else ShieldedToolRuntime()
         def mem_for(name: str):
             return ShieldedMemoryStore(name, ledger_path=ledger_root / f"{name}.ledger.json")
     else:
-        rag = NaiveRagIndex()
-        tools = NaiveToolRuntime()
+        rag = shared_rag if shared_rag is not None else NaiveRagIndex()
+        tools = shared_tools if shared_tools is not None else NaiveToolRuntime()
         def mem_for(name: str):
             return RawMemoryStore(name)
 
-    _seed_legitimate_rag(rag)
+    if shared_rag is None:
+        _seed_legitimate_rag(rag)
 
     coordinator = CoordinatorAgent("coordinator", mem_for("coordinator"), world,
                                    shielded=(mode == "shielded"))
