@@ -1,0 +1,1463 @@
+{
+  "training_seconds": 1602.8,
+  "best_val_f1": 0.9981,
+  "val_metrics": {
+    "accuracy": 0.9971,
+    "precision": 0.9974,
+    "recall": 0.9987,
+    "f1": 0.9981
+  },
+  "test_metrics": {
+    "accuracy": 0.994,
+    "precision": 0.9944,
+    "recall": 0.9978,
+    "f1": 0.9961
+  },
+  "test_ece": 0.0217,
+  "temperature": 0.5,
+  "history": [
+    {
+      "epoch": 0,
+      "val": {
+        "accuracy": 0.9824,
+        "precision": 0.9987,
+        "recall": 0.9783,
+        "f1": 0.9884
+      },
+      "lr": 0.00029646299752809387
+    },
+    {
+      "epoch": 1,
+      "val": {
+        "accuracy": 0.9893,
+        "precision": 0.9961,
+        "recall": 0.9898,
+        "f1": 0.9929
+      },
+      "lr": 0.00027073344126185035
+    },
+    {
+      "epoch": 2,
+      "val": {
+        "accuracy": 0.9922,
+        "precision": 0.9924,
+        "recall": 0.9974,
+        "f1": 0.9949
+      },
+      "lr": 0.00022424221858196263
+    },
+    {
+      "epoch": 3,
+      "val": {
+        "accuracy": 0.9922,
+        "precision": 0.9962,
+        "recall": 0.9936,
+        "f1": 0.9949
+      },
+      "lr": 0.0001649840925495518
+    },
+    {
+      "epoch": 4,
+      "val": {
+        "accuracy": 0.9971,
+        "precision": 0.9974,
+        "recall": 0.9987,
+        "f1": 0.9981
+      },
+      "lr": 0.00010314925928695235
+    },
+    {
+      "epoch": 5,
+      "val": {
+        "accuracy": 0.9941,
+        "precision": 0.9974,
+        "recall": 0.9949,
+        "f1": 0.9962
+      },
+      "lr": 4.937101283037967e-05
+    },
+    {
+      "epoch": 6,
+      "val": {
+        "accuracy": 0.9941,
+        "precision": 0.9987,
+        "recall": 0.9936,
+        "f1": 0.9962
+      },
+      "lr": 1.289721360336427e-05
+    },
+    {
+      "epoch": 7,
+      "val": {
+        "accuracy": 0.9941,
+        "precision": 0.9987,
+        "recall": 0.9936,
+        "f1": 0.9962
+      },
+      "lr": 0.0
+    }
+  ],
+  "config": {
+    "base_model": "distilroberta-base",
+    "num_epochs": 8,
+    "batch_size": 32,
+    "eval_batch_size": 32,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.06,
+    "max_length": 256,
+    "label_smoothing": 0.05,
+    "focal_gamma": 2.0,
+    "aux_loss_weight": 0.3,
+    "use_lora": true,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "seed": 42,
+    "curriculum_warmup_frac": 0.25,
+    "early_stopping_patience": 3
+  },
+  "n_categories": 33,
+  "n_train": 8405,
+  "n_val": 1025,
+  "n_test": 1158,
+  "per_subcategory": {
+    "security_research": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 8
+    },
+    "prompt_injection_subtle": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 23,
+      "support_benign": 0
+    },
+    "manipulation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "benign_memory_write": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 65
+    },
+    "data_exfiltration__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 9,
+      "support_benign": 0
+    },
+    "financial_fraud": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "injection_prefix__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 11,
+      "support_benign": 0
+    },
+    "prompt_injection_subtle__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "conversation_repair": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 4
+    },
+    "education_legit": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 9
+    },
+    "social_engineering__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 42,
+      "support_benign": 0
+    },
+    "multi_agent_attack__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "manipulation__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "jailbreak__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "technical_help": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 32
+    },
+    "prompt_injection_direct__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "prompt_injection_direct__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "persistence": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 23,
+      "support_benign": 0
+    },
+    "multi_stage_payload__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "injection_prefix__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 12,
+      "support_benign": 0
+    },
+    "social_engineering__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "social_engineering__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "injection_prefix__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 12,
+      "support_benign": 0
+    },
+    "hitl_bypass__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "prompt_injection_direct": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 24,
+      "support_benign": 0
+    },
+    "prompt_injection__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "data_exfiltration__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "prompt_injection_direct__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "prompt_injection": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 6,
+      "support_benign": 0
+    },
+    "data_analysis": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 8
+    },
+    "confidence_bypass": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "credential": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "benign": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 26
+    },
+    "persistence__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "ehr_attacks__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 6,
+      "support_benign": 0
+    },
+    "multi_stage_payload": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 18,
+      "support_benign": 0
+    },
+    "persistence__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "injection_prefix": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 65,
+      "support_benign": 0
+    },
+    "ehr_attacks": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 33,
+      "support_benign": 0
+    },
+    "business": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 14
+    },
+    "devops_infra": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 9
+    },
+    "ehr_attacks__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "roleplay_jailbreak__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "obfuscated": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 20,
+      "support_benign": 0
+    },
+    "prompt_injection_subtle__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "code_injection__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "injection_prefix__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 12,
+      "support_benign": 0
+    },
+    "multi_stage_payload__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "social_engineering__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "programming": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 3
+    },
+    "data_exfiltration__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "ehr_attacks__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "data_exfiltration": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 44,
+      "support_benign": 0
+    },
+    "denial_of_wallet__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "ehr_attacks__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 6,
+      "support_benign": 0
+    },
+    "exfiltration__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "exfiltration__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "memory_tampering__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "prompt_injection_subtle__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "casual": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 11
+    },
+    "jailbreak": {
+      "precision": 1.0,
+      "recall": 0.8,
+      "f1": 0.8889,
+      "support": 5,
+      "support_benign": 0
+    },
+    "obfuscated__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "code_injection": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 19,
+      "support_benign": 0
+    },
+    "filter_bypass__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "identity_spoofing__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "identity_spoofing__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "supply_chain__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "financial": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "canary_probe__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "filter_bypass": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "privilege_escalation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "prompt_injection__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "obfuscated__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "obfuscated__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "data_exfiltration__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "supply_chain": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 9,
+      "support_benign": 0
+    },
+    "multi_agent_attack": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 9,
+      "support_benign": 0
+    },
+    "information_seeking": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 14
+    },
+    "hitl_bypass": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "exfiltration": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 9,
+      "support_benign": 0
+    },
+    "code_injection__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "prompt_injection_direct__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "conversation_correction": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 5
+    },
+    "code_injection__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "simple_question": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 10
+    },
+    "persistence__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "denial_of_wallet": {
+      "precision": 1.0,
+      "recall": 0.8333,
+      "f1": 0.9091,
+      "support": 6,
+      "support_benign": 0
+    },
+    "rag_poisoning": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "injection_prefix__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 12,
+      "support_benign": 0
+    },
+    "social_engineering__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "identity_spoofing": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "injection_prefix__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 12,
+      "support_benign": 0
+    },
+    "rag_poisoning__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "canary_probe": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "persistence__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 6,
+      "support_benign": 0
+    },
+    "rag_poisoning__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "financial__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "multi_stage_payload__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "privilege": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "prompt_injection_subtle__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "obfuscation_advanced__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "prompt_injection_subtle__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "developer_api": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 10
+    },
+    "rag_poisoning__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "ehr_attacks__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 6,
+      "support_benign": 0
+    },
+    "websocket_attack": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "prompt_injection_direct__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "exfiltration__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "obfuscated__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "multi_stage_payload__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "confidence_bypass__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "questions": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 18
+    },
+    "code_injection__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "healthcare_legit": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 3
+    },
+    "memory_tampering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "obfuscation_advanced__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "persistence__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "code_injection__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "social_engineering__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "confidence_bypass__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "data_exfiltration__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8,
+      "support_benign": 0
+    },
+    "denial_of_wallet__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "manipulation__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "rag_poisoning__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "hitl_bypass__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "development_operations": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 3
+    },
+    "multi_agent_attack__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "prompt_injection_direct__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "supply_chain__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "supply_chain__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "ehr_attacks__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "manipulation__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "multi_stage_payload__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "denial_of_wallet__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "exfiltration__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "obfuscated__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "customer_support": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 11
+    },
+    "confidence_bypass__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "prompt_injection_subtle__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5,
+      "support_benign": 0
+    },
+    "exfiltration__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "credential__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "execution": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "code_injection__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "financial_fraud__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "obfuscated__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "data_exfiltration__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7,
+      "support_benign": 0
+    },
+    "obfuscation_advanced": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 6,
+      "support_benign": 0
+    },
+    "confidence_bypass__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "multi_agent_attack__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "supply_chain__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "denial_of_wallet__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "supply_chain__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "rag_poisoning__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "multi_agent_attack__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "websocket_attack__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "memory_tampering__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "roleplay_jailbreak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "prompt_injection__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "execution__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "manipulation__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "denial_of_wallet__zwsp": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "prompt_injection__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "rag_poisoning__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "denial_of_wallet__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "persistence__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3,
+      "support_benign": 0
+    },
+    "exfiltration__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "manipulation__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "multi_stage_payload__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 4,
+      "support_benign": 0
+    },
+    "finance_legit": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0,
+      "support_benign": 3
+    },
+    "manipulation__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "supply_chain__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "jailbreak__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "obfuscation_advanced__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "confidence_bypass__leetspeak": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "roleplay_jailbreak__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "hitl_bypass__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "memory_tampering__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "privilege__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "multi_agent_attack__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2,
+      "support_benign": 0
+    },
+    "obfuscation_advanced__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "multi_agent_attack__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "credential__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "credential__rot13": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "credential__unicode_tag": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "confidence_bypass__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "websocket_attack__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "obfuscation_advanced__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "prompt_injection__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "jailbreak__homoglyph": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    },
+    "jailbreak__base64": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 1,
+      "support_benign": 0
+    }
+  }
+}
