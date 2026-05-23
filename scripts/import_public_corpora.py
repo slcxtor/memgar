@@ -442,7 +442,9 @@ import re as _re
 # Turkish-specific characters that don't appear in English. Plain `i` is NOT
 # included — only the dotless `ı` and accented variants. This avoids false
 # positives like "file/while/profile" containing the substring "ile".
-_TURKISH_CHARS = _re.compile(r"[çğışüöÇĞIŞÜÖ]")
+# Capital ASCII `I` (U+0049) is also NOT included — that's standard English;
+# the Turkish dotted capital is `İ` (U+0130, Latin Capital I With Dot Above).
+_TURKISH_CHARS = _re.compile(r"[çğışüöÇĞİŞÜÖ]")
 # Common Turkish stopwords matched on word boundaries (the earlier substring
 # approach matched "ile" inside "while/profile/detailed"; we now require the
 # word to stand alone).
