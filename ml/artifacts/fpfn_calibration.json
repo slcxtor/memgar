@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "generated_at": "2026-05-23T16:14:04Z",
+  "generated_at": "2026-05-24T17:43:22Z",
   "corpus_path": "/home/user/memgar/ml/data/calibration_corpus.json",
   "n_samples": 290,
   "n_attack": 40,
@@ -11,8 +11,8 @@
     "layers": {
       "layer1_patterns": {
         "status": "ok",
-        "total_patterns": 816,
-        "compiled_regex_count": 3204
+        "total_patterns": 817,
+        "compiled_regex_count": 3205
       },
       "layer1_5_semantic_guard": {
         "status": "degraded",
@@ -50,11 +50,11 @@
         "status": "degraded",
         "repo": "slcxtor/memgar",
         "last_outcome": "failure",
-        "last_error": "ImportError: Feed signature verification requires 'cryptography'. Install with: pip install 'memgar[feed]'",
-        "last_attempt_at": 1779552835.7025223,
+        "last_error": "HTTPError: HTTP Error 403: Forbidden",
+        "last_attempt_at": 1779644589.44713,
         "last_bundle_version": null,
         "last_pattern_count": 0,
-        "used_fallback_url": true,
+        "used_fallback_url": false,
         "verify_signature": true,
         "max_age_days": 7,
         "cached_bundle": null,
@@ -74,7 +74,7 @@
     },
     "attack": {
       "n": 40,
-      "mean": 76.42,
+      "mean": 76.47,
       "median": 78,
       "p90": 93,
       "p99": 100,
@@ -632,15 +632,15 @@
     },
     {
       "threshold": 90,
-      "precision": 0.9444,
-      "recall": 0.425,
-      "f1": 0.5862,
+      "precision": 0.9474,
+      "recall": 0.45,
+      "f1": 0.6102,
       "fpr": 0.004,
-      "accuracy": 0.9172,
-      "tp": 17,
+      "accuracy": 0.9207,
+      "tp": 18,
       "fp": 1,
       "tn": 249,
-      "fn": 23
+      "fn": 22
     },
     {
       "threshold": 92,
@@ -823,7 +823,7 @@
     }
   },
   "latency_ms": {
-    "p50": 26.54,
-    "p95": 43.09
+    "p50": 42.86,
+    "p95": 61.58
   }
 }

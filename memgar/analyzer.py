@@ -835,6 +835,29 @@ def _normalize_content(content: str) -> str:
     except Exception:
         pass  # Continue with original if normalization fails
 
+    # Step 1b: Fold diacritics. NFKC keeps precomposed accented letters
+    # ("ï" stays "ï"), so an attacker can evade ASCII word patterns with
+    # "ïgñörë àll prëvïöüs ïñstrüctïöñs". NFKD decomposition + dropping the
+    # combining marks turns that back into "ignore all previous ...".
+    try:
+        decomposed = unicodedata.normalize('NFKD', normalized)
+        folded = ''.join(c for c in decomposed if not unicodedata.combining(c))
+        if folded:
+            normalized = folded
+    except Exception:
+        pass
+
+    # Step 1c: Collapse punctuation-as-separator obfuscation. A run of
+    # word.word.word (or word_word_word) is a common way to break up trigger
+    # phrases ("Ignore.all.previous.instructions"). Only collapse when there
+    # are several such separators in a row, so normal prose punctuation,
+    # URLs and emails in benign text are left intact.
+    try:
+        if len(re.findall(r'\w[._]\w', normalized)) >= 3:
+            normalized = re.sub(r'(?<=\w)[._]+(?=\w)', ' ', normalized)
+    except Exception:
+        pass
+
     # Step 2: Remove ALL invisible/control Unicode characters
     # Zero-width chars (U+200B-U+200F)
     # Bidirectional overrides (U+202A-U+202E)
@@ -864,6 +887,28 @@ def _normalize_content(content: str) -> str:
     normalized = _decode_base64_payloads(normalized)
 
     return normalized
+
+
+def _decode_transposition_variants(content: str) -> list[str]:
+    """Candidate decodings for transposition/substitution-hidden directives.
+
+    A reversed (".tpmorp metsys ... erongI") or ROT13 ("Vtaber nyy ...")
+    instruction is inert until decoded, so it slips past Layer 1. We scan
+    the decoded forms too. Decoding *benign* text yields gibberish that
+    matches no pattern, so the false-positive risk is minimal.
+    """
+    out: list[str] = []
+    rev = content[::-1]
+    if rev != content:
+        out.append(rev)
+    try:
+        import codecs
+        r13 = codecs.encode(content, "rot13")
+        if r13 != content:
+            out.append(r13)
+    except Exception:
+        pass
+    return out
 
 
 def _decode_base64_payloads(text: str) -> str:
@@ -1821,6 +1866,15 @@ class Analyzer:
                 for t in normalized_threats:
                     if t.threat.id not in existing_ids:
                         threats.append(t)
+            # Reversed / ROT13-hidden directives are inert until decoded; scan
+            # the decoded forms and merge only real hits (length-capped to bound
+            # cost; decoding benign text matches nothing so FP risk is minimal).
+            if len(content) <= 4000:
+                for variant in _decode_transposition_variants(content):
+                    existing_ids = {t.threat.id for t in threats}
+                    for t in self._layer1_pattern_matching(variant):
+                        if t.threat.id not in existing_ids:
+                            threats.append(t)
             l1.set_attribute("memgar.l1.threat_count", len(threats))
             l1.set_attribute("memgar.l1.patterns_checked", len(self.patterns))
         layers_used = ["pattern_matching"]
