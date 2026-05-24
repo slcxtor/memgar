@@ -84,6 +84,32 @@ try:
 except ImportError:
     pass
 
+# LangGraph Integration
+LANGGRAPH_AVAILABLE = False
+MemgarLangGraphGuard = None
+
+try:
+    from .langgraph import (
+        MemgarLangGraphGuard,
+        guard_graph_messages,
+    )
+    LANGGRAPH_AVAILABLE = True
+except ImportError:
+    pass
+
+# Semantic Kernel Integration
+SEMANTIC_KERNEL_AVAILABLE = False
+MemgarSemanticKernelGuard = None
+
+try:
+    from .semantic_kernel import (
+        MemgarSemanticKernelGuard,
+        guard_chat_history,
+    )
+    SEMANTIC_KERNEL_AVAILABLE = True
+except ImportError:
+    pass
+
 # OpenAI Assistants Integration
 OPENAI_ASSISTANTS_AVAILABLE = False
 MemgarAssistantGuard = None
@@ -236,6 +262,8 @@ def get_available_integrations() -> dict:
         "langchain_agent": LANGCHAIN_AGENT_AVAILABLE,
         "crewai": CREWAI_AVAILABLE,
         "autogen": AUTOGEN_AVAILABLE,
+        "langgraph": LANGGRAPH_AVAILABLE,
+        "semantic_kernel": SEMANTIC_KERNEL_AVAILABLE,
         "openai_assistants": OPENAI_ASSISTANTS_AVAILABLE,
         "openai_agents": OPENAI_AGENTS_AVAILABLE,
         "mcp": MCP_AVAILABLE,
@@ -291,6 +319,8 @@ __all__ = [
     "LANGCHAIN_AGENT_AVAILABLE",
     "CREWAI_AVAILABLE",
     "AUTOGEN_AVAILABLE",
+    "LANGGRAPH_AVAILABLE",
+    "SEMANTIC_KERNEL_AVAILABLE",
     "OPENAI_ASSISTANTS_AVAILABLE",
     "OPENAI_AGENTS_AVAILABLE",
     "MCP_AVAILABLE",
@@ -317,6 +347,14 @@ __all__ = [
 
     # AutoGen
     "MemgarAutoGenGuard",
+
+    # LangGraph
+    "MemgarLangGraphGuard",
+    "guard_graph_messages",
+
+    # Semantic Kernel
+    "MemgarSemanticKernelGuard",
+    "guard_chat_history",
 
     # OpenAI Assistants
     "MemgarAssistantGuard",
