@@ -109,6 +109,29 @@ def test_semantic_kernel_chat_history_guard():
     assert history.messages == [BENIGN]  # poison not appended
 
 
+def test_semantic_kernel_guard_works_on_setattr_locked_history():
+    # Semantic Kernel's real ChatHistory is a Pydantic model that rejects
+    # setattr of new method attributes. The guard must wrap it via a proxy,
+    # not by monkey-patching the instance.
+    from memgar.integrations.semantic_kernel import (
+        MemgarSemanticKernelGuard, MemgarSemanticKernelThreatError)
+
+    class PydanticLikeHistory:
+        def __init__(self): object.__setattr__(self, "messages", [])
+        def __setattr__(self, name, value):  # reject new attrs like Pydantic
+            raise ValueError(f"cannot set {name!r}")
+        def add_user_message(self, c, *a, **k):
+            object.__getattribute__(self, "messages").append(c); return c
+
+    history = PydanticLikeHistory()
+    secured = MemgarSemanticKernelGuard(on_threat="block").secure_chat_history(history)
+    secured.add_user_message(BENIGN)
+    assert history.messages == [BENIGN]
+    with pytest.raises(MemgarSemanticKernelThreatError):
+        secured.add_user_message(POISON)
+    assert history.messages == [BENIGN]
+
+
 # ------------------------------------------------------- availability surface
 def test_all_target_frameworks_available():
     import memgar.integrations as mi

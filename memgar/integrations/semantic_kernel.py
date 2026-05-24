@@ -135,28 +135,43 @@ class MemgarSemanticKernelGuard:
 
     # --------------------------------------------------------- chat history
     def secure_chat_history(self, history: Any) -> Any:
-        """Wrap a ChatHistory so add_* methods scan content before appending."""
-        guard = self
+        """Wrap a ChatHistory so add_* methods scan content before appending.
 
-        def _wrap_text_adder(method_name: str) -> None:
-            original = getattr(history, method_name, None)
-            if original is None:
-                return
+        Returns a proxy that delegates everything to the underlying history but
+        intercepts the add_* methods. A proxy (rather than monkey-patching the
+        instance) is required because Semantic Kernel's ChatHistory is a Pydantic
+        model that rejects ``setattr`` of new method attributes."""
+        return _SecureChatHistoryProxy(history, self)
 
-            @functools.wraps(original)
-            def secured(content: Any, *args: Any, **kwargs: Any) -> Any:
-                text = _content_of(content)
-                safe = guard.guard_message(text, source_id=f"history.{method_name}")
-                if safe is None:
-                    return None  # dropped (warn/log mode)
-                new_content = content if safe == text else _replace(content, safe)
-                return original(new_content, *args, **kwargs)
 
-            setattr(history, method_name, secured)
+class _SecureChatHistoryProxy:
+    """Delegating proxy that scans content on add_user/system/message."""
 
-        for name in ("add_user_message", "add_message", "add_system_message"):
-            _wrap_text_adder(name)
-        return history
+    _INTERCEPT = ("add_user_message", "add_message", "add_system_message")
+
+    def __init__(self, history: Any, guard: "MemgarSemanticKernelGuard") -> None:
+        object.__setattr__(self, "_history", history)
+        object.__setattr__(self, "_guard", guard)
+
+    def _secured_add(self, method_name: str, content: Any, *args: Any, **kwargs: Any) -> Any:
+        original = getattr(self._history, method_name)
+        text = _content_of(content)
+        safe = self._guard.guard_message(text, source_id=f"history.{method_name}")
+        if safe is None:
+            return None  # dropped (warn/log mode); blocked mode raises in guard_message
+        new_content = content if safe == text else _replace(content, safe)
+        return original(new_content, *args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        if name in _SecureChatHistoryProxy._INTERCEPT:
+            return lambda content, *a, **k: self._secured_add(name, content, *a, **k)
+        return getattr(self._history, name)  # delegate everything else (messages, etc.)
+
+    def __iter__(self):
+        return iter(self._history)
+
+    def __len__(self):
+        return len(self._history)
 
     # --------------------------------------------------- function invocation
     async def function_invocation_filter(self, context: Any, next: Callable) -> Any:
