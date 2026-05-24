@@ -244,31 +244,26 @@ class MemgarRetriever(BaseRetriever if LANGCHAIN_AVAILABLE else object):
         if not self.scan_retrieval_outputs or not documents:
             return documents
 
-        records = []
-        for index, doc in enumerate(documents):
-            metadata = _document_metadata(doc)
-            records.append(
-                {
-                    "content": _document_content(doc),
-                    "metadata": metadata,
-                    "doc_id": metadata.get("doc_id", str(index)),
-                    "_memgar_index": index,
-                }
-            )
-
-        safe_records = self.memory_guard.guard_retrieval_results(
-            records,
-            query=query,
-            top_k=len(records),
-            source_type="langchain_retrieval",
-            agent_id=self.agent_id,
-        )
+        # Scan each retrieved document's text individually. We pass the plain
+        # content string (not a dict record) because the secure store extracts
+        # and scans string chunks; a prior version passed dict records whose
+        # text it could not read, so it scanned nothing and let poisoned chunks
+        # reach the model context. Scanning per document preserves order and
+        # the original Document (with metadata) for survivors, and keeps the
+        # "vector_retrieval" audit boundary.
         safe_documents: List[Document] = []
-        for record in safe_records:
-            index = record.get("_memgar_index")
-            if index is None or index >= len(documents):
-                continue
-            safe_documents.append(_replace_document_content(documents[index], record.get("content", "")))
+        for doc in documents:
+            content = _document_content(doc)
+            safe = self.memory_guard.guard_retrieval_results(
+                [content],
+                query=query,
+                top_k=1,
+                source_type="langchain_retrieval",
+                agent_id=self.agent_id,
+            )
+            if not safe:
+                continue  # poisoned chunk dropped before it reaches context
+            safe_documents.append(_replace_document_content(doc, safe[0]))
         return safe_documents
 
 
