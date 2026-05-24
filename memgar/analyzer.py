@@ -2361,16 +2361,16 @@ class Analyzer:
                             keywords=[],
                             examples=[],
                             mitre_attack="T1059"
-                    )
+                        )
 
-                    matches.append(ThreatMatch(
-                        threat=many_shot_threat,
-                        matched_text=f"Progressive attack: {step_count} step indicators found",
-                        match_type="many_shot",
-                        confidence=0.85,
-                        position=(0, len(content))
-                    ))
-                    break
+                        matches.append(ThreatMatch(
+                            threat=many_shot_threat,
+                            matched_text=f"Progressive attack: {step_count} step indicators found",
+                            match_type="many_shot",
+                            confidence=0.85,
+                            position=(0, len(content))
+                        ))
+                        break
 
         return matches
 
