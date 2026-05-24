@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "generated_at": "2026-05-24T19:42:55Z",
+  "generated_at": "2026-05-24T20:23:16Z",
   "corpus_path": "/home/user/memgar/ml/data/calibration_corpus.json",
   "n_samples": 290,
   "n_attack": 40,
@@ -11,8 +11,8 @@
     "layers": {
       "layer1_patterns": {
         "status": "ok",
-        "total_patterns": 831,
-        "compiled_regex_count": 3244
+        "total_patterns": 832,
+        "compiled_regex_count": 3247
       },
       "layer1_5_semantic_guard": {
         "status": "degraded",
@@ -51,7 +51,7 @@
         "repo": "slcxtor/memgar",
         "last_outcome": "failure",
         "last_error": "HTTPError: HTTP Error 403: Forbidden",
-        "last_attempt_at": 1779651762.568441,
+        "last_attempt_at": 1779654183.5956798,
         "last_bundle_version": null,
         "last_pattern_count": 0,
         "used_fallback_url": false,
@@ -823,7 +823,7 @@
     }
   },
   "latency_ms": {
-    "p50": 42.71,
-    "p95": 63.58
+    "p50": 44.16,
+    "p95": 64.44
   }
 }
