@@ -835,6 +835,29 @@ def _normalize_content(content: str) -> str:
     except Exception:
         pass  # Continue with original if normalization fails
 
+    # Step 1b: Fold diacritics. NFKC keeps precomposed accented letters
+    # ("ï" stays "ï"), so an attacker can evade ASCII word patterns with
+    # "ïgñörë àll prëvïöüs ïñstrüctïöñs". NFKD decomposition + dropping the
+    # combining marks turns that back into "ignore all previous ...".
+    try:
+        decomposed = unicodedata.normalize('NFKD', normalized)
+        folded = ''.join(c for c in decomposed if not unicodedata.combining(c))
+        if folded:
+            normalized = folded
+    except Exception:
+        pass
+
+    # Step 1c: Collapse punctuation-as-separator obfuscation. A run of
+    # word.word.word (or word_word_word) is a common way to break up trigger
+    # phrases ("Ignore.all.previous.instructions"). Only collapse when there
+    # are several such separators in a row, so normal prose punctuation,
+    # URLs and emails in benign text are left intact.
+    try:
+        if len(re.findall(r'\w[._]\w', normalized)) >= 3:
+            normalized = re.sub(r'(?<=\w)[._]+(?=\w)', ' ', normalized)
+    except Exception:
+        pass
+
     # Step 2: Remove ALL invisible/control Unicode characters
     # Zero-width chars (U+200B-U+200F)
     # Bidirectional overrides (U+202A-U+202E)
@@ -864,6 +887,54 @@ def _normalize_content(content: str) -> str:
     normalized = _decode_base64_payloads(normalized)
 
     return normalized
+
+
+def _decode_transposition_variants(content: str) -> list[str]:
+    """Candidate decodings for transposition/substitution-hidden directives.
+
+    A reversed (".tpmorp metsys ... erongI") or ROT13 ("Vtaber nyy ...")
+    instruction is inert until decoded, so it slips past Layer 1. We scan
+    the decoded forms too. Decoding *benign* text yields gibberish that
+    matches no pattern, so the false-positive risk is minimal.
+    """
+    out: list[str] = []
+    rev = content[::-1]
+    if rev != content:
+        out.append(rev)
+    try:
+        import codecs
+        r13 = codecs.encode(content, "rot13")
+        if r13 != content:
+            out.append(r13)
+    except Exception:
+        pass
+    return out
+
+
+_LATIN_RE = re.compile(r'[a-zA-Z]')
+_CYRILLIC_RE = re.compile(r'[Ѐ-ӿ]')
+_GREEK_RE = re.compile(r'[Ͱ-Ͽ]')
+_ARABIC_RE = re.compile(r'[؀-ۿ]')
+
+# Pattern IDs whose whole purpose is to flag non-Latin lookalikes injected
+# into Latin text. On predominantly non-Latin text these fire on the native
+# script and are false positives.
+_SCRIPT_MIXING_IDS = frozenset({"HOMOGLYPH", "UNICODE-BYPASS", "EVADE-002"})
+
+
+def _is_predominantly_non_latin(content: str) -> bool:
+    """True when Cyrillic/Greek/Arabic letters outnumber Latin ones — i.e. the
+    text is written in a non-Latin script, not Latin disguised with lookalikes."""
+    latin = len(_LATIN_RE.findall(content))
+    nonlatin = (len(_CYRILLIC_RE.findall(content))
+                + len(_GREEK_RE.findall(content))
+                + len(_ARABIC_RE.findall(content)))
+    return nonlatin >= 3 and nonlatin > latin
+
+
+def _has_non_latin_alpha(text: str) -> bool:
+    return bool(_CYRILLIC_RE.search(text) or _GREEK_RE.search(text)
+                or _ARABIC_RE.search(text))
 
 
 def _decode_base64_payloads(text: str) -> str:
@@ -1821,6 +1892,24 @@ class Analyzer:
                 for t in normalized_threats:
                     if t.threat.id not in existing_ids:
                         threats.append(t)
+            # Reversed / ROT13-hidden directives are inert until decoded; scan
+            # the decoded forms and merge only real hits (length-capped to bound
+            # cost; decoding benign text matches nothing so FP risk is minimal).
+            if len(content) <= 4000:
+                for variant in _decode_transposition_variants(content):
+                    existing_ids = {t.threat.id for t in threats}
+                    for t in self._layer1_pattern_matching(variant):
+                        if t.threat.id not in existing_ids:
+                            threats.append(t)
+            # Script awareness: on predominantly non-Latin text (legitimate
+            # Russian / Greek / Arabic), drop homoglyph/script-mixing findings
+            # whose match is a native non-Latin character. Genuine attacks in
+            # those languages are caught by the MULTILANG-* / TR-* patterns, and
+            # zero-width / bidi / base64 matches (no non-Latin alpha) survive.
+            if _is_predominantly_non_latin(content):
+                threats = [t for t in threats
+                           if not (t.threat.id in _SCRIPT_MIXING_IDS
+                                   and _has_non_latin_alpha(t.matched_text or ""))]
             l1.set_attribute("memgar.l1.threat_count", len(threats))
             l1.set_attribute("memgar.l1.patterns_checked", len(self.patterns))
         layers_used = ["pattern_matching"]
@@ -2272,16 +2361,16 @@ class Analyzer:
                             keywords=[],
                             examples=[],
                             mitre_attack="T1059"
-                    )
+                        )
 
-                    matches.append(ThreatMatch(
-                        threat=many_shot_threat,
-                        matched_text=f"Progressive attack: {step_count} step indicators found",
-                        match_type="many_shot",
-                        confidence=0.85,
-                        position=(0, len(content))
-                    ))
-                    break
+                        matches.append(ThreatMatch(
+                            threat=many_shot_threat,
+                            matched_text=f"Progressive attack: {step_count} step indicators found",
+                            match_type="many_shot",
+                            confidence=0.85,
+                            position=(0, len(content))
+                        ))
+                        break
 
         return matches
 
