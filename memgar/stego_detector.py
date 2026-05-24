@@ -236,9 +236,11 @@ class StegoDetector:
                     if len(homo_samples) < 5:
                         homo_samples.add(f"{ch!r}→{_HOMOGLYPHS[ch]!r}")
 
-        # Only flag if there's enough Latin context to suggest mixing rather
-        # than a legitimately non-Latin language.
-        if homo_count > 0 and latin_letters >= 5:
+        # Only flag if Latin is the *majority* script — a homoglyph attack is
+        # Latin text with a few lookalikes injected. Legitimately non-Latin
+        # text (e.g. Russian with one Latin brand name like "Figma") has more
+        # non-Latin letters than Latin and must not be flagged.
+        if homo_count > 0 and latin_letters >= 5 and latin_letters > homo_count:
             ratio = homo_count / max(1, latin_letters + homo_count)
             if ratio >= self.homoglyph_threshold or homo_count >= 3:
                 severity = "high" if homo_count >= 5 else "medium"

@@ -911,6 +911,32 @@ def _decode_transposition_variants(content: str) -> list[str]:
     return out
 
 
+_LATIN_RE = re.compile(r'[a-zA-Z]')
+_CYRILLIC_RE = re.compile(r'[Ѐ-ӿ]')
+_GREEK_RE = re.compile(r'[Ͱ-Ͽ]')
+_ARABIC_RE = re.compile(r'[؀-ۿ]')
+
+# Pattern IDs whose whole purpose is to flag non-Latin lookalikes injected
+# into Latin text. On predominantly non-Latin text these fire on the native
+# script and are false positives.
+_SCRIPT_MIXING_IDS = frozenset({"HOMOGLYPH", "UNICODE-BYPASS", "EVADE-002"})
+
+
+def _is_predominantly_non_latin(content: str) -> bool:
+    """True when Cyrillic/Greek/Arabic letters outnumber Latin ones — i.e. the
+    text is written in a non-Latin script, not Latin disguised with lookalikes."""
+    latin = len(_LATIN_RE.findall(content))
+    nonlatin = (len(_CYRILLIC_RE.findall(content))
+                + len(_GREEK_RE.findall(content))
+                + len(_ARABIC_RE.findall(content)))
+    return nonlatin >= 3 and nonlatin > latin
+
+
+def _has_non_latin_alpha(text: str) -> bool:
+    return bool(_CYRILLIC_RE.search(text) or _GREEK_RE.search(text)
+                or _ARABIC_RE.search(text))
+
+
 def _decode_base64_payloads(text: str) -> str:
     """
     Detect and decode Base64 encoded payloads that might hide malicious content.
@@ -1875,6 +1901,15 @@ class Analyzer:
                     for t in self._layer1_pattern_matching(variant):
                         if t.threat.id not in existing_ids:
                             threats.append(t)
+            # Script awareness: on predominantly non-Latin text (legitimate
+            # Russian / Greek / Arabic), drop homoglyph/script-mixing findings
+            # whose match is a native non-Latin character. Genuine attacks in
+            # those languages are caught by the MULTILANG-* / TR-* patterns, and
+            # zero-width / bidi / base64 matches (no non-Latin alpha) survive.
+            if _is_predominantly_non_latin(content):
+                threats = [t for t in threats
+                           if not (t.threat.id in _SCRIPT_MIXING_IDS
+                                   and _has_non_latin_alpha(t.matched_text or ""))]
             l1.set_attribute("memgar.l1.threat_count", len(threats))
             l1.set_attribute("memgar.l1.patterns_checked", len(self.patterns))
         layers_used = ["pattern_matching"]
