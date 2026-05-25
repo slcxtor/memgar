@@ -628,19 +628,30 @@
 /* ─── Mobile ──────────────────────────────────────────────────────────── */
 
 /*
- * Root cause of the right-shift on mobile:
- * Material theme with navigation.tabs + navigation.sections allocates a
- * sidebar column in the flex grid even when hide: navigation is set on
- * a page. On phones the sidebar becomes a drawer but the grid still
- * leaves its column width as left-margin on .md-content.
+ * On phones (CSS viewport ≤ 959px) Material theme should collapse both
+ * sidebars into drawers, leaving the content at full width.
+ * However, at intermediate widths (~600–960px CSS) the secondary TOC
+ * sidebar can remain inline, squeezing content to ~230px on 720px screens.
  *
- * Fix: force the content inner to have no inherited left margin/padding
- * scoped only to the hero page sections so other pages are unaffected.
+ * Fix: explicitly hide both sidebars below 960px and give content full
+ * width. The hamburger drawer handles navigation at these sizes.
  */
+@media screen and (max-width: 59.9375em) {
+    /* Hide TOC sidebar below 960px (Material shows it at ≥60em) */
+    .md-sidebar--secondary {
+        display: none !important;
+    }
+}
+
 @media screen and (max-width: 76.1875em) {
-    /* Cancel Material's sidebar-driven margin on the content wrapper */
+    /* Cancel any residual left-margin from sidebar grid on all pages */
     .md-main__inner {
         margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .md-content {
+        max-width: 100% !important;
     }
 
     /* Hero: full viewport width, proper horizontal padding */
