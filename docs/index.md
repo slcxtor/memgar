@@ -6,7 +6,7 @@ hide:
 
 <div class="memgar-hero" markdown>
 
-<span class="memgar-eyebrow"><span class="dot"></span> Pre-1.0 · open source · MIT</span>
+<span class="memgar-eyebrow"><span class="dot"></span> v1.0.1 · open source · MIT</span>
 
 # Defend the memory that *survives the prompt*.
 
@@ -172,7 +172,7 @@ before you commit to anything.
 
 - Not a replacement for input-side prompt-injection defenses. Pair with both.
 - Not a vector database — wraps yours.
-- Not audited by a third party. **Pre-1.0**, MIT-licensed, read the code.
+- Not audited by a third party. **v1.0.1**, MIT-licensed, read the code.
 - Not benchmark-tested. Numbers on this site are from our own corpus; expect them to shift as real adversaries probe.
 - Not a turnkey SaaS. Self-hosted library + optional signed feed; no hosted control plane yet.
 

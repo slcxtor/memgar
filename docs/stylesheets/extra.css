@@ -627,12 +627,50 @@
 
 /* ─── Mobile ──────────────────────────────────────────────────────────── */
 
+/*
+ * Root cause of the right-shift on mobile:
+ * Material theme with navigation.tabs + navigation.sections allocates a
+ * sidebar column in the flex grid even when hide: navigation is set on
+ * a page. On phones the sidebar becomes a drawer but the grid still
+ * leaves its column width as left-margin on .md-content.
+ *
+ * Fix: force the content inner to have no inherited left margin/padding
+ * scoped only to the hero page sections so other pages are unaffected.
+ */
+@media screen and (max-width: 76.1875em) {
+    /* Cancel Material's sidebar-driven margin on the content wrapper */
+    .md-main__inner {
+        margin-left: 0 !important;
+    }
+
+    /* Hero: full viewport width, proper horizontal padding */
+    .memgar-hero {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+        box-sizing: border-box;
+    }
+}
+
 @media (max-width: 768px) {
     .memgar-hero {
-        padding: 4rem 0 2rem;
+        padding-top: 4rem;
+        padding-bottom: 2rem;
     }
     .memgar-hero h1 {
-        font-size: 2.25rem !important;
+        /* Prevent mid-word line breaks on narrow screens */
+        font-size: clamp(1.75rem, 7.5vw, 2.25rem) !important;
+        word-break: keep-all;
+        overflow-wrap: break-word;
+        hyphens: none;
+    }
+    .memgar-eyebrow {
+        font-size: 0.75rem;
     }
     .memgar-stats {
         grid-template-columns: repeat(2, 1fr);
@@ -648,7 +686,7 @@
         border-bottom: none;
     }
     .memgar-cta {
-        padding: 2.5rem 1.5rem;
+        padding: 2.5rem 1.25rem;
     }
     .memgar-cta h2 {
         font-size: 1.5rem !important;
