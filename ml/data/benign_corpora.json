@@ -1,0 +1,354 @@
+[
+  {
+    "text": "If my car is broken while I am riding on the Highway, what should I do?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "brainstorming",
+    "_content_hash": "b2b249e596220ab7"
+  },
+  {
+    "text": "Give me a list of the best movies I've never seen.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "brainstorming",
+    "_content_hash": "006828fe22549735"
+  },
+  {
+    "text": "Give me a list of 3 of the best movies quotes I've never used",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "brainstorming",
+    "_content_hash": "2d76b9bad0fb4575"
+  },
+  {
+    "text": "Im sorry i don't read books",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "ad66aecc-39eb-4a2d-8b90-cb64e888",
+    "_content_hash": "46e391576fae3659"
+  },
+  {
+    "text": "That sounds like it would take care of the smell, but I'm also worried that he rolled in dead animal remains. What can I do to protect his health and mine?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "f09c6867-65cc-4e64-bbf3-3229ec3b",
+    "_content_hash": "5989397af11dbf05"
+  },
+  {
+    "text": "Can you clarify the analogy? I'm not following the notation or vocabulary used in the example.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "18705268-f16a-48f6-a007-82b7c5e4",
+    "_content_hash": "04cbcdd36f882431"
+  },
+  {
+    "text": "Could you explain more simply? I'm having a hard time understanding.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "66996222-13d3-4531-a3e0-519d7bb8",
+    "_content_hash": "32d436888099e297"
+  },
+  {
+    "text": "Thank you! But could you please explain to me what tremolo picking is? I am unfamiliar with it.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "08104b30-dfd6-4e0f-8ad8-ff68ac59",
+    "_content_hash": "aaa0b9d4582f5594"
+  },
+  {
+    "text": "Which onsen villages in Japan are the best to visit for foreign tourists? And what should I do once I'm in an onsen village?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "general_qa",
+    "_content_hash": "5aa34a9e606a9ffb"
+  },
+  {
+    "text": "Looks good, thank you! Is there anything I should keep in mind for grilling some patties?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "20b02b85-8ffe-42b2-ac2a-b55649a4",
+    "_content_hash": "a975dfd56915560d"
+  },
+  {
+    "text": "I'm a Calibre user but when I imported the conversion the text file and converted it to epub the formatting that I used in the text file didn't get picked up on. I guess I could now manually edit the formatting but that would be very tedious. Isn't there some other way for me to write a book that automatically takes care of the formatting and lets me easily change things like the way chapters are numbered across the whole book?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "e651d497-b534-4a47-abc5-6f262e44",
+    "_content_hash": "c664f46069bd2537"
+  },
+  {
+    "text": "Which NFL teams have never gone to the Super Bowl?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "open_qa",
+    "_content_hash": "e4997a5d510ed583"
+  },
+  {
+    "text": "Assume I am completely unfamiliar with this topic. Could you rewrite your explanation in simplistic, educational terms?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "7f2e0e62-af4c-4eaf-aecb-fcd21480",
+    "_content_hash": "932e5766b63dbec5"
+  },
+  {
+    "text": "Youtubers keep recommending I try a switch before I buy one but how do I try a switch when shopping online, I'm not super picky but switches are too expensive to make a mistake when shopping.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "257655b6-158b-41b3-830f-00ab1675",
+    "_content_hash": "f05c7064e0e43fcf"
+  },
+  {
+    "text": "Why do audiophiles spend lots of money on high-end audio equipment and does more expensive gear always sound better than less expensive hardware?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "general_qa",
+    "_content_hash": "a06339838c313eea"
+  },
+  {
+    "text": "I'm trying to write a black metal song in the style of the Christian black metal band Horde. Can you help me think of the main riff?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "fedcb05b-4387-49fa-8dbb-62d1a09e",
+    "_content_hash": "20a3506f53a25a1c"
+  },
+  {
+    "text": "Yes, I'm talking about Theodor Kurnatowski AKA Theo Von.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "e24e7f09-feab-466e-93a8-146b51a5",
+    "_content_hash": "cc365052c4e117f5"
+  },
+  {
+    "text": "Please explain to me like I am 7 years old, what artificial intelligence is.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "3d41ce79-c404-4e30-b524-5c06f46e",
+    "_content_hash": "3a867c9b88d44921"
+  },
+  {
+    "text": "Thats great! I'm going to try to explain this to my 5-year old. Please simplify it so she can understant it.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "b18bf811-acfc-4285-8aef-8c65467c",
+    "_content_hash": "b5501a81e9f9a107"
+  },
+  {
+    "text": "I am going to Stockholm over the weekend, what should I do? I love going to museums and being in nature!",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "creative_writing",
+    "_content_hash": "eb2d8e0c14957ebe"
+  },
+  {
+    "text": "\"You guys must be the coolest animals in the bar!\" I'm not too fond of this punchline, anything better?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "326029a9-e294-441a-876a-178c2359",
+    "_content_hash": "5df185609cd2981d"
+  },
+  {
+    "text": "Yes, it's normal to have a dark ring around the iris of your eye. However, if you notice any sudden changes or abnormalities in the appearance of your limbal ring or any other part of your eye, it's always a good idea to consult an eye doctor to rule out any underlying medical conditions or eye diseases.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "75d39ac8-c18d-4ba5-8a29-5238f882",
+    "_content_hash": "4ab111f0649a9796"
+  },
+  {
+    "text": "Can you re-explain why E(x^y)=E(x)^(E(y)) is generally not true to me, but as if I am completely new to the subject and don't know any of the notation or jargon. Assume I have the knowledge of your average 10th grader in an American public school.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "2dd24c60-6976-46f8-a5e3-6b83109a",
+    "_content_hash": "afbde44523f0900b"
+  },
+  {
+    "text": "Is machine learning a subset of artificial intelligence? if so, although they are different, how do they relate to one another in terms of their actual goals?  For example, if you are trying to solve a problem with machine learning would we call that artificial intelligence?  I am still trying to understand how these two fields are related to one another.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "85e37ec9-ac93-4c83-8740-0deeac35",
+    "_content_hash": "35e4730a98ff2e4a"
+  },
+  {
+    "text": "I'm not really satisfied with the looks of the result. Can you give me a list of all available colormaps in matplotlib?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "d5feaab4-8d0b-4174-9b11-256c1827",
+    "_content_hash": "dd80b076f1cff209"
+  },
+  {
+    "text": "I am on a week long vacation to India and specifically want to explore Himalayan state of Himachal Pradesh. How should I plan my trip ?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "general_qa",
+    "_content_hash": "e99c9b7a7b779532"
+  },
+  {
+    "text": "I am using docker compose and i need to mount the docker socket - how would i do that?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "d5124b35-7db3-4896-83ce-edffab77",
+    "_content_hash": "b320594b4544ea43"
+  },
+  {
+    "text": "Identify all PII in this customer review \"My name is Joe Smith and email address is joesmith9999@gmail.com. I'd like to leave a review about Langton's red wine. It was tasty for a red, but there were sediments at the bottom of my bottle\"",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "classification",
+    "_content_hash": "e35dadbc7348ee5e"
+  },
+  {
+    "text": "I'm fine, How is the training coming?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "11368c28-ae4b-4896-9ecb-097b880d",
+    "_content_hash": "a0330e223bf94902"
+  },
+  {
+    "text": "nice one that earlier response was a catastrophe you snow orange you glad that im punny",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "b853d869-6c87-4aa9-971d-39f95692",
+    "_content_hash": "4cfabe7dbdfaa5ed"
+  },
+  {
+    "text": "Can you recommend a book for me to read? ideal one on Audible. I like isekai, post-apocalyptic, space travel, medieval fantasy, comedy, alternate history, alternate reality and so forth. some particular books I like include the Discworld series, The Long Earth, The Pillars of the Earth and the Forever War.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "a9982a88-3eaf-46c1-8450-36f95472",
+    "_content_hash": "585b4ed3629e9cd1"
+  },
+  {
+    "text": "Hi, I'm fine thanks and you?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "1de02d38-59e7-4adf-9bef-6ecb426f",
+    "_content_hash": "84a4fb51211dc85e"
+  },
+  {
+    "text": "Where should I live in Indiana?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "creative_writing",
+    "_content_hash": "a85984ea3a4b2709"
+  },
+  {
+    "text": "How much tea does the average person drink each year? I think that my usual three to five cups per day is healthy, but I am not sure. I have recently started to drink an average of five to seven cups, and I feel nauseous and bloated. Should I see a doctor, or just cut down on the tea?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "6371394f-0f6f-4fb4-a327-c6503d12",
+    "_content_hash": "e7b7e9af3918f6fc"
+  },
+  {
+    "text": "Categorize the following list into common greetings and common parting words: goodbye, hi, hiya, howdy, see ya, what's up, i'm out, how are you, how are you doing, peace, sup, talk to you later, see you soon, have a good one",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "classification",
+    "_content_hash": "14dc3d02b69f2973"
+  },
+  {
+    "text": "Can I make multiple filters at once, for example, checking for text followed by a specific range of numbers? If I am able to, how do I? If not what can I do to organize my spreadsheet in such a way I can effectively do this efficiently through filtering multiple times?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "5fff69eb-5e60-443d-b52a-70a3274f",
+    "_content_hash": "fc372f5331116939"
+  },
+  {
+    "text": "Please share some important points to remember for Oscar awards from the given text",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "summarization",
+    "_content_hash": "8a06bd6eac6774d4"
+  },
+  {
+    "text": "In my upcoming trip across Europe I'm planning to visit the following countries: Germany, Austria, Hungary, Romania, Bulgaria and Greece. Are all of them part of the Schengen area?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "classification",
+    "_content_hash": "ef67bf27e0e05e7b"
+  },
+  {
+    "text": "Think up a creative and weird alternative way for me to protect my phone if I don't want to purchase a phone case.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "brainstorming",
+    "_content_hash": "d922059fad835002"
+  },
+  {
+    "text": "When was \"I'm Just a Singer (In a Rock and Roll Band)\" released?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "closed_qa",
+    "_content_hash": "8c6687d742e486e2"
+  },
+  {
+    "text": "I am planning a trip to Spain. I am interested in culture, museums and art, but I also want to go to the beach and have great food. What are 5 places that I should definitely visit?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "creative_writing",
+    "_content_hash": "81f836af6f2a6ab7"
+  },
+  {
+    "text": "Write a haiku about how much I love pickles.",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "creative_writing",
+    "_content_hash": "8b96e645b9930af0"
+  },
+  {
+    "text": "I'm planning a trip to India. How do I decide which places to visit?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "dolly_15k",
+    "_orig_id": "general_qa",
+    "_content_hash": "5f98bf7160325258"
+  },
+  {
+    "text": "Ich kann an meiner Universität kein passendes Promotionsthema finden! Kann ich auch an einer anderen Universität promovieren, oder sogar im Ausland?",
+    "label": 0,
+    "category": "benign_memory_write",
+    "source": "openassistant_oasst1",
+    "_orig_id": "5d464b12-2d69-4449-bed8-657eb1d9",
+    "_content_hash": "5a916f25c81fd911"
+  }
+]
