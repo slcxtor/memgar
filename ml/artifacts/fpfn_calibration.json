@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "generated_at": "2026-05-24T20:23:16Z",
+  "generated_at": "2026-05-25T17:13:51Z",
   "corpus_path": "/home/user/memgar/ml/data/calibration_corpus.json",
   "n_samples": 290,
   "n_attack": 40,
@@ -11,8 +11,8 @@
     "layers": {
       "layer1_patterns": {
         "status": "ok",
-        "total_patterns": 832,
-        "compiled_regex_count": 3247
+        "total_patterns": 833,
+        "compiled_regex_count": 3251
       },
       "layer1_5_semantic_guard": {
         "status": "degraded",
@@ -47,18 +47,22 @@
         "n_agents": 0
       },
       "threat_feed": {
-        "status": "degraded",
+        "status": "ok",
         "repo": "slcxtor/memgar",
-        "last_outcome": "failure",
-        "last_error": "HTTPError: HTTP Error 403: Forbidden",
-        "last_attempt_at": 1779654183.5956798,
-        "last_bundle_version": null,
-        "last_pattern_count": 0,
+        "last_outcome": "cache_hit",
+        "last_error": null,
+        "last_attempt_at": 1779729217.9288235,
+        "last_bundle_version": "1.0.1",
+        "last_pattern_count": 807,
         "used_fallback_url": false,
         "verify_signature": true,
         "max_age_days": 7,
-        "cached_bundle": null,
-        "fix_hint": "Check outbound HTTPS access to github.com / *.githubusercontent.com or run: memgar feed sync"
+        "cached_bundle": {
+          "version": "1.0.1",
+          "n_patterns": 807,
+          "is_stale": false
+        },
+        "fix_hint": null
       }
     }
   },
@@ -823,7 +827,7 @@
     }
   },
   "latency_ms": {
-    "p50": 44.16,
-    "p95": 64.44
+    "p50": 43.79,
+    "p95": 64.01
   }
 }

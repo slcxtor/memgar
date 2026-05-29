@@ -63,3 +63,19 @@ Each row in the output JSON is tagged with `note: "source=<key>"` so
 downstream attribution is preserved. Categories listed for filtering are
 applied only in memgar's threat-model mapping — they do not alter the
 underlying text.
+
+## Benign corpora (memory-write surface)
+
+### Databricks Dolly 15K
+
+- HuggingFace: `databricks/databricks-dolly-15k`
+- License: [CC-BY-SA-3.0](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
+- Attribution: Conover et al., 'Free Dolly: Introducing the World's First Truly Open Instruction-Tuned LLM', Databricks, 2023
+- Notes: Manually authored instruction-following pairs across 7 task categories. We keep the `instruction` field.
+
+### OpenAssistant oasst1
+
+- HuggingFace: `OpenAssistant/oasst1`
+- License: [Apache-2.0](https://huggingface.co/datasets/OpenAssistant/oasst1)
+- Attribution: Köpf et al., 'OpenAssistant Conversations — Democratizing Large Language Model Alignment', NeurIPS 2023 (LAION-AI)
+- Notes: Real user-side prompts from the OpenAssistant project. Pulled `role=prompter` turns only; memory-write filter applied.
