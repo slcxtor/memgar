@@ -1987,8 +1987,13 @@ class Analyzer:
             threats.append(fuzzy_threat)
             layers_used.append("fuzzy_matching")
 
-        # Layer 1.5: SemanticGuard (embedding similarity)
-        if self._semantic_guard is not None:
+        # Layer 1.5: SemanticGuard is degraded/dead in default installs (no
+        # centroids artifact) and historically just paid for an encode that
+        # always returned 0.0. The single semantic layer below (similarity
+        # against THREAT_EXAMPLES) is the one that actually catches things;
+        # the SemanticGuard slot stays here only so health_check() can keep
+        # surfacing degraded state to operators who explicitly fitted it.
+        if self._semantic_guard is not None and self._semantic_guard.is_fitted:
             sg_score = self._semantic_guard.score(check_content)
             if sg_score >= self._semantic_guard_threshold:
                 from memgar.models import ThreatCategory
@@ -2013,9 +2018,25 @@ class Analyzer:
                     threats.append(sem_threat)
                 layers_used.append("semantic_guard")
 
-        # Layer 2.5: Semantic Similarity (sentence-transformers cosine, ~5-50ms)
-        # Catches paraphrase attacks that evade Layer 1 regex entirely.
-        if self._similarity_layer is not None and self._similarity_layer.available:
+        # Layer 1.5/2.5: Semantic Similarity (sentence-transformers cosine).
+        # Gated to skip the ~250ms encode on the obvious benign hot path —
+        # short trusted-user input with zero Layer 1 hits. External / RAG /
+        # tool-output sources, anything longer than 200 chars, anything that
+        # already tripped Layer 1, and unknown source_type ('') all go through
+        # — i.e. the real attack surface is never gated away.
+        _trusted_src = (entry.source_type or "").lower() in {"user", "system"}
+        _short = len(check_content) <= 200
+        _semantic_gate_skip = (
+            self._similarity_layer is not None
+            and self._similarity_layer.available
+            and _trusted_src
+            and _short
+            and not threats
+        )
+        if _semantic_gate_skip:
+            layers_used.append("similarity_layer_gated")
+        if self._similarity_layer is not None and self._similarity_layer.available \
+                and not _semantic_gate_skip:
             try:
                 sim_result = self._similarity_layer.score(check_content)
                 if sim_result.score >= self._similarity_layer.threat_threshold:
