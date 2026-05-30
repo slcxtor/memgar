@@ -1136,6 +1136,7 @@ class Analyzer:
         self,
         use_llm: bool = False,
         api_key: str | None = None,
+        llm_provider: str | None = None,
         custom_patterns: list[Threat] | None = None,
         strict_mode: bool = False,
         use_whitelist: bool = True,
@@ -1173,6 +1174,9 @@ class Analyzer:
         """
         self.use_llm = use_llm
         self.api_key = api_key
+        # Provider for Layer 2 LLM analysis. When None, auto-detected from the
+        # api_key prefix or the first available env var (see _detect_llm_provider).
+        self.llm_provider = llm_provider
         self.strict_mode = strict_mode
         self.use_whitelist = use_whitelist
         self.use_sliding_window = use_sliding_window
@@ -1315,6 +1319,37 @@ class Analyzer:
                 self._canary_manager = CanaryTokenManager()
             except Exception:
                 pass
+
+    @staticmethod
+    def _detect_llm_provider(api_key: str | None) -> str:
+        """Best-effort detection of which LLM provider to use for Layer 2.
+
+        Resolution order: key-prefix sniff -> first PROVIDER_ENV_KEYS env var
+        set -> openai as a sensible default. Bedrock and Ollama need no key;
+        Bedrock is detected via the AWS credential chain (AWS_PROFILE or
+        AWS_ACCESS_KEY_ID), Ollama by reachability when chosen explicitly.
+        """
+        import os as _os
+        if api_key:
+            if api_key.startswith("sk-ant"):                  return "anthropic"
+            if api_key.startswith("gsk_"):                    return "groq"
+            if api_key.startswith("AIza"):                    return "google"
+            if api_key.startswith("sk-or-"):                  return "openrouter"
+            if api_key.startswith(("sk-proj-", "sk-")):       return "openai"
+        try:
+            from memgar.llm_analyzer import PROVIDER_ENV_KEYS
+        except Exception:
+            return "openai"
+        order = ("anthropic", "openai", "google", "azure", "bedrock",
+                 "groq", "together", "mistral", "cohere", "openrouter", "ollama")
+        for prov in order:
+            env = PROVIDER_ENV_KEYS.get(prov)
+            if env and _os.environ.get(env):
+                return prov
+            if prov == "bedrock" and (_os.environ.get("AWS_PROFILE")
+                                       or _os.environ.get("AWS_ACCESS_KEY_ID")):
+                return prov
+        return "openai"
 
     def _compile_patterns(self) -> None:
         """Pre-compile all regex patterns and pre-warm keyword cache."""
@@ -2393,16 +2428,21 @@ class Analyzer:
         2. ALWAYS preserves Layer 1 threats even if LLM doesn't find additional threats.
            This prevents false negatives from LLM overriding regex detections.
         """
-        if not self.api_key:
-            # No API key - return Layer 1 threats as-is (don't lose them)
+        # Bedrock + Ollama work without an explicit api_key (AWS chain / local).
+        provider_hint = getattr(self, "llm_provider", None)
+        if not self.api_key and provider_hint not in ("bedrock", "ollama"):
+            # No API key and no key-less provider configured -> Layer 1 only.
             return initial_threats if initial_threats else None
 
         try:
             # Import LLMAnalyzer only when needed
             from memgar.llm_analyzer import LLMAnalyzer, check_llm_support
 
-            # Determine provider from API key format
-            provider = "anthropic" if self.api_key.startswith("sk-ant") else "openai"
+            # Provider resolution order:
+            #   1. explicit self.llm_provider on the Analyzer instance
+            #   2. api_key prefix sniff (sk-ant / sk-proj / sk- / gsk_ / etc.)
+            #   3. first env var set among PROVIDER_ENV_KEYS
+            provider = provider_hint or self._detect_llm_provider(self.api_key)
 
             # Check if provider is available
             if not check_llm_support(provider):

@@ -179,6 +179,10 @@ DEFAULT_MODELS: Dict[str, List[str]] = {
     "cohere":            ["command-r", "command-r-plus", "command-light"],
     "openrouter":        ["meta-llama/llama-3.1-8b-instruct:free", "openai/gpt-4o-mini"],
     "ollama":            ["llama3.2:3b", "llama3.1:8b", "mistral:7b", "gemma2:9b"],
+    "bedrock":           ["anthropic.claude-3-5-sonnet-20241022-v2:0",
+                          "anthropic.claude-3-5-haiku-20241022-v1:0",
+                          "anthropic.claude-3-haiku-20240307-v1:0",
+                          "meta.llama3-1-8b-instruct-v1:0"],
     "litellm":           [],
     "openai_compatible": [],
 }
@@ -194,6 +198,7 @@ PROVIDER_ENV_KEYS: Dict[str, Optional[str]] = {
     "cohere":            "COHERE_API_KEY",
     "openrouter":        "OPENROUTER_API_KEY",
     "ollama":            None,
+    "bedrock":           None,  # uses AWS credential chain (env, ~/.aws, IAM role)
     "litellm":           "LITELLM_API_KEY",
     "openai_compatible": "OPENAI_COMPATIBLE_API_KEY",
 }
@@ -209,6 +214,7 @@ PROVIDER_BASE_URLS: Dict[str, Optional[str]] = {
     "cohere":            None,
     "openrouter":        "https://openrouter.ai/api/v1",
     "ollama":            "http://localhost:11434/v1",
+    "bedrock":           None,  # region-based, not URL-based
     "litellm":           None,
     "openai_compatible": None,
 }
@@ -219,6 +225,7 @@ PROVIDER_PACKAGES: Dict[str, str] = {
     "mistral": "openai",          "groq": "openai",
     "together": "openai",         "cohere": "cohere",
     "openrouter": "openai",       "ollama": "openai",
+    "bedrock": "boto3",
     "litellm": "openai",          "openai_compatible": "openai",
 }
 
@@ -1025,6 +1032,19 @@ class LLMAnalyzer:
             except ImportError:
                 raise ImportError("pip install openai")
 
+        elif provider == "bedrock":
+            # AWS Bedrock uses boto3 + the standard AWS credential chain.
+            # Region resolved from arg, env (AWS_REGION / AWS_DEFAULT_REGION) or
+            # boto3 default. The api_key arg is ignored for Bedrock.
+            try:
+                import boto3
+                region = base_url or os.environ.get("AWS_REGION") \
+                    or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
+                self._clients[cache_key] = boto3.client(
+                    "bedrock-runtime", region_name=region)
+            except ImportError:
+                raise ImportError("pip install boto3")
+
         else:  # openai-compatible
             try:
                 import openai
@@ -1251,6 +1271,47 @@ class LLMAnalyzer:
                 temperature=self.temperature, max_tokens=max_tokens,
             )
             text = resp.text
+
+        elif provider == "bedrock":
+            # Bedrock requires a per-model-family body schema.
+            # We support Anthropic-on-Bedrock (most common) and Llama-on-Bedrock.
+            import json as _json
+            if model.startswith("anthropic."):
+                body = _json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": max_tokens,
+                    "temperature": self.temperature,
+                    "system": SYSTEM_PROMPT,
+                    "messages": [{"role": "user",
+                                  "content": _FEW_SHOT_TEXT + "\n" + user_prompt}],
+                })
+                resp = client.invoke_model(modelId=model, body=body,
+                                           contentType="application/json")
+                payload = _json.loads(resp["body"].read())
+                text = payload["content"][0]["text"] if payload.get("content") else ""
+            elif model.startswith(("meta.llama", "mistral.")):
+                prompt = (f"<s>[INST] <<SYS>>\n{SYSTEM_PROMPT}\n<</SYS>>\n\n"
+                          f"{_FEW_SHOT_TEXT}\n{user_prompt} [/INST]")
+                body_dict = {"prompt": prompt, "max_gen_len": max_tokens,
+                             "temperature": self.temperature}
+                if model.startswith("mistral."):
+                    body_dict = {"prompt": prompt, "max_tokens": max_tokens,
+                                 "temperature": self.temperature}
+                resp = client.invoke_model(modelId=model,
+                                           body=_json.dumps(body_dict),
+                                           contentType="application/json")
+                payload = _json.loads(resp["body"].read())
+                text = payload.get("generation") or payload.get("outputs", [{}])[0].get("text", "")
+            else:
+                # Amazon Titan / generic
+                body = _json.dumps({"inputText": _FEW_SHOT_TEXT + "\n" + user_prompt,
+                                    "textGenerationConfig": {
+                                        "maxTokenCount": max_tokens,
+                                        "temperature": self.temperature}})
+                resp = client.invoke_model(modelId=model, body=body,
+                                           contentType="application/json")
+                payload = _json.loads(resp["body"].read())
+                text = payload.get("results", [{}])[0].get("outputText", "")
 
         else:  # openai-compatible
             kwargs: Dict[str, Any] = dict(
