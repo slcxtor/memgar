@@ -139,6 +139,16 @@ try:
 except ImportError:
     pass
 
+# PGVector Integration (Postgres vector store)
+PGVECTOR_AVAILABLE = False
+MemgarPGVectorStore = None
+
+try:
+    from .pgvector import MemgarPGVectorStore
+    PGVECTOR_AVAILABLE = True
+except ImportError:
+    pass
+
 # OpenAI Assistants Integration
 OPENAI_ASSISTANTS_AVAILABLE = False
 MemgarAssistantGuard = None
@@ -295,6 +305,7 @@ def get_available_integrations() -> dict:
         "semantic_kernel": SEMANTIC_KERNEL_AVAILABLE,
         "pydantic_ai": PYDANTIC_AI_AVAILABLE,
         "haystack": HAYSTACK_AVAILABLE,
+        "pgvector": PGVECTOR_AVAILABLE,
         "openai_assistants": OPENAI_ASSISTANTS_AVAILABLE,
         "openai_agents": OPENAI_AGENTS_AVAILABLE,
         "mcp": MCP_AVAILABLE,
@@ -354,6 +365,7 @@ __all__ = [
     "SEMANTIC_KERNEL_AVAILABLE",
     "PYDANTIC_AI_AVAILABLE",
     "HAYSTACK_AVAILABLE",
+    "PGVECTOR_AVAILABLE",
     "OPENAI_ASSISTANTS_AVAILABLE",
     "OPENAI_AGENTS_AVAILABLE",
     "MCP_AVAILABLE",
@@ -399,6 +411,9 @@ __all__ = [
     "secure_document_store",
     "guard_documents",
     "guard_haystack_chat_messages",
+
+    # PGVector
+    "MemgarPGVectorStore",
 
     # OpenAI Assistants
     "MemgarAssistantGuard",
