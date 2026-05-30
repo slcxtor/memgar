@@ -110,6 +110,45 @@ try:
 except ImportError:
     pass
 
+# Pydantic AI Integration
+PYDANTIC_AI_AVAILABLE = False
+MemgarPydanticAIGuard = None
+
+try:
+    from .pydantic_ai import (
+        MemgarPydanticAIGuard,
+        guard_messages as guard_pydantic_ai_messages,
+    )
+    PYDANTIC_AI_AVAILABLE = True
+except ImportError:
+    pass
+
+# Haystack Integration
+HAYSTACK_AVAILABLE = False
+MemgarHaystackGuard = None
+
+try:
+    from .haystack import (
+        MemgarHaystackGuard,
+        MemgarFirewallComponent,
+        secure_document_store,
+        guard_documents,
+        guard_chat_messages as guard_haystack_chat_messages,
+    )
+    HAYSTACK_AVAILABLE = True
+except ImportError:
+    pass
+
+# PGVector Integration (Postgres vector store)
+PGVECTOR_AVAILABLE = False
+MemgarPGVectorStore = None
+
+try:
+    from .pgvector import MemgarPGVectorStore
+    PGVECTOR_AVAILABLE = True
+except ImportError:
+    pass
+
 # OpenAI Assistants Integration
 OPENAI_ASSISTANTS_AVAILABLE = False
 MemgarAssistantGuard = None
@@ -264,6 +303,9 @@ def get_available_integrations() -> dict:
         "autogen": AUTOGEN_AVAILABLE,
         "langgraph": LANGGRAPH_AVAILABLE,
         "semantic_kernel": SEMANTIC_KERNEL_AVAILABLE,
+        "pydantic_ai": PYDANTIC_AI_AVAILABLE,
+        "haystack": HAYSTACK_AVAILABLE,
+        "pgvector": PGVECTOR_AVAILABLE,
         "openai_assistants": OPENAI_ASSISTANTS_AVAILABLE,
         "openai_agents": OPENAI_AGENTS_AVAILABLE,
         "mcp": MCP_AVAILABLE,
@@ -321,6 +363,9 @@ __all__ = [
     "AUTOGEN_AVAILABLE",
     "LANGGRAPH_AVAILABLE",
     "SEMANTIC_KERNEL_AVAILABLE",
+    "PYDANTIC_AI_AVAILABLE",
+    "HAYSTACK_AVAILABLE",
+    "PGVECTOR_AVAILABLE",
     "OPENAI_ASSISTANTS_AVAILABLE",
     "OPENAI_AGENTS_AVAILABLE",
     "MCP_AVAILABLE",
@@ -355,6 +400,20 @@ __all__ = [
     # Semantic Kernel
     "MemgarSemanticKernelGuard",
     "guard_chat_history",
+
+    # Pydantic AI
+    "MemgarPydanticAIGuard",
+    "guard_pydantic_ai_messages",
+
+    # Haystack
+    "MemgarHaystackGuard",
+    "MemgarFirewallComponent",
+    "secure_document_store",
+    "guard_documents",
+    "guard_haystack_chat_messages",
+
+    # PGVector
+    "MemgarPGVectorStore",
 
     # OpenAI Assistants
     "MemgarAssistantGuard",
