@@ -60,8 +60,6 @@ from memgar.auditor import (
     MemoryAuditor,
     Snapshot,
 )
-from memgar.brand_bias import BiasReport, BrandBiasDetector, BrandMention, extract_brand_mentions
-
 # =============================================================================
 # DETECTION LAYERS 8-9 — canary tracers + tool-use guard
 # =============================================================================
@@ -457,13 +455,6 @@ from memgar.behavioral_baseline import (
     create_baseline,
 )
 
-# EU AI Act Compliance (v0.5.11)
-from memgar.compliance import (
-    ComplianceCheck,
-    ComplianceStatus,
-    EUAIActReport,
-    RiskClassification,
-)
 from memgar.domain_detector import (
     AgentDomainProfile,
     DomainAnomalyDetector,
@@ -471,14 +462,6 @@ from memgar.domain_detector import (
     DomainClassifier,
     build_detector,
     mismatch_to_trust_penalty,
-)
-
-# EU AI Act Compliance Reporter (v0.5.11)
-from memgar.eu_ai_act import (
-    ComplianceConfig,
-    ComplianceStatus,
-    EUAIActReporter,
-    Requirement,
 )
 
 # HITL Checkpoint (v0.5.6)
@@ -1186,12 +1169,6 @@ __all__ = [
     "DeviationLevel",
     "DeviationReport",
     "BaselineIntegration",
-
-    # Brand Bias Detection (v0.5.7)
-    "BrandBiasDetector",
-    "BrandMention",
-    "BiasReport",
-    "extract_brand_mentions",
 
     # Memory Vault — signed snapshots, diff, rollback
     "MemoryVault",
