@@ -1593,31 +1593,25 @@ def protect() -> None:
 
 
 @protect.command("on")
-@click.option("--budget", default=0.0, type=float, help="USD budget cap (0=unlimited)")
 @click.option("--no-block", is_flag=True, help="Log but do not block (monitor mode)")
-@click.option("--no-dow", is_flag=True, help="Disable DoW detection")
 @click.option("--json", "output_json", is_flag=True)
-def protect_on(budget, no_block, no_dow, output_json):
+def protect_on(no_block, output_json):
     """
     Activate auto-protect system-wide.
 
     \b
     Examples:
         memgar protect on
-        memgar protect on --budget 5.00
         memgar protect on --no-block
     """
     from memgar.auto_protect import auto_protect
-    status = auto_protect(block_on_threat=not no_block, block_on_dow=not no_dow,
-                          budget_usd=budget, log_threats=True)
+    status = auto_protect(block_on_threat=not no_block, log_threats=True)
     if output_json:
         console.print_json(json.dumps(status.to_dict(), indent=2)); return
     console.print()
     console.print(Panel(
         f"[bold green]🛡️ Auto-Protect ACTIVE[/bold green]\n\n"
         f"[dim]Block threats:[/dim]  {'Yes' if not no_block else 'No (monitor)'}\n"
-        f"[dim]Block DoW:[/dim]     {'Yes' if not no_dow else 'No'}\n"
-        f"[dim]Budget:[/dim]        {'$' + str(budget) if budget else 'Unlimited'}\n"
         f"[dim]Patched:[/dim]       {', '.join(status.patched_frameworks) or 'waiting for imports'}",
         title="🛡️ Memgar Auto-Protect", border_style="green"))
     console.print()
@@ -1637,8 +1631,7 @@ def protect_status(output_json):
         f"[bold {color}]{'ACTIVE' if s.active else 'INACTIVE'}[/bold {color}]\n\n"
         f"[dim]Patched:[/dim]  {', '.join(s.patched_frameworks) or 'none'}\n"
         f"[dim]Scanned:[/dim]  {s.requests_scanned}\n"
-        f"[dim]Threats:[/dim]  {s.threats_detected}\n"
-        f"[dim]DoW:[/dim]      {s.dow_blocked}",
+        f"[dim]Threats:[/dim]  {s.threats_detected}",
         title="🛡️ Auto-Protect Status", border_style=color))
     console.print()
 

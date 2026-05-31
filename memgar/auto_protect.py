@@ -16,8 +16,8 @@ How it works:
 
 What gets patched automatically:
 
-    OpenAI SDK        → completions.create (pre: DoW check, post: threat scan)
-    Anthropic SDK     → messages.create    (pre: DoW check, post: threat scan)
+    OpenAI SDK        → completions.create (pre + post threat scan)
+    Anthropic SDK     → messages.create    (pre + post threat scan)
     LangChain         → BaseChatModel.invoke, VectorStore.add_texts/add_documents
     LlamaIndex        → BaseIndex.insert, BaseIndex.insert_nodes
     JSON writes       → json.dump / json.dumps (opt-in, patch_json=True)
@@ -54,16 +54,9 @@ class AutoProtectConfig:
     """
     # Threat detection
     block_on_threat: bool = True
-    block_on_dow: bool = True
-    block_on_budget_exhausted: bool = True
     log_threats: bool = True
     scan_llm_responses: bool = True     # scan LLM output, not just input
     block_on_response_threat: bool = False  # block if LLM output contains threat (opt-in)
-
-    # DoW / budget
-    budget_usd: float = 0.0             # 0 = unlimited
-    max_requests_per_minute: int = 200
-    max_tokens_per_minute: int = 100_000
 
     # What to patch
     patch_openai: bool = True
@@ -72,12 +65,9 @@ class AutoProtectConfig:
     patch_llamaindex: bool = True
     patch_json: bool = False            # opt-in: slower, broader
     patch_sqlite: bool = False          # opt-in: slower, broader
-    patch_websockets: bool = True       # WebSocket guard (CVE-2026-25253 class)
 
     # Callbacks
     on_threat: Optional[Callable] = None        # fn(content, result)
-    on_dow: Optional[Callable] = None           # fn(content, result)
-    on_budget_warning: Optional[Callable] = None  # fn(session_id, cost)
     on_deviation: Optional[Callable] = None     # fn(DeviationReport) on behavioral anomaly
 
     # Behavioral baseline (Layer 4)
@@ -101,10 +91,8 @@ class _State:
     config: Optional[AutoProtectConfig] = None
     patched: Set[str] = set()
     threats_detected: int = 0
-    dow_blocked: int = 0
     requests_scanned: int = 0
     _analyzer = None
-    _dow_guard = None
     _baseline = None
     _baseline_hooks = None
 
@@ -132,22 +120,6 @@ class _State:
                 on_deviation       = on_dev,
             )
         return cls._baseline, cls._baseline_hooks
-
-    @classmethod
-    def get_dow_guard(cls):
-        if cls._dow_guard is None:
-            from memgar.dow import DoWGuard
-            cfg = cls.config or AutoProtectConfig()
-            cls._dow_guard = DoWGuard(
-                session_id=cfg.session_id,
-                budget_usd=cfg.budget_usd,
-                max_requests_per_minute=cfg.max_requests_per_minute,
-                max_tokens_per_minute=cfg.max_tokens_per_minute,
-                block_on_dow=cfg.block_on_dow,
-                block_on_budget=cfg.block_on_budget_exhausted,
-                on_budget_warning=cfg.on_budget_warning,
-            )
-        return cls._dow_guard
 
 _state = _State()
 
@@ -246,25 +218,6 @@ def _scan_content(content: str, source: str = "auto") -> bool:
     return True
 
 
-def _dow_check(content: str, source: str = "auto") -> None:
-    """Run DoW check. Raises DoWAttackDetected if attack found."""
-    if not content or not isinstance(content, str):
-        return
-    cfg = _state.config or AutoProtectConfig()
-    if not cfg.block_on_dow:
-        return
-    try:
-        guard = _state.get_dow_guard()
-        guard.check(content)
-    except Exception as e:
-        if any(x in type(e).__name__ for x in ["DoW", "Throttle", "Budget"]):
-            _state.dow_blocked += 1
-            if cfg.log_threats:
-                logger.warning("[Memgar Auto] 💸 DoW blocked | source=%s | %s", source, e)
-            raise
-        logger.debug("[Memgar Auto] DoW check error (non-fatal): %s", e)
-
-
 def _extract_text(obj: Any) -> str:
     """Best-effort text extraction from any object."""
     if isinstance(obj, str):
@@ -293,7 +246,7 @@ def _wrap(original_fn: Callable, pre_scan: bool = True,
     """
     @functools.wraps(original_fn)
     def wrapper(*args, **kwargs):
-        # Pre-scan: check input for DoW + threats
+        # Pre-scan: check input for threats
         if pre_scan:
             # Extract text from args[1] (usually the first non-self arg)
             content = ""
@@ -304,7 +257,6 @@ def _wrap(original_fn: Callable, pre_scan: bool = True,
                     break
             if content:
                 try:
-                    _dow_check(content, source=source)
                     _scan_content(content, source=source)
                 except Exception:
                     raise
@@ -346,7 +298,6 @@ async def _wrap_async(original_fn: Callable, pre_scan: bool = True,
                     break
             if content:
                 try:
-                    _dow_check(content, source=source)
                     _scan_content(content, source=source)
                 except Exception:
                     raise
@@ -384,7 +335,6 @@ def _make_async_wrapper(original_fn: Callable, source: str) -> Callable:
                 break
         if content:
             try:
-                _dow_check(content, source=source)
                 _scan_content(content, source=source)
             except Exception:
                 raise
@@ -536,7 +486,6 @@ def _patch_langchain() -> bool:
             def patched_save(self, inputs, outputs, **kwargs):
                 content = _extract_text(inputs)
                 if content:
-                    _dow_check(content, "langchain_memory")
                     _scan_content(content, "langchain_memory")
                 return orig_save(self, inputs, outputs, **kwargs)
 
@@ -582,7 +531,6 @@ def _patch_llamaindex() -> bool:
                     if hasattr(str_or_query_bundle, "query_str")
                     else str(str_or_query_bundle)
                 )
-                _dow_check(query_str, "llamaindex_query")
                 _scan_content(query_str, "llamaindex_query")
                 return orig_query(self, str_or_query_bundle, **kwargs)
 
@@ -755,7 +703,6 @@ class AutoProtectStatus:
     active: bool
     patched_frameworks: List[str]
     threats_detected: int
-    dow_blocked: int
     requests_scanned: int
     config: Optional[AutoProtectConfig]
 
@@ -764,12 +711,9 @@ class AutoProtectStatus:
             "active": self.active,
             "patched_frameworks": self.patched_frameworks,
             "threats_detected": self.threats_detected,
-            "dow_blocked": self.dow_blocked,
             "requests_scanned": self.requests_scanned,
             "config": {
                 "block_on_threat": self.config.block_on_threat if self.config else None,
-                "block_on_dow": self.config.block_on_dow if self.config else None,
-                "budget_usd": self.config.budget_usd if self.config else None,
                 "scan_llm_responses": self.config.scan_llm_responses if self.config else None,
                 "patch_openai": self.config.patch_openai if self.config else None,
                 "patch_anthropic": self.config.patch_anthropic if self.config else None,
@@ -784,7 +728,6 @@ class AutoProtectStatus:
             f"  Patched: {', '.join(self.patched_frameworks) or 'none yet (will patch on import)'}",
             f"  Scanned: {self.requests_scanned} requests",
             f"  Threats: {self.threats_detected} blocked",
-            f"  DoW:     {self.dow_blocked} blocked",
         ]
         return "\n".join(lines)
 
@@ -795,8 +738,6 @@ class AutoProtectStatus:
 
 def auto_protect(
     block_on_threat: bool = True,
-    block_on_dow: bool = True,
-    budget_usd: float = 0.0,
     scan_llm_responses: bool = True,
     block_on_response_threat: bool = False,
     patch_openai: bool = True,
@@ -805,12 +746,9 @@ def auto_protect(
     patch_llamaindex: bool = True,
     patch_json: bool = False,
     patch_sqlite: bool = False,
-    patch_websockets: bool = True,
     log_threats: bool = True,
     session_id: str = "memgar-auto",
     on_threat: Optional[Callable] = None,
-    on_dow: Optional[Callable] = None,
-    on_budget_warning: Optional[Callable] = None,
 ) -> AutoProtectStatus:
     """
     Activate Memgar auto-protection. Call once at startup.
@@ -820,8 +758,6 @@ def auto_protect(
 
     Args:
         block_on_threat:      Block requests with memory poisoning threats.
-        block_on_dow:         Block Denial of Wallet attacks.
-        budget_usd:           Hard USD spend cap per session (0 = unlimited).
         scan_llm_responses:   Also scan LLM outputs for data exfiltration.
         patch_openai:         Patch OpenAI SDK (if installed).
         patch_anthropic:      Patch Anthropic SDK (if installed).
@@ -830,10 +766,8 @@ def auto_protect(
         patch_json:           Patch json.dumps (opt-in, broader coverage).
         patch_sqlite:         Patch sqlite3 writes (opt-in, broader coverage).
         log_threats:          Log detected threats to memgar.auto logger.
-        session_id:           Session identifier for DoW budget tracking.
+        session_id:           Session identifier.
         on_threat:            Callback(content, result) on threat detection.
-        on_dow:               Callback(content, result) on DoW detection.
-        on_budget_warning:    Callback(session_id, cost_usd) at 80% budget.
 
     Returns:
         AutoProtectStatus — current protection status.
@@ -851,8 +785,6 @@ def auto_protect(
     with _state._lock:
         _state.config = AutoProtectConfig(
             block_on_threat=block_on_threat,
-            block_on_dow=block_on_dow,
-            budget_usd=budget_usd,
             scan_llm_responses=scan_llm_responses,
             block_on_response_threat=block_on_response_threat,
             patch_openai=patch_openai,
@@ -861,12 +793,9 @@ def auto_protect(
             patch_llamaindex=patch_llamaindex,
             patch_json=patch_json,
             patch_sqlite=patch_sqlite,
-            patch_websockets=patch_websockets,
             log_threats=log_threats,
             session_id=session_id,
             on_threat=on_threat,
-            on_dow=on_dow,
-            on_budget_warning=on_budget_warning,
         )
         _state.active = True
 
@@ -901,8 +830,8 @@ def auto_protect(
     if log_threats:
         logger.info(
             "[Memgar Auto] 🛡️  Auto-protect activated | "
-            "block=%s | dow=%s | budget=$%.2f | response_scan=%s",
-            block_on_threat, block_on_dow, budget_usd, scan_llm_responses,
+            "block=%s | response_scan=%s",
+            block_on_threat, scan_llm_responses,
         )
 
     return get_status()
@@ -920,7 +849,6 @@ def get_status() -> AutoProtectStatus:
         active=_state.active,
         patched_frameworks=sorted(_state.patched),
         threats_detected=_state.threats_detected,
-        dow_blocked=_state.dow_blocked,
         requests_scanned=_state.requests_scanned,
         config=_state.config,
     )
@@ -929,5 +857,4 @@ def get_status() -> AutoProtectStatus:
 def reset_stats() -> None:
     """Reset threat and request counters."""
     _state.threats_detected = 0
-    _state.dow_blocked = 0
     _state.requests_scanned = 0

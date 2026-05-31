@@ -224,28 +224,6 @@ from memgar.core import (
     ThreatScanner,
 )
 
-# Denial of Wallet detection (v0.5.2)
-try:
-    from memgar.dow import (
-        DoWAnalysisResult,
-        DoWAttackDetected,
-        DoWBudgetExhaustedError,
-        DoWDetector,
-        DoWGuard,
-        DoWMatch,
-        DoWRateLimiter,
-        DoWRisk,
-        DoWSessionMonitor,
-        DoWThrottleError,
-        DoWTrigger,
-        RateLimitStatus,
-        SessionBudgetStats,
-        create_dow_guard,
-    )
-    _DOW_AVAILABLE = True
-except ImportError:
-    _DOW_AVAILABLE = False
-
 # Memory Forensics (v0.5.1)
 try:
     from memgar.forensics import (
@@ -623,19 +601,4 @@ __all__ = [
     "AutoProtectConfig",
     "AutoProtectStatus",
 
-    # Denial of Wallet Detection (v0.5.2)
-    "DoWDetector",
-    "DoWGuard",
-    "DoWRateLimiter",
-    "DoWSessionMonitor",
-    "DoWAnalysisResult",
-    "DoWMatch",
-    "DoWRisk",
-    "DoWTrigger",
-    "DoWAttackDetected",
-    "DoWThrottleError",
-    "DoWBudgetExhaustedError",
-    "SessionBudgetStats",
-    "RateLimitStatus",
-    "create_dow_guard",
 ]

@@ -359,28 +359,6 @@ from memgar.core import (
     ThreatScanner,
 )
 
-# Denial of Wallet detection (v0.5.2)
-try:
-    from memgar.dow import (
-        DoWAnalysisResult,
-        DoWAttackDetected,
-        DoWBudgetExhaustedError,
-        DoWDetector,
-        DoWGuard,
-        DoWMatch,
-        DoWRateLimiter,
-        DoWRisk,
-        DoWSessionMonitor,
-        DoWThrottleError,
-        DoWTrigger,
-        RateLimitStatus,
-        SessionBudgetStats,
-        create_dow_guard,
-    )
-    _DOW_AVAILABLE = True
-except ImportError:
-    _DOW_AVAILABLE = False
-
 # Memory Forensics (v0.5.1)
 try:
     from memgar.forensics import (
@@ -605,22 +583,6 @@ from memgar.trust_scorer import (
     TrustDecision,
     get_default_scorer,
     score_content,
-)
-
-# WebSocket Guard (v0.5.4)
-from memgar.websocket_guard import (
-    MemgarWebSocketGuard,
-    OriginValidator,
-    WebSocketProxy,
-    WSConnectionInfo,
-    WSGuardEvent,
-    WSGuardStats,
-    WSMessageScanner,
-    WSRateLimiter,
-    scan_ws_message,
-)
-from memgar.websocket_guard import (
-    patch_auto_protect as websocket_patch_auto_protect,
 )
 
 # Write-Ahead Validator / Guardian Pattern (v0.5.13)
@@ -1085,30 +1047,6 @@ __all__ = [
     "auto_protect_status",
     "AutoProtectConfig",
     "AutoProtectStatus",
-
-    # Denial of Wallet Detection (v0.5.2)
-    "DoWDetector",
-    "DoWGuard",
-    "DoWRateLimiter",
-    "DoWSessionMonitor",
-    "DoWAnalysisResult",
-    "DoWMatch",
-    "DoWRisk",
-    "DoWTrigger",
-    "DoWAttackDetected",
-    "DoWThrottleError",
-    "DoWBudgetExhaustedError",
-    "SessionBudgetStats",
-    "RateLimitStatus",
-    "create_dow_guard",
-
-    # WebSocket Guard (v0.5.4)
-    "MemgarWebSocketGuard",
-    "WebSocketProxy",
-    "WSRateLimiter",
-    "OriginValidator",
-    "WSMessageScanner",
-    "scan_ws_message",
 
     # Memory Integrity Ledger (v0.5.5)
     "MemoryLedger",
