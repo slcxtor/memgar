@@ -15,10 +15,20 @@ The goal is simple: every memory write, retrieval chunk, tool result, and gatewa
 >
 > | Corpus | Size | Recall | FPR | Notes |
 > |---|---|---|---|---|
-> | **Gold** (hand-curated) | 40 attacks + 55 benign | **97.5 %** | **0.0 %** | What `Analyzer.analyze()` should hit in a clean production workload |
+> | **Gold** (hand-curated) | 40 attacks + 250 benign | **97.5 %** | **5.6 %** | What `Analyzer.analyze()` should hit in a clean production workload |
 > | **Expanded** (gold + mined public corpora + memory-context augmented templates) | 386 attacks + 78 benign | **90.7 %** | **3.8 %** | Regression-only floor; harder, programmatic samples not hand-reviewed |
 >
 > "Recall" and "FPR" count BLOCK *and* QUARANTINE decisions — both prevent the content from reaching agent memory in production (`SecureMemoryStore` refuses to commit a quarantined write to the backend until human review). The expanded corpus is intentionally harder: its mined and augmented samples are programmatic, so their decision boundary is fuzzier. Neither is a public benchmark; no public memory-poisoning benchmark exists yet. Treat both numbers as preliminary. Memgar is one layer of defense, **not a silver bullet** — pair it with input-side prompt-injection defenses and your existing observability stack.
+
+> **Latency, measured on the analyzer hot path.** Numbers below are local CPU, no GPU, sentence-transformers `all-MiniLM-L6-v2` warm:
+>
+> | Path | p50 | p95 | Behaviour |
+> |---|---|---|---|
+> | Benign user input (Layer 1 ≥ 0 hits, source_type ∈ {user, system}, ≤200 chars) | **14 ms** | 15 ms | Semantic encode skipped — gate path |
+> | External / RAG input, repeated text (cache hit) | **24 ms** | 26 ms | Encoding LRU returns cached vector |
+> | External / RAG input, new text (cache miss) | 39 ms | 192 ms | Single sentence-transformer encode |
+>
+> Same operations were ~514 ms on every call before the v0.6 cleanup; the gate + cache deliver a 37× and 18× speedup respectively without any change in gold-gate recall or FPR. See `memgar/analyzer.py` (Layer 1.5 gate) and `memgar/similarity_layer.py` (SHA256-keyed bounded LRU) for the implementation.
 
 ## What Memgar protects
 
