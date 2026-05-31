@@ -26,21 +26,15 @@ ml/artifacts/transformer_checkpoints/
 # (we ship the ONNX export only — pytorch/*.bin is ~44MB and not used at inference)
 ml/artifacts/transformer_model/pytorch/
 
-# Ignore everything else under both model dirs by glob, then explicitly
-# allow the inference-time files. This pattern survives git's directory
-# semantics because no parent directory is itself ignored.
+# Ignore the training-time PyTorch checkpoint (~314 MB) and the
+# unquantised FP32 ONNX export (~312 MB). We ship only the INT8 quantised
+# ONNX artifact (~78 MB), which the analyzer's TransformerDetectorV2
+# auto-loads on import. INT8 sits well under git's 100 MB per-file ceiling.
 ml/artifacts/transformer_model/**/*.bin
 ml/artifacts/transformer_model/**/*.pt
 ml/artifacts/transformer_model/**/*.pth
 ml/artifacts/transformer_model/**/*.safetensors
-
-# Explicit inference artifacts we DO commit:
-#   transformer_model/model.onnx        (ONNX FP32, ~45MB)
-#   transformer_model/config.json       (model metadata, <1KB)
-#   transformer_model/tokenizer/*       (~950KB)
-#   transformer_model_int8/model.onnx   (ONNX int8, ~12MB)
-#   transformer_model_int8/config.json
-#   transformer_model_int8/tokenizer.json + friends (when present)
+ml/artifacts/transformer_model/model.onnx
 
 # Keep current model config, ignore backups and versioned snapshots
 !*.pkl.config.json

@@ -2022,10 +2022,23 @@ class Analyzer:
             except Exception:
                 pass
 
-        # Layer 2-ML: Transformer inference (ONNX, ~5ms — no API call)
-        # High confidence (≥threshold) → add ML-DETECT threat and boost risk score.
-        # Low confidence → pass through; LLM Layer 2 (if enabled) handles borderline.
-        if self._transformer and self._transformer.is_ready:
+        # Layer 2-ML: Transformer inference (ONNX, ~80-100 ms on CPU INT8).
+        # Same gate as the semantic layer above — skip the ONNX forward on
+        # the obvious trusted-user benign path (source_type ∈ {user, system},
+        # ≤200 chars, zero Layer 1 hits). Anything from an external / RAG /
+        # tool-output source, anything long, and anything that already tripped
+        # Layer 1 still runs through the model, so the real attack surface
+        # is unchanged.
+        _ml_gate_skip = (
+            self._transformer is not None
+            and self._transformer.is_ready
+            and _trusted_src
+            and _short
+            and not threats
+        )
+        if _ml_gate_skip:
+            layers_used.append("transformer_ml_gated")
+        if self._transformer and self._transformer.is_ready and not _ml_gate_skip:
             with tracer.start_as_current_span("memgar.layer2ml.transformer") as l2ml:
                 ml_prob, ml_latency = self._transformer.predict(content)
                 l2ml.set_attribute("memgar.l2ml.prob", ml_prob)
