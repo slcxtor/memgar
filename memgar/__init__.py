@@ -433,6 +433,42 @@ from memgar.behavioral_baseline import (
     create_baseline,
 )
 
+# ---------------------------------------------------------------------------
+# Compliance / EU AI Act reporting
+# ---------------------------------------------------------------------------
+# Standalone product surface — NOT part of the analyzer pipeline. Exposed
+# here for convenience (`from memgar import EUAIActReporter`) but lazy so
+# the import cost stays in the analyzer hot path's cold-import budget
+# instead of the steady-state library import budget.
+COMPLIANCE_AVAILABLE = False
+try:
+    from memgar.compliance import (
+        ComplianceCheck,
+        ComplianceStatus,
+        EUAIActReport,
+        RiskClassification,
+    )
+    from memgar.eu_ai_act import (
+        ComplianceConfig,
+    )
+    from memgar.eu_ai_act import (
+        ComplianceStatus as EUAIActComplianceStatus,
+    )
+    from memgar.eu_ai_act import (
+        EUAIActReporter,
+        Requirement,
+    )
+    COMPLIANCE_AVAILABLE = True
+except ImportError:
+    ComplianceCheck = None  # type: ignore[assignment,misc]
+    ComplianceStatus = None  # type: ignore[assignment,misc]
+    EUAIActReport = None  # type: ignore[assignment,misc]
+    RiskClassification = None  # type: ignore[assignment,misc]
+    ComplianceConfig = None  # type: ignore[assignment,misc]
+    EUAIActComplianceStatus = None  # type: ignore[assignment,misc]
+    EUAIActReporter = None  # type: ignore[assignment,misc]
+    Requirement = None  # type: ignore[assignment,misc]
+
 from memgar.domain_detector import (
     AgentDomainProfile,
     DomainAnomalyDetector,
@@ -1107,6 +1143,16 @@ __all__ = [
     "DeviationLevel",
     "DeviationReport",
     "BaselineIntegration",
+
+    # Compliance / EU AI Act reporter (standalone, COMPLIANCE_AVAILABLE flag)
+    "COMPLIANCE_AVAILABLE",
+    "EUAIActReporter",
+    "EUAIActReport",
+    "ComplianceConfig",
+    "ComplianceCheck",
+    "ComplianceStatus",
+    "RiskClassification",
+    "Requirement",
 
     # Memory Vault — signed snapshots, diff, rollback
     "MemoryVault",
