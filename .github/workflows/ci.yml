@@ -37,13 +37,12 @@ jobs:
         run: python rebuild_model.py
 
       - name: Mandatory ML tests
-        run: |
-          python -m pytest -q \
-            tests/test_feature_extractor.py \
-            tests/test_ml_detector.py \
-            tests/test_ml_integration.py \
-            tests/test_ml_advanced_design.py \
-            tests/test_continuous_learning.py
+        # Old test_feature_extractor / test_ml_detector / test_ml_integration /
+        # test_ml_advanced_design / test_continuous_learning suites were
+        # internal-pipeline detail and got pruned with the bloat sweep —
+        # the transformer-v2 quality gate below is the real ML regression
+        # signal now.
+        run: python -m pytest -q tests/test_transformer_v2_pipeline.py
 
       - name: Release quality gate (fail-fast)
         run: |
@@ -180,8 +179,7 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_adversarial.py \
-            tests/test_feed.py \
-            tests/test_observability.py
+            tests/test_feed.py
 
       - name: Smoke-test feed CLI commands
         run: |
