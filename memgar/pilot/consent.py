@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-
 CONSENT_FILENAME = "consent.json"
 ENV_FLAG = "MEMGAR_PILOT_CONSENT"
 

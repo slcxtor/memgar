@@ -117,6 +117,8 @@ MemgarPydanticAIGuard = None
 try:
     from .pydantic_ai import (
         MemgarPydanticAIGuard,
+    )
+    from .pydantic_ai import (
         guard_messages as guard_pydantic_ai_messages,
     )
     PYDANTIC_AI_AVAILABLE = True
@@ -129,10 +131,12 @@ MemgarHaystackGuard = None
 
 try:
     from .haystack import (
-        MemgarHaystackGuard,
         MemgarFirewallComponent,
-        secure_document_store,
+        MemgarHaystackGuard,
         guard_documents,
+        secure_document_store,
+    )
+    from .haystack import (
         guard_chat_messages as guard_haystack_chat_messages,
     )
     HAYSTACK_AVAILABLE = True

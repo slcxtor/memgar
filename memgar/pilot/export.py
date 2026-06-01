@@ -29,7 +29,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
-
 DECISION_TO_LABEL: Dict[str, int] = {
     "allow": 0,
     "block": 1,

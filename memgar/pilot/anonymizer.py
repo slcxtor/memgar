@@ -28,7 +28,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-
 # --------------------------------------------------------------------------- regexes
 # Order matters — longest / most specific first so they win the substitution race.
 _PATTERNS: Tuple[Tuple[str, re.Pattern], ...] = (

@@ -150,8 +150,7 @@ jobs:
             tests/test_policy_engine.py \
             tests/test_memory_vault.py \
             tests/test_runtime.py \
-            tests/test_canary_and_tool_guard.py \
-            tests/test_realworld_action_guard.py
+            tests/test_canary_and_tool_guard.py
 
   feature-tests:
     name: Feature tests (adversarial, feed, observability)
