@@ -60,6 +60,7 @@ from memgar.auditor import (
     MemoryAuditor,
     Snapshot,
 )
+
 # =============================================================================
 # DETECTION LAYERS 8-9 — canary tracers + tool-use guard
 # =============================================================================
@@ -450,13 +451,11 @@ try:
     )
     from memgar.eu_ai_act import (
         ComplianceConfig,
+        EUAIActReporter,
+        Requirement,
     )
     from memgar.eu_ai_act import (
         ComplianceStatus as EUAIActComplianceStatus,
-    )
-    from memgar.eu_ai_act import (
-        EUAIActReporter,
-        Requirement,
     )
     COMPLIANCE_AVAILABLE = True
 except ImportError:

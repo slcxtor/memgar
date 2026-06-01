@@ -33,9 +33,9 @@ from typing import Any, Optional
 
 from .anonymizer import AnonymizationResult, PilotAnonymizer
 from .collector import (
+    SCHEMA_VERSION,
     PilotCollector,
     PilotStats,
-    SCHEMA_VERSION,
     attach_to_analyzer,
 )
 from .consent import CONSENT_FILENAME, ENV_FLAG, ConsentRecord, PilotConsent
