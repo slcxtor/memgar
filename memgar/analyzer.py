@@ -1148,7 +1148,6 @@ class Analyzer:
         context_buffer: bool = True,
         use_transformer_ml: bool = True,
         integrity_store: Any = None,
-        brand_bias_detector: Any = None,
         stego_detector: bool = True,
         correlation_detector: bool = True,
         ensemble_voter: bool = True,
@@ -1234,9 +1233,6 @@ class Analyzer:
 
         # Memory Integrity: snapshot + verify + rollback (OWASP Agent Memory Guard)
         self._integrity_store: Any = integrity_store
-
-        # Brand Bias Detector (Layer 4 extension for e-commerce / recommendation agents)
-        self._brand_bias_detector: Any = brand_bias_detector
 
         # Layer 2-ML: fine-tuned transformer (ONNX, ~5ms, replaces LLM for
         # high-confidence cases). Mirror the SemanticGuard pattern: keep a
@@ -1504,52 +1500,6 @@ class Analyzer:
                         l4.set_attribute("memgar.l4.risk_delta", boost)
                     else:
                         l4.set_attribute("memgar.l4.risk_delta", 0)
-                except Exception:
-                    pass
-
-            # Layer 4 extension: Brand Bias Detection
-            if self._brand_bias_detector is not None:
-                try:
-                    agent_id = (entry.metadata or {}).get("agent_id", "default")
-                    bias_report = self._brand_bias_detector.record_and_check(
-                        entry.content or "", agent_id
-                    )
-                    if bias_report.is_biased and bias_report.risk_boost > 0:
-                        from memgar.models import ThreatCategory
-                        bias_threat = ThreatMatch(
-                            threat=Threat(
-                                id="BRAND-BIAS-DET",
-                                name="Persistent Brand Bias Detected",
-                                description=(
-                                    f"Agent '{agent_id}' shows {bias_report.dominance_ratio:.0%} "
-                                    f"bias toward '{bias_report.dominant_brand}' "
-                                    f"(entropy={bias_report.entropy:.2f})"
-                                ),
-                                category=ThreatCategory.MANIPULATION,
-                                severity=Severity.HIGH if bias_report.risk_boost >= 30 else Severity.MEDIUM,
-                                patterns=[],
-                                keywords=[],
-                                examples=[],
-                                mitre_attack="T1656",
-                            ),
-                            matched_text=(entry.content or "")[:120],
-                            match_type="brand_bias",
-                            confidence=round(bias_report.dominance_ratio, 3),
-                            position=(0, min(len(entry.content or ""), 120)),
-                        )
-                        existing_ids = {t.threat.id for t in result.threats}
-                        if "BRAND-BIAS-DET" not in existing_ids:
-                            result.threats = list(result.threats) + [bias_threat]
-                        result.risk_score = min(100, result.risk_score + bias_report.risk_boost)
-                        result.decision = self._make_decision(result.threats, result.risk_score)
-                        result.layers_used = list(result.layers_used) + ["brand_bias_detector"]
-                        result.explanation = f"[BRAND-BIAS:{bias_report.dominant_brand}] " + result.explanation
-                    if not hasattr(result, "metadata") or result.metadata is None:
-                        result.metadata = {}  # type: ignore[attr-defined]
-                    try:
-                        result.metadata["bias_report"] = bias_report  # type: ignore[attr-defined]
-                    except Exception:
-                        pass
                 except Exception:
                     pass
 
@@ -1987,8 +1937,13 @@ class Analyzer:
             threats.append(fuzzy_threat)
             layers_used.append("fuzzy_matching")
 
-        # Layer 1.5: SemanticGuard (embedding similarity)
-        if self._semantic_guard is not None:
+        # Layer 1.5: SemanticGuard is degraded/dead in default installs (no
+        # centroids artifact) and historically just paid for an encode that
+        # always returned 0.0. The single semantic layer below (similarity
+        # against THREAT_EXAMPLES) is the one that actually catches things;
+        # the SemanticGuard slot stays here only so health_check() can keep
+        # surfacing degraded state to operators who explicitly fitted it.
+        if self._semantic_guard is not None and self._semantic_guard.is_fitted:
             sg_score = self._semantic_guard.score(check_content)
             if sg_score >= self._semantic_guard_threshold:
                 from memgar.models import ThreatCategory
@@ -2013,9 +1968,25 @@ class Analyzer:
                     threats.append(sem_threat)
                 layers_used.append("semantic_guard")
 
-        # Layer 2.5: Semantic Similarity (sentence-transformers cosine, ~5-50ms)
-        # Catches paraphrase attacks that evade Layer 1 regex entirely.
-        if self._similarity_layer is not None and self._similarity_layer.available:
+        # Layer 1.5/2.5: Semantic Similarity (sentence-transformers cosine).
+        # Gated to skip the ~250ms encode on the obvious benign hot path —
+        # short trusted-user input with zero Layer 1 hits. External / RAG /
+        # tool-output sources, anything longer than 200 chars, anything that
+        # already tripped Layer 1, and unknown source_type ('') all go through
+        # — i.e. the real attack surface is never gated away.
+        _trusted_src = (entry.source_type or "").lower() in {"user", "system"}
+        _short = len(check_content) <= 200
+        _semantic_gate_skip = (
+            self._similarity_layer is not None
+            and self._similarity_layer.available
+            and _trusted_src
+            and _short
+            and not threats
+        )
+        if _semantic_gate_skip:
+            layers_used.append("similarity_layer_gated")
+        if self._similarity_layer is not None and self._similarity_layer.available \
+                and not _semantic_gate_skip:
             try:
                 sim_result = self._similarity_layer.score(check_content)
                 if sim_result.score >= self._similarity_layer.threat_threshold:
@@ -2051,10 +2022,23 @@ class Analyzer:
             except Exception:
                 pass
 
-        # Layer 2-ML: Transformer inference (ONNX, ~5ms — no API call)
-        # High confidence (≥threshold) → add ML-DETECT threat and boost risk score.
-        # Low confidence → pass through; LLM Layer 2 (if enabled) handles borderline.
-        if self._transformer and self._transformer.is_ready:
+        # Layer 2-ML: Transformer inference (ONNX, ~80-100 ms on CPU INT8).
+        # Same gate as the semantic layer above — skip the ONNX forward on
+        # the obvious trusted-user benign path (source_type ∈ {user, system},
+        # ≤200 chars, zero Layer 1 hits). Anything from an external / RAG /
+        # tool-output source, anything long, and anything that already tripped
+        # Layer 1 still runs through the model, so the real attack surface
+        # is unchanged.
+        _ml_gate_skip = (
+            self._transformer is not None
+            and self._transformer.is_ready
+            and _trusted_src
+            and _short
+            and not threats
+        )
+        if _ml_gate_skip:
+            layers_used.append("transformer_ml_gated")
+        if self._transformer and self._transformer.is_ready and not _ml_gate_skip:
             with tracer.start_as_current_span("memgar.layer2ml.transformer") as l2ml:
                 ml_prob, ml_latency = self._transformer.predict(content)
                 l2ml.set_attribute("memgar.l2ml.prob", ml_prob)

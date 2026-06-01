@@ -1,0 +1,173 @@
+# Memgar Benchmark — what we measure, honestly
+
+This document records reproducible numbers for the memgar analyzer
+against three distinct evaluations:
+
+1. **Memgar threat model** (memory poisoning) — *what memgar is for*
+2. **Cross-domain stress test** (jailbreak / harmful-behaviour corpora) —
+   *what memgar is NOT primarily for, included for transparency*
+3. **Layer ablation** — *what each detection layer contributes*
+
+All three are produced by the same command:
+
+```bash
+python scripts/public_benchmark.py --threat-model-only           # (1)
+python scripts/public_benchmark.py --quick                       # (2) + (1)
+python scripts/public_benchmark.py --threat-model-only --ablate  # (3)
+```
+
+Seed-locked at 42, so the same 100-row stratified sample is drawn on
+every machine. Re-runnable from a clean clone in under 10 minutes.
+
+---
+
+## 1. Memgar threat model — memory poisoning
+
+This is the corpus that matches what memgar is designed to defend
+against: persistent injection into agent memory. Sources:
+
+| source | rows | shape |
+|---|---|---|
+| `simulation/documented_attacks.py` | 12 | EchoLeak, SpAIware, Morris-II, Slack-AI exfil, Grok wallet hijack, Web3 fake memories, Microsoft rec-poisoning, Rules File Backdoor, ASCII smuggling, Bing 'Sydney', Gemini delayed-tool, DAN |
+| `memgar/data/patterns.yaml` (MINJA / EHR / MEMGRAFT / PERSIST) | 43 | published in-paper examples |
+| `scripts/build_threat_model_corpus.py` synthetic | 19 | false-authority planting, exfil-trigger persistence, vendor/wallet hijack, preference poisoning — none of these were in the v2 training set |
+| **attack total** | **74** | |
+| benign memory writes (preferences, addresses, business notes, Q&A) | 50 | hand-written, prosaic |
+
+**Results (full stack, seed=42, ONNX-INT8 transformer warm):**
+
+| metric | value |
+|---|---|
+| attack recall | **0.946** (70 / 74) |
+| benign FPR | **0.060** (3 / 50) |
+| F1 (proxy) | **0.943** |
+| p50 attack latency | 127 ms |
+| p95 attack latency | 199 ms |
+
+This is the number a memory-poisoning use case should plan against.
+Single-figure summary: **memgar catches 94.6 % of in-distribution
+memory-poisoning attempts at 6 % FPR on prosaic benigns.**
+
+### Detection-layer hit rate (attacks only)
+
+| layer | hits | of |
+|---|---|---|
+| `pattern_matching` | 74 | 74 |
+| `correlation_detector` | 67 | 74 |
+| `ensemble_voter` | 58 | 74 |
+| `transformer_ml` | 53 | 74 |
+| `similarity_layer_elevated` | 16 | 74 |
+| `similarity_layer` | 7 | 74 |
+| `stego_detector` | 3 | 74 |
+
+Notice patterns fire on every row, ML fires on 71 %, and the ensemble
+voter folds them into a single verdict. Both the ML and the
+correlation detector keep adding signal past Layer 1.
+
+---
+
+## 2. Cross-domain stress test — jailbreak / harmful-behaviour corpora
+
+Memgar is **not** marketed as a jailbreak filter or a harmful-content
+classifier. We run the same analyzer against three well-known external
+attack corpora anyway, because design partners ask, and the numbers
+are useful as an honest stress test.
+
+**These corpora measure a different threat model.** AdvBench, JBB
+harmful, and HarmBench are red-team-authored *goals* designed to elicit
+disallowed content from an LLM, not to inject persistent memory. Memgar
+catches the ones that surface as memory-write or instruction-override
+text and misses many goal-only prompts.
+
+| corpus | size | caught | recall | shape |
+|---|---|---|---|---|
+| advbench | 100 | 47 | **0.470** | red-team goals |
+| jbb_harmful | 100 | 36 | **0.360** | red-team behaviours |
+| harmbench | 100 | 30 | **0.300** | red-team behaviours |
+| gandalf | 100 | 91 | **0.910** | prompt-injection probes |
+| trustairlab_jb | 100 | 83 | **0.830** | in-the-wild jailbreaks |
+| **overall** | **500** | **287** | **0.574** | mixed |
+
+**Benign FPR on external chat / instruction corpora:**
+
+| corpus | size | blocked (FP) | FPR | shape |
+|---|---|---|---|---|
+| jbb_benign | 100 | 3 | **0.030** | paired benigns |
+| openassistant | 100 | 23 | **0.230** | long instruction-shaped chats |
+| dolly | 100 | 0 | **0.000** | short Q&A prompts |
+| **overall** | **300** | **26** | **0.087** | mixed |
+
+The 47 / 36 / 30 % on AdvBench / JBB / HarmBench is the right number to
+quote when asked "how does memgar do on red-team prompts" — and the
+right hedge is *"deploy memgar with input-side prompt-injection defenses
+as well; we're a memory-write boundary, not a universal jailbreak
+filter"*.
+
+---
+
+## 3. Layer ablation — does the v0.6 ML model earn its 78 MB?
+
+Run `python scripts/public_benchmark.py --threat-model-only --ablate`
+on the 74-attack / 50-benign threat-model corpus, varying which layers
+the Analyzer constructs.
+
+| config | recall | FPR | notes |
+|---|---|---|---|
+| `L1_patterns_only` | **0.892** | **0.060** | regex + keyword, no embedding model, no ML |
+| `L1_plus_similarity` | 0.892 | 0.060 | adds Layer 1.5 SimilarityLayer |
+| `L1_plus_ml` | **0.946** | **0.060** | adds the v2 transformer (INT8 ONNX) |
+| `full_stack` | 0.946 | 0.060 | adds correlation, stego, ensemble — they fold into the same verdict |
+
+**The trained transformer catches 4 attacks Layer 1 alone would miss,
+at zero added FPR.** That's the production value of the model artifact
+shipped in `ec86ae8`: +5.4 pp recall for a 78 MB INT8 ONNX without
+trading any false positives. The similarity layer didn't add new
+catches on this corpus, because the attacks are mostly written like
+documented in-the-wild incidents which the patterns already cover —
+similarity helps more on paraphrased attacker text that doesn't appear
+in patterns. The ensemble voter and correlation detector also don't
+add new BLOCK verdicts at this corpus size, because their job is to
+fuse layer outputs for borderline cases, and the L1 + ML stack
+already had non-borderline verdicts on most rows.
+
+---
+
+## Reproducing
+
+```bash
+git clone https://github.com/slcxtor/memgar
+cd memgar
+pip install -e ".[ml,semantic]"
+
+# pull cached external corpora (one-time, ~30 MB)
+python scripts/import_public_corpora.py
+python scripts/import_benign_corpora.py
+
+# build the memgar threat-model corpus (fast, no network)
+python scripts/build_threat_model_corpus.py
+
+# run-1: the memgar threat model only (~2 min)
+python scripts/public_benchmark.py --threat-model-only \
+    --output-md benchmarks/threat_model_$(date +%F).md
+
+# run-2: full quick suite — memgar threat model + external corpora (~5 min)
+python scripts/public_benchmark.py --quick \
+    --output-md benchmarks/quick_$(date +%F).md
+
+# run-3: per-layer ablation on the threat model (~6 min, runs 4 configs)
+python scripts/public_benchmark.py --threat-model-only --ablate \
+    --output-md benchmarks/ablation_$(date +%F).md
+```
+
+All outputs are deterministic given `--seed`. Past runs are kept under
+`benchmarks/` for reference.
+
+## Threat model summary (TL;DR)
+
+| use case | recall | FPR | notes |
+|---|---|---|---|
+| memory-poisoning (memgar's actual threat model) | **0.946** | 0.060 | The pitch number |
+| in-the-wild prompt injection (Gandalf, TrustAIR) | ~0.87 mean | — | Strong |
+| red-team harmful-behaviour goals (AdvBench / JBB / HarmBench) | ~0.38 mean | — | **Pair with prompt-injection input filter; don't deploy alone** |
+| short prosaic benigns (Dolly, JBB benign) | — | 0.0 – 0.03 | Production safe |
+| long instruction-shaped benigns (OpenAssistant) | — | 0.23 | Tune deployment-specific whitelist |

@@ -111,6 +111,11 @@ feed = [
 observability = [
     "prometheus_client>=0.17.0",
 ]
+compliance = [
+    # Standalone EU AI Act / regulatory reporter — no extra runtime deps
+    # beyond the core, listed as an extra so it's a single-pip install for
+    # European deployments that need the Reg 2024/1689 Annex IV report.
+]
 tracing = [
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",

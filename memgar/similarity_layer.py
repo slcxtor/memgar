@@ -36,12 +36,21 @@ Design choices
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Bound the encoding cache so it can't grow without limit on long-running
+# agents. 4096 × 384-dim float32 ≈ 6 MB, plus dict overhead. The cache only
+# stores the encoded vector — the source text is hashed (SHA256) and the
+# preimage is discarded, so the cache itself can't be used to reconstruct
+# document content if a memory dump leaks.
+_EMBEDDING_CACHE_MAX_ENTRIES = 4096
 
 # ---------------------------------------------------------------------------
 # Threat corpus — same source as EmbeddingAnalyzer but consumed directly here
@@ -113,6 +122,13 @@ class SimilarityLayer:
         self._matrix = None         # np.ndarray shape (N, D), L2-normalised
         self._available: Optional[bool] = None
         self._lock = threading.Lock()
+        # SHA256 → normalised embedding (np.ndarray). Bounded LRU. Same text
+        # encoded twice (RAG hot docs, agent system prompts, replay tests)
+        # is the common case in production and skipping the ~250ms encode is
+        # the largest single perf win available without dropping coverage.
+        self._embedding_cache: "OrderedDict[str, object]" = OrderedDict()
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     # -----------------------------------------------------------------
     # Public API
@@ -139,9 +155,7 @@ class SimilarityLayer:
 
         try:
             import numpy as np
-            vec = self._model.encode(
-                text, convert_to_numpy=True, normalize_embeddings=True
-            )
+            vec = self._cached_encode(text)
             # Shape (D,) — already normalised → dot = cosine sim
             sims = self._matrix @ vec              # (N,)
             top_idx = int(np.argmax(sims))
@@ -207,6 +221,42 @@ class SimilarityLayer:
                 logger.warning("SimilarityLayer init error: %s", exc)
                 self._available = False
             return bool(self._available)
+
+    def _cached_encode(self, text: str):
+        """Encode ``text`` to a normalised vector, with a bounded LRU cache.
+
+        Cache keys are SHA256(text) so source content is not retained. On hit
+        the cached entry is moved to the end (most-recently-used) and returned
+        without touching the model. On miss the encode happens, the result is
+        stored, and the oldest entry is evicted if the cache is full.
+        """
+        key = hashlib.sha256(text.encode("utf-8", errors="ignore")).hexdigest()
+        cache = self._embedding_cache
+        cached = cache.get(key)
+        if cached is not None:
+            cache.move_to_end(key)
+            self._cache_hits += 1
+            return cached
+        self._cache_misses += 1
+        vec = self._model.encode(
+            text, convert_to_numpy=True, normalize_embeddings=True
+        )
+        cache[key] = vec
+        if len(cache) > _EMBEDDING_CACHE_MAX_ENTRIES:
+            cache.popitem(last=False)
+        return vec
+
+    def cache_stats(self) -> Dict[str, int]:
+        """Return cache hit/miss counters (useful for ops dashboards)."""
+        total = self._cache_hits + self._cache_misses
+        return {
+            "hits": self._cache_hits,
+            "misses": self._cache_misses,
+            "size": len(self._embedding_cache),
+            "hit_rate_pct": (
+                int(100 * self._cache_hits / total) if total else 0
+            ),
+        }
 
     def _compute_matrix(self) -> None:
         """Pre-compute L2-normalised embedding matrix for all examples."""

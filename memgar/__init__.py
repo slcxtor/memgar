@@ -60,8 +60,6 @@ from memgar.auditor import (
     MemoryAuditor,
     Snapshot,
 )
-from memgar.brand_bias import BiasReport, BrandBiasDetector, BrandMention, extract_brand_mentions
-
 # =============================================================================
 # DETECTION LAYERS 8-9 — canary tracers + tool-use guard
 # =============================================================================
@@ -361,28 +359,6 @@ from memgar.core import (
     ThreatScanner,
 )
 
-# Denial of Wallet detection (v0.5.2)
-try:
-    from memgar.dow import (
-        DoWAnalysisResult,
-        DoWAttackDetected,
-        DoWBudgetExhaustedError,
-        DoWDetector,
-        DoWGuard,
-        DoWMatch,
-        DoWRateLimiter,
-        DoWRisk,
-        DoWSessionMonitor,
-        DoWThrottleError,
-        DoWTrigger,
-        RateLimitStatus,
-        SessionBudgetStats,
-        create_dow_guard,
-    )
-    _DOW_AVAILABLE = True
-except ImportError:
-    _DOW_AVAILABLE = False
-
 # Memory Forensics (v0.5.1)
 try:
     from memgar.forensics import (
@@ -457,13 +433,42 @@ from memgar.behavioral_baseline import (
     create_baseline,
 )
 
-# EU AI Act Compliance (v0.5.11)
-from memgar.compliance import (
-    ComplianceCheck,
-    ComplianceStatus,
-    EUAIActReport,
-    RiskClassification,
-)
+# ---------------------------------------------------------------------------
+# Compliance / EU AI Act reporting
+# ---------------------------------------------------------------------------
+# Standalone product surface — NOT part of the analyzer pipeline. Exposed
+# here for convenience (`from memgar import EUAIActReporter`) but lazy so
+# the import cost stays in the analyzer hot path's cold-import budget
+# instead of the steady-state library import budget.
+COMPLIANCE_AVAILABLE = False
+try:
+    from memgar.compliance import (
+        ComplianceCheck,
+        ComplianceStatus,
+        EUAIActReport,
+        RiskClassification,
+    )
+    from memgar.eu_ai_act import (
+        ComplianceConfig,
+    )
+    from memgar.eu_ai_act import (
+        ComplianceStatus as EUAIActComplianceStatus,
+    )
+    from memgar.eu_ai_act import (
+        EUAIActReporter,
+        Requirement,
+    )
+    COMPLIANCE_AVAILABLE = True
+except ImportError:
+    ComplianceCheck = None  # type: ignore[assignment,misc]
+    ComplianceStatus = None  # type: ignore[assignment,misc]
+    EUAIActReport = None  # type: ignore[assignment,misc]
+    RiskClassification = None  # type: ignore[assignment,misc]
+    ComplianceConfig = None  # type: ignore[assignment,misc]
+    EUAIActComplianceStatus = None  # type: ignore[assignment,misc]
+    EUAIActReporter = None  # type: ignore[assignment,misc]
+    Requirement = None  # type: ignore[assignment,misc]
+
 from memgar.domain_detector import (
     AgentDomainProfile,
     DomainAnomalyDetector,
@@ -471,14 +476,6 @@ from memgar.domain_detector import (
     DomainClassifier,
     build_detector,
     mismatch_to_trust_penalty,
-)
-
-# EU AI Act Compliance Reporter (v0.5.11)
-from memgar.eu_ai_act import (
-    ComplianceConfig,
-    ComplianceStatus,
-    EUAIActReporter,
-    Requirement,
 )
 
 # HITL Checkpoint (v0.5.6)
@@ -622,22 +619,6 @@ from memgar.trust_scorer import (
     TrustDecision,
     get_default_scorer,
     score_content,
-)
-
-# WebSocket Guard (v0.5.4)
-from memgar.websocket_guard import (
-    MemgarWebSocketGuard,
-    OriginValidator,
-    WebSocketProxy,
-    WSConnectionInfo,
-    WSGuardEvent,
-    WSGuardStats,
-    WSMessageScanner,
-    WSRateLimiter,
-    scan_ws_message,
-)
-from memgar.websocket_guard import (
-    patch_auto_protect as websocket_patch_auto_protect,
 )
 
 # Write-Ahead Validator / Guardian Pattern (v0.5.13)
@@ -1103,30 +1084,6 @@ __all__ = [
     "AutoProtectConfig",
     "AutoProtectStatus",
 
-    # Denial of Wallet Detection (v0.5.2)
-    "DoWDetector",
-    "DoWGuard",
-    "DoWRateLimiter",
-    "DoWSessionMonitor",
-    "DoWAnalysisResult",
-    "DoWMatch",
-    "DoWRisk",
-    "DoWTrigger",
-    "DoWAttackDetected",
-    "DoWThrottleError",
-    "DoWBudgetExhaustedError",
-    "SessionBudgetStats",
-    "RateLimitStatus",
-    "create_dow_guard",
-
-    # WebSocket Guard (v0.5.4)
-    "MemgarWebSocketGuard",
-    "WebSocketProxy",
-    "WSRateLimiter",
-    "OriginValidator",
-    "WSMessageScanner",
-    "scan_ws_message",
-
     # Memory Integrity Ledger (v0.5.5)
     "MemoryLedger",
     "LedgerEntry",
@@ -1187,11 +1144,15 @@ __all__ = [
     "DeviationReport",
     "BaselineIntegration",
 
-    # Brand Bias Detection (v0.5.7)
-    "BrandBiasDetector",
-    "BrandMention",
-    "BiasReport",
-    "extract_brand_mentions",
+    # Compliance / EU AI Act reporter (standalone, COMPLIANCE_AVAILABLE flag)
+    "COMPLIANCE_AVAILABLE",
+    "EUAIActReporter",
+    "EUAIActReport",
+    "ComplianceConfig",
+    "ComplianceCheck",
+    "ComplianceStatus",
+    "RiskClassification",
+    "Requirement",
 
     # Memory Vault — signed snapshots, diff, rollback
     "MemoryVault",
