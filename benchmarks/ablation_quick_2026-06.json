@@ -1,0 +1,226 @@
+{
+  "generated_at": "2026-06-01T19:26:44Z",
+  "mode": "quick (100/corpus, default) threat-model-only",
+  "seed": 42,
+  "ablation": [
+    {
+      "label": "L1_patterns_only",
+      "config": {
+        "use_llm": false,
+        "semantic_guard": false,
+        "similarity_layer": false,
+        "use_transformer_ml": false,
+        "stego_detector": false,
+        "correlation_detector": false,
+        "ensemble_voter": false
+      },
+      "per_corpus": [
+        {
+          "name": "memgar_threat_model",
+          "is_attack": true,
+          "n": 74,
+          "caught": 66,
+          "rate": 0.8919,
+          "p50_ms": 31.04,
+          "p95_ms": 89.31,
+          "p99_ms": 123.69,
+          "layer_hits": {
+            "pattern_matching": 74
+          }
+        },
+        {
+          "name": "memgar_threat_model_benign",
+          "is_attack": false,
+          "n": 50,
+          "caught": 3,
+          "rate": 0.06,
+          "p50_ms": 31.91,
+          "p95_ms": 45.06,
+          "p99_ms": 55.89,
+          "layer_hits": {
+            "pattern_matching": 47,
+            "whitelist": 3,
+            "behavioral_baseline": 3
+          }
+        }
+      ],
+      "overall_attack": {
+        "n": 74,
+        "caught": 66,
+        "rate": 0.8919
+      },
+      "overall_benign": {
+        "n": 50,
+        "caught": 3,
+        "rate": 0.06
+      }
+    },
+    {
+      "label": "L1_plus_similarity",
+      "config": {
+        "use_llm": false,
+        "semantic_guard": true,
+        "similarity_layer": true,
+        "use_transformer_ml": false,
+        "stego_detector": false,
+        "correlation_detector": false,
+        "ensemble_voter": false
+      },
+      "per_corpus": [
+        {
+          "name": "memgar_threat_model",
+          "is_attack": true,
+          "n": 74,
+          "caught": 66,
+          "rate": 0.8919,
+          "p50_ms": 45.92,
+          "p95_ms": 119.42,
+          "p99_ms": 3482.01,
+          "layer_hits": {
+            "pattern_matching": 74,
+            "similarity_layer_elevated": 16,
+            "similarity_layer": 7
+          }
+        },
+        {
+          "name": "memgar_threat_model_benign",
+          "is_attack": false,
+          "n": 50,
+          "caught": 3,
+          "rate": 0.06,
+          "p50_ms": 34.11,
+          "p95_ms": 46.51,
+          "p99_ms": 52.04,
+          "layer_hits": {
+            "pattern_matching": 47,
+            "similarity_layer_gated": 44,
+            "whitelist": 3,
+            "behavioral_baseline": 3,
+            "similarity_layer": 1
+          }
+        }
+      ],
+      "overall_attack": {
+        "n": 74,
+        "caught": 66,
+        "rate": 0.8919
+      },
+      "overall_benign": {
+        "n": 50,
+        "caught": 3,
+        "rate": 0.06
+      }
+    },
+    {
+      "label": "L1_plus_ml",
+      "config": {
+        "use_llm": false,
+        "semantic_guard": false,
+        "similarity_layer": false,
+        "use_transformer_ml": true,
+        "stego_detector": false,
+        "correlation_detector": false,
+        "ensemble_voter": false
+      },
+      "per_corpus": [
+        {
+          "name": "memgar_threat_model",
+          "is_attack": true,
+          "n": 74,
+          "caught": 70,
+          "rate": 0.9459,
+          "p50_ms": 112.43,
+          "p95_ms": 169.03,
+          "p99_ms": 203.01,
+          "layer_hits": {
+            "pattern_matching": 74,
+            "transformer_ml": 53
+          }
+        },
+        {
+          "name": "memgar_threat_model_benign",
+          "is_attack": false,
+          "n": 50,
+          "caught": 3,
+          "rate": 0.06,
+          "p50_ms": 33.92,
+          "p95_ms": 103.48,
+          "p99_ms": 116.56,
+          "layer_hits": {
+            "pattern_matching": 47,
+            "transformer_ml_gated": 44,
+            "whitelist": 3,
+            "behavioral_baseline": 2
+          }
+        }
+      ],
+      "overall_attack": {
+        "n": 74,
+        "caught": 70,
+        "rate": 0.9459
+      },
+      "overall_benign": {
+        "n": 50,
+        "caught": 3,
+        "rate": 0.06
+      }
+    },
+    {
+      "label": "full_stack",
+      "config": {
+        "use_llm": false
+      },
+      "per_corpus": [
+        {
+          "name": "memgar_threat_model",
+          "is_attack": true,
+          "n": 74,
+          "caught": 70,
+          "rate": 0.9459,
+          "p50_ms": 113.54,
+          "p95_ms": 166.81,
+          "p99_ms": 209.28,
+          "layer_hits": {
+            "pattern_matching": 74,
+            "transformer_ml": 53,
+            "similarity_layer_elevated": 16,
+            "correlation_detector": 67,
+            "ensemble_voter": 58,
+            "stego_detector": 3,
+            "similarity_layer": 7
+          }
+        },
+        {
+          "name": "memgar_threat_model_benign",
+          "is_attack": false,
+          "n": 50,
+          "caught": 3,
+          "rate": 0.06,
+          "p50_ms": 34.85,
+          "p95_ms": 102.73,
+          "p99_ms": 115.28,
+          "layer_hits": {
+            "pattern_matching": 47,
+            "similarity_layer_gated": 44,
+            "transformer_ml_gated": 44,
+            "whitelist": 3,
+            "correlation_detector": 1,
+            "behavioral_baseline": 2,
+            "ensemble_voter": 2,
+            "similarity_layer": 1
+          }
+        }
+      ],
+      "overall_attack": {
+        "n": 74,
+        "caught": 70,
+        "rate": 0.9459
+      },
+      "overall_benign": {
+        "n": 50,
+        "caught": 3,
+        "rate": 0.06
+      }
+    }
+  ]
+}

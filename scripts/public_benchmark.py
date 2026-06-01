@@ -112,6 +112,10 @@ def _load_jsonl_field(path: Path, field: str, limit: Optional[int] = None) -> Li
 def load_attacks(limit: Optional[int] = None) -> Dict[str, List[str]]:
     """Returns {corpus_name: [text, ...]} for attack corpora."""
     return {
+        # memgar-specific threat model — memory poisoning, not generic jailbreaks
+        "memgar_threat_model": _load_threat_model(label=1, limit=limit),
+        # external prompt-injection / jailbreak corpora — DIFFERENT threat model
+        # but useful as a stress test against adversarial wording
         "advbench":      _load_csv_col(CORPUS_DIR / "advbench.csv",      "goal", limit),
         "jbb_harmful":   _load_csv_col(CORPUS_DIR / "jbb_harmful.csv",   "Goal", limit),
         "harmbench":     _load_csv_col(CORPUS_DIR / "harmbench.csv",     "Behavior", limit),
@@ -122,10 +126,36 @@ def load_attacks(limit: Optional[int] = None) -> Dict[str, List[str]]:
 
 def load_benigns(limit: Optional[int] = None) -> Dict[str, List[str]]:
     return {
+        # memgar-specific benign memory writes — preferences, addresses, notes
+        "memgar_threat_model_benign": _load_threat_model(label=0, limit=limit),
+        # external benign chat
         "jbb_benign":    _load_csv_col(CORPUS_DIR / "jbb_benign.csv", "Goal", limit),
         "openassistant": _load_jsonl_field(CORPUS_DIR / "benign_OpenAssistant__oasst1__default.jsonl", "text", limit),
         "dolly":         _load_jsonl_field(CORPUS_DIR / "benign_databricks__databricks-dolly-15k__default.jsonl", "instruction", limit),
     }
+
+
+def _load_threat_model(label: int, limit: Optional[int]) -> List[str]:
+    """Load the memgar-specific threat-model corpus built by
+    scripts/build_threat_model_corpus.py."""
+    path = CORPUS_DIR / "memgar_threat_model.jsonl"
+    out: List[str] = []
+    if not path.exists():
+        return out
+    with open(path) as f:
+        for line in f:
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if row.get("label") != label:
+                continue
+            text = (row.get("text") or "").strip()
+            if text:
+                out.append(text)
+            if limit is not None and len(out) >= limit:
+                break
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +335,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--no-llm", action="store_true", default=True,
                    help="Disable Layer 2 LLM (default; kept for backward compatibility).")
+    p.add_argument("--ablate", action="store_true",
+                   help="Run the same evaluation under four analyzer configs "
+                        "(L1 only / +similarity / +ML / full) so the per-layer "
+                        "contribution to recall can be read directly.")
+    p.add_argument("--threat-model-only", action="store_true",
+                   help="Evaluate only the memgar-specific threat-model corpus "
+                        "(memory poisoning); skip AdvBench/JBB/HarmBench/etc.")
     p.add_argument("--output-json", default=None,
                    help="Write detailed report to this JSON path.")
     p.add_argument("--output-md", default=None,
@@ -312,6 +349,53 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--progress", action="store_true",
                    help="Print per-corpus progress to stderr.")
     return p.parse_args()
+
+
+# Ablation configurations. Each entry is (label, Analyzer kwargs). The
+# `mutate` callable runs after construction to disable anything the kwargs
+# can't reach directly.
+ABLATION_CONFIGS = [
+    ("L1_patterns_only", dict(
+        use_llm=False, semantic_guard=False, similarity_layer=False,
+        use_transformer_ml=False, stego_detector=False,
+        correlation_detector=False, ensemble_voter=False,
+    )),
+    ("L1_plus_similarity", dict(
+        use_llm=False, semantic_guard=True, similarity_layer=True,
+        use_transformer_ml=False, stego_detector=False,
+        correlation_detector=False, ensemble_voter=False,
+    )),
+    ("L1_plus_ml", dict(
+        use_llm=False, semantic_guard=False, similarity_layer=False,
+        use_transformer_ml=True, stego_detector=False,
+        correlation_detector=False, ensemble_voter=False,
+    )),
+    ("full_stack", dict(use_llm=False)),
+]
+
+
+def _build_analyzer(kwargs: Dict[str, Any]) -> Analyzer:
+    return Analyzer(**kwargs)
+
+
+def _evaluate_with(analyzer: Analyzer,
+                   attacks: Dict[str, List[str]],
+                   benigns: Dict[str, List[str]],
+                   *, progress: bool) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for name, rows in attacks.items():
+        if not rows:
+            continue
+        print(f"[bench] attack:{name} ({len(rows)} rows)", file=sys.stderr, flush=True)
+        out.append(evaluate_corpus(analyzer, name, rows, is_attack=True,
+                                   source_type="external", progress=progress))
+    for name, rows in benigns.items():
+        if not rows:
+            continue
+        print(f"[bench] benign:{name} ({len(rows)} rows)", file=sys.stderr, flush=True)
+        out.append(evaluate_corpus(analyzer, name, rows, is_attack=False,
+                                   source_type="user", progress=progress))
+    return out
 
 
 def main() -> int:
@@ -334,21 +418,16 @@ def main() -> int:
         mode = "quick (100/corpus, default)"
 
     random.seed(args.seed)
-
     print(f"[bench] mode={mode} seed={args.seed}", file=sys.stderr, flush=True)
-    print("[bench] loading analyzer (this includes ONNX INT8 model load) ...",
-          file=sys.stderr, flush=True)
-    t0 = time.perf_counter()
-    analyzer = Analyzer(use_llm=False)
-    load_ms = (time.perf_counter() - t0) * 1000
-    print(f"[bench] analyzer loaded in {load_ms:.0f} ms", file=sys.stderr)
-    print(f"[bench] transformer ready: {analyzer._transformer is not None and analyzer._transformer.is_ready}",
-          file=sys.stderr)
 
     attacks = load_attacks(limit=limit)
     benigns = load_benigns(limit=limit)
+    if args.threat_model_only:
+        attacks = {k: v for k, v in attacks.items() if k.startswith("memgar_")}
+        benigns = {k: v for k, v in benigns.items() if k.startswith("memgar_")}
+        mode += " threat-model-only"
 
-    # Stratified sub-sample in quick mode (deterministic via seed)
+    # Stratified sub-sample (deterministic via seed) when a limit applies
     if limit is not None:
         for name, rows in attacks.items():
             if len(rows) > limit:
@@ -359,26 +438,46 @@ def main() -> int:
                 rng = random.Random(args.seed + hash(name) % 1000)
                 benigns[name] = rng.sample(rows, limit)
 
-    per_corpus: List[Dict[str, Any]] = []
-    for name, rows in attacks.items():
-        if not rows:
-            continue
-        print(f"[bench] attack:{name} ({len(rows)} rows)", file=sys.stderr, flush=True)
-        per_corpus.append(evaluate_corpus(
-            analyzer, name, rows, is_attack=True,
-            source_type="external", progress=args.progress))
-    for name, rows in benigns.items():
-        if not rows:
-            continue
-        print(f"[bench] benign:{name} ({len(rows)} rows)", file=sys.stderr, flush=True)
-        # Benign user inputs go through analyzer with source_type='user' so
-        # the trusted-user fast path can engage where appropriate. This is
-        # the production posture; reviewers can run with --benign-as-external
-        # to bypass the gate if they want a stricter test (not implemented
-        # here yet — single-source eval is the documented setup).
-        per_corpus.append(evaluate_corpus(
-            analyzer, name, rows, is_attack=False,
-            source_type="user", progress=args.progress))
+    if args.ablate:
+        ablations: List[Dict[str, Any]] = []
+        for label, kwargs in ABLATION_CONFIGS:
+            print(f"[bench] === ablation: {label} ===", file=sys.stderr, flush=True)
+            analyzer = _build_analyzer(kwargs)
+            per_corpus = _evaluate_with(analyzer, attacks, benigns, progress=args.progress)
+            ablations.append({
+                "label": label,
+                "config": {k: v for k, v in kwargs.items()
+                           if isinstance(v, (bool, int, float, str))},
+                "per_corpus": per_corpus,
+                "overall_attack": aggregate(per_corpus, is_attack=True),
+                "overall_benign": aggregate(per_corpus, is_attack=False),
+            })
+
+        report = {
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "mode": mode,
+            "seed": args.seed,
+            "ablation": ablations,
+        }
+        print(_format_ablation_console(ablations))
+        if args.output_json:
+            Path(args.output_json).write_text(json.dumps(report, indent=2))
+            print(f"[bench] wrote {args.output_json}", file=sys.stderr)
+        if args.output_md:
+            Path(args.output_md).write_text(_format_ablation_markdown(report))
+            print(f"[bench] wrote {args.output_md}", file=sys.stderr)
+        return 0
+
+    print("[bench] loading analyzer (this includes ONNX INT8 model load) ...",
+          file=sys.stderr, flush=True)
+    t0 = time.perf_counter()
+    analyzer = Analyzer(use_llm=False)
+    load_ms = (time.perf_counter() - t0) * 1000
+    print(f"[bench] analyzer loaded in {load_ms:.0f} ms", file=sys.stderr)
+    print(f"[bench] transformer ready: {analyzer._transformer is not None and analyzer._transformer.is_ready}",
+          file=sys.stderr)
+
+    per_corpus = _evaluate_with(analyzer, attacks, benigns, progress=args.progress)
 
     report = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -400,6 +499,52 @@ def main() -> int:
         print(f"[bench] wrote {args.output_md}", file=sys.stderr)
 
     return 0
+
+
+def _format_ablation_console(ablations: List[Dict[str, Any]]) -> str:
+    lines = ["", "=" * 76,
+             "Ablation — per-config attack recall and benign FPR",
+             "=" * 76,
+             f"{'config':<22}{'attack N':>10}{'caught':>10}{'recall':>10}{'benign N':>10}{'FPR':>10}"]
+    lines.append("-" * 76)
+    for a in ablations:
+        oa = a["overall_attack"]
+        ob = a["overall_benign"]
+        lines.append(f"{a['label']:<22}{oa['n']:>10}{oa['caught']:>10}"
+                     f"{oa['rate']:>10.3f}{ob['n']:>10}{ob['rate']:>10.3f}")
+    lines.append("=" * 76)
+    return "\n".join(lines)
+
+
+def _format_ablation_markdown(report: Dict[str, Any]) -> str:
+    lines = [
+        "# Memgar Ablation Report",
+        "",
+        f"- generated: `{report['generated_at']}`",
+        f"- mode: `{report['mode']}`",
+        f"- seed: `{report['seed']}`",
+        "",
+        "## Overall recall / FPR per analyzer config",
+        "",
+        "| config | attack N | caught | recall | benign N | FPR |",
+        "|---|---|---|---|---|---|",
+    ]
+    for a in report["ablation"]:
+        oa = a["overall_attack"]
+        ob = a["overall_benign"]
+        lines.append(f"| `{a['label']}` | {oa['n']} | {oa['caught']} | "
+                     f"**{oa['rate']:.3f}** | {ob['n']} | **{ob['rate']:.3f}** |")
+    lines.append("")
+    for a in report["ablation"]:
+        lines.append(f"### `{a['label']}` — per-corpus")
+        lines.append("")
+        lines.append("| corpus | size | caught | rate | kind |")
+        lines.append("|---|---|---|---|---|")
+        for r in a["per_corpus"]:
+            kind = "attack" if r["is_attack"] else "benign"
+            lines.append(f"| {r['name']} | {r['n']} | {r['caught']} | {r['rate']:.3f} | {kind} |")
+        lines.append("")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
