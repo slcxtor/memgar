@@ -1,0 +1,163 @@
+{
+  "generated_at": "2026-06-01T18:44:17Z",
+  "mode": "quick (100/corpus)",
+  "seed": 42,
+  "analyzer_config": "Analyzer(use_llm=False)",
+  "per_corpus": [
+    {
+      "name": "advbench",
+      "is_attack": true,
+      "n": 100,
+      "caught": 47,
+      "rate": 0.47,
+      "p50_ms": 158.62,
+      "p95_ms": 227.23,
+      "p99_ms": 3674.67,
+      "layer_hits": {
+        "pattern_matching": 99,
+        "transformer_ml": 30,
+        "correlation_detector": 43,
+        "ensemble_voter": 35,
+        "similarity_layer_elevated": 4,
+        "whitelist": 1
+      }
+    },
+    {
+      "name": "jbb_harmful",
+      "is_attack": true,
+      "n": 100,
+      "caught": 36,
+      "rate": 0.36,
+      "p50_ms": 153.54,
+      "p95_ms": 212.18,
+      "p99_ms": 460.44,
+      "layer_hits": {
+        "pattern_matching": 100,
+        "transformer_ml": 28,
+        "correlation_detector": 36,
+        "ensemble_voter": 31,
+        "similarity_layer_elevated": 4
+      }
+    },
+    {
+      "name": "harmbench",
+      "is_attack": true,
+      "n": 100,
+      "caught": 30,
+      "rate": 0.3,
+      "p50_ms": 155.86,
+      "p95_ms": 220.0,
+      "p99_ms": 505.89,
+      "layer_hits": {
+        "pattern_matching": 100,
+        "transformer_ml": 26,
+        "correlation_detector": 30,
+        "ensemble_voter": 28
+      }
+    },
+    {
+      "name": "gandalf",
+      "is_attack": true,
+      "n": 100,
+      "caught": 91,
+      "rate": 0.91,
+      "p50_ms": 135.44,
+      "p95_ms": 201.09,
+      "p99_ms": 383.19,
+      "layer_hits": {
+        "pattern_matching": 100,
+        "correlation_detector": 91,
+        "similarity_layer": 59,
+        "ensemble_voter": 79,
+        "similarity_layer_elevated": 30,
+        "transformer_ml": 59
+      }
+    },
+    {
+      "name": "trustairlab_jb",
+      "is_attack": true,
+      "n": 100,
+      "caught": 83,
+      "rate": 0.83,
+      "p50_ms": 972.77,
+      "p95_ms": 2366.15,
+      "p99_ms": 4987.21,
+      "layer_hits": {
+        "pattern_matching": 97,
+        "sliding_window": 36,
+        "similarity_layer_elevated": 14,
+        "correlation_detector": 83,
+        "ensemble_voter": 54,
+        "transformer_ml": 8,
+        "stego_detector": 1,
+        "whitelist": 3,
+        "similarity_layer": 1
+      }
+    },
+    {
+      "name": "jbb_benign",
+      "is_attack": false,
+      "n": 100,
+      "caught": 3,
+      "rate": 0.03,
+      "p50_ms": 48.3,
+      "p95_ms": 81.53,
+      "p99_ms": 163.64,
+      "layer_hits": {
+        "pattern_matching": 93,
+        "similarity_layer_gated": 90,
+        "transformer_ml_gated": 90,
+        "whitelist": 7,
+        "correlation_detector": 3,
+        "ensemble_voter": 2
+      }
+    },
+    {
+      "name": "openassistant",
+      "is_attack": false,
+      "n": 100,
+      "caught": 23,
+      "rate": 0.23,
+      "p50_ms": 227.47,
+      "p95_ms": 1598.59,
+      "p99_ms": 3124.53,
+      "layer_hits": {
+        "pattern_matching": 96,
+        "similarity_layer_gated": 43,
+        "transformer_ml_gated": 43,
+        "correlation_detector": 23,
+        "ensemble_voter": 11,
+        "whitelist": 4,
+        "sliding_window": 6,
+        "transformer_ml": 7,
+        "stego_detector": 1
+      }
+    },
+    {
+      "name": "dolly",
+      "is_attack": false,
+      "n": 100,
+      "caught": 0,
+      "rate": 0.0,
+      "p50_ms": 28.67,
+      "p95_ms": 100.29,
+      "p99_ms": 254.23,
+      "layer_hits": {
+        "pattern_matching": 99,
+        "similarity_layer_gated": 98,
+        "transformer_ml_gated": 98,
+        "whitelist": 1
+      }
+    }
+  ],
+  "overall_attack": {
+    "n": 500,
+    "caught": 287,
+    "rate": 0.574
+  },
+  "overall_benign": {
+    "n": 300,
+    "caught": 26,
+    "rate": 0.0867
+  }
+}
