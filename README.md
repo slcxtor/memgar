@@ -6,7 +6,7 @@
 [![CI](https://github.com/slcxtor/memgar/actions/workflows/ci.yml/badge.svg)](https://github.com/slcxtor/memgar/actions/workflows/ci.yml)
 [![OWASP ASI06](https://img.shields.io/badge/OWASP-ASI06%20Memory%20Poisoning-blue)](https://genai.owasp.org/llmrisk2025/asi06-memory-poisoning/)
 
-**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer analyzer (840 patterns + sentence-transformer similarity + fine-tuned ONNX transformer + behavioral baseline) with 17 framework adapters, multi-language coverage (EN, TR, JA, ZH), and an EU AI Act compliance reporter included.
+**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer analyzer (840 patterns + sentence-transformer similarity + fine-tuned ONNX transformer + behavioral baseline) with 17 framework adapters, multilingual pattern coverage (depth varies — see below), and an EU AI Act compliance reporter included.
 
 Full documentation at **[memgar.com](https://memgar.com)**.
 
@@ -18,7 +18,7 @@ Memgar inspects, sanitizes, quarantines, and blocks unsafe memory before it can 
 - **Public benchmark CLI**: `python scripts/public_benchmark.py --threat-model-only --ablate` produces a reproducible, seed-locked report against externally-authored corpora. Numbers anyone can re-run.
 - **Hot-path latency**: benign user input p50 = 9 ms (gated), RAG hit p50 = 24 ms (cached). Was ~514 ms before the v1.2 cleanup.
 - **Slimmer surface**: dropped DoW / WebSocket / brand-bias / confidence-bypass / pattern-evolution / advanced-scoring modules and their tests. `pip install memgar[compliance]` keeps the EU AI Act reporter accessible as a standalone extra.
-- **Multi-language**: Chinese (Simplified + Traditional) pattern pack added; existing JA and TR coverage retained.
+- **Multilingual (depth varies, see "Multilingual coverage — honest depth" below)**: Chinese (Simplified + Traditional) starter pack added; existing JA and TR coverage retained.
 - **Vector DB adapter coverage**: PGVector added; total now Chroma, Pinecone, Qdrant, Weaviate, Milvus-shape, PGVector, mem0, Letta.
 
 See [CHANGELOG](CHANGELOG.md) for the full diff.
@@ -44,6 +44,18 @@ See [CHANGELOG](CHANGELOG.md) for the full diff.
 > | External / RAG input, new text (cache miss, full stack) | 39–100 ms | 192–230 ms | One sentence-transformer encode + one ONNX INT8 forward |
 >
 > Same operations were ~514 ms on every call before the v1.2 cleanup; the gate + cache + ML gate deliver a 37–55× speedup on the benign hot path with zero gold-gate recall or FPR regression. See `memgar/analyzer.py` (Layer 1.5 + 2-ML gates) and `memgar/similarity_layer.py` (LRU cache) for the implementation.
+
+> **Multilingual coverage — honest depth.** "We support N languages" usually means "we ship patterns labelled with N flags". The real question is how deep each one is. The table below is the truth:
+>
+> | Language | Patterns | Gold-gate validation | Production status |
+> |---|---|---|---|
+> | English | 782 dedicated | ✅ 1.000 recall / 0.032 FPR on 179 EN samples | **Production-grade** |
+> | Turkish | 11 dedicated | ✅ 0.950 recall / 0.095 FPR on 111 TR samples | **Production-light** (gold-gated but thin pattern set) |
+> | Japanese | 36 dedicated | ❌ no dedicated gold-gate samples (100% recall on translated attack templates only) | **Pattern coverage, not production-validated** |
+> | Chinese (Simplified + Traditional) | 8 dedicated | ❌ no dedicated gold-gate samples (100% recall on translated attack templates only) | **Starter coverage — extend with customer-specific patterns** |
+> | German / Spanish / French / Russian / Arabic | 3 `MULTILANG-*` patterns (cover override / system-prompt-disclosure / exfil intent in any romance + cyrillic + arabic script) | ❌ not gold-gated | **Generic intent coverage only — don't rely on it for memory poisoning specific to those locales** |
+>
+> If your deployment is heavily JA/ZH/DE/ES/AR, plan to (a) measure your own corpus against memgar's analyzer and (b) author deployment-specific patterns. The toolchain to do this is part of the package (`memgar.patterns.register_threat()`, `scripts/build_threat_model_corpus.py`).
 
 ## What Memgar protects
 
