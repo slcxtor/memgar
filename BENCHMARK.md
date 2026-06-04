@@ -119,9 +119,20 @@ the Analyzer constructs.
 | `full_stack` | 0.946 | 0.060 | adds correlation, stego, ensemble — they fold into the same verdict |
 
 **The trained transformer catches 4 attacks Layer 1 alone would miss,
-at zero added FPR.** That's the production value of the model artifact
-shipped in `ec86ae8`: +5.4 pp recall for a 78 MB INT8 ONNX without
-trading any false positives. The similarity layer didn't add new
+at zero added FPR *on this corpus*.** That's the production value of the
+model artifact for external-/RAG-sourced traffic: +5.4 pp recall for a
+78 MB INT8 ONNX without trading false positives on the threat-model set.
+
+> **Default is transformer-off (`use_transformer_ml=False`).** The zero-added-FPR
+> result above is specific to this external-source threat-model corpus. On the
+> gold corpus of *prosaic user memory-writes* ("grant Sofia view access",
+> "I prefer concise summaries") the same model over-fires — it scores those
+> 0.99+, higher than several genuine attacks — and raises gold-gate FPR from
+> ~0.02 to ~0.15 while adding no recall (Layer 1 already catches 100% there).
+> So the default Analyzer is **L1 + L3 + L4** (the `L1_patterns_only` row is the
+> closest ablation proxy); opt into Layer 2-ML with `Analyzer(use_transformer_ml=True)`
+> for untrusted-source-heavy deployments, or retrain on a domain-representative
+> corpus first. The similarity layer didn't add new
 catches on this corpus, because the attacks are mostly written like
 documented in-the-wild incidents which the patterns already cover —
 similarity helps more on paraphrased attacker text that doesn't appear

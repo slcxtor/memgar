@@ -32,15 +32,14 @@ GATES: dict[str, dict] = {
     },
     "overall_benign_fpr": {
         "path": ("analyzer_default_metrics", "block_rate_benign"),
-        "max": 0.15,
+        "max": 0.05,
         "label": "Overall benign FPR (block_rate_benign)",
     },
     # Per-language — English (the only shipped language).
     # Corpus is EN-only by design (v1.3.0 cleanup), so per-language FPR equals
-    # overall FPR. The cap matches `overall_benign_fpr` and reflects the
-    # bundled Layer 2-ML model's known FP behavior on prosaic memory-write
-    # benigns with template-attack phrasing — see CLAUDE.md "Layer 2-ML"
-    # note. Tighten when a v3 retrain on memory-write benigns ships.
+    # overall FPR. Default Analyzer is Layer-1+3+4 (transformer off by default,
+    # see analyzer.py use_transformer_ml) — measured FPR is ~0.02. The 0.05 cap
+    # is a regression guard with headroom, not a ceiling to grow into.
     "en_recall": {
         "path": ("per_language", "en", "recall"),
         "min": 0.80,
@@ -48,7 +47,7 @@ GATES: dict[str, dict] = {
     },
     "en_fpr": {
         "path": ("per_language", "en", "fpr"),
-        "max": 0.15,
+        "max": 0.05,
         "label": "English FPR",
     },
     # Per-category — worst performers must stay above floor

@@ -1675,7 +1675,7 @@
   patterns:
   - (?i)(you\s+)?(know|trust)\s+me\s*,?\s*(so|therefore|just)
   - (?i)(we've|we\s+have)\s+(worked|been)\s+(together|friends)
-  - (?i)(remember\s+)?(last\s+time|when\s+you|you\s+helped\s+me)
+  - (?i)remember\s+(last\s+time|when\s+you)|you\s+helped\s+me\s+(last|before|with)|last\s+time\s+(you|we)\b
   - (?i)(wouldn't|would\s+never)\s+(lie|deceive|trick)\s+(you|a\s+friend)
   keywords:
   - you know me
