@@ -6,7 +6,7 @@
 [![CI](https://github.com/slcxtor/memgar/actions/workflows/ci.yml/badge.svg)](https://github.com/slcxtor/memgar/actions/workflows/ci.yml)
 [![OWASP ASI06](https://img.shields.io/badge/OWASP-ASI06%20Memory%20Poisoning-blue)](https://genai.owasp.org/llmrisk2025/asi06-memory-poisoning/)
 
-**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer analyzer (840 patterns + sentence-transformer similarity + fine-tuned ONNX transformer + behavioral baseline) with 17 framework adapters, multilingual pattern coverage (depth varies — see below), and an EU AI Act compliance reporter included.
+**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer English-text analyzer (782 patterns + sentence-transformer similarity + fine-tuned ONNX transformer + behavioral baseline) with 17 framework adapters and an EU AI Act compliance reporter included. English-only by design — same scope as the OWASP reference; we focus on depth, not language breadth.
 
 Full documentation at **[memgar.com](https://memgar.com)**.
 
@@ -14,23 +14,23 @@ Memgar inspects, sanitizes, quarantines, and blocks unsafe memory before it can 
 
 ## What's new in v1.2.0
 
-- **Trained Layer 2-ML transformer is shipped** (DistilRoBERTa + LoRA, 78 MB INT8 ONNX). Test set F1 = 0.9966, ECE = 0.0048. Adds +5.4 percentage points of recall on the memgar threat-model corpus over Layer-1 patterns alone, at zero added FPR (see [BENCHMARK.md](BENCHMARK.md)).
+- **Trained Layer 2-ML transformer is shipped** (DistilRoBERTa + LoRA, 78 MB INT8 ONNX). Test set F1 = 0.9966, ECE = 0.0048. Adds +5.4 percentage points of recall on the memgar threat-model corpus over Layer-1 patterns alone (see [BENCHMARK.md](BENCHMARK.md)). The bundled artifact is trained against template attacks + academic benigns; on prosaic memory-write benigns with template-attack phrasing it raises gold-gate FPR from ~3 % (Layer-1 only) to ~15 %. Set `use_transformer_ml=False` to disable, or retrain on your own corpus with `scripts/train_transformer_v2.py`.
 - **Public benchmark CLI**: `python scripts/public_benchmark.py --threat-model-only --ablate` produces a reproducible, seed-locked report against externally-authored corpora. Numbers anyone can re-run.
 - **Hot-path latency**: benign user input p50 = 9 ms (gated), RAG hit p50 = 24 ms (cached). Was ~514 ms before the v1.2 cleanup.
 - **Slimmer surface**: dropped DoW / WebSocket / brand-bias / confidence-bypass / pattern-evolution / advanced-scoring modules and their tests. `pip install memgar[compliance]` keeps the EU AI Act reporter accessible as a standalone extra.
-- **Multilingual (depth varies, see "Multilingual coverage — honest depth" below)**: Chinese (Simplified + Traditional) starter pack added; existing JA and TR coverage retained.
+- **English-only focus**: previous TR / JA / ZH / MULTILANG-* patterns removed — depth over breadth. Same scope as OWASP `agent-memory-guard`.
 - **Vector DB adapter coverage**: PGVector added; total now Chroma, Pinecone, Qdrant, Weaviate, Milvus-shape, PGVector, mem0, Letta.
 
 See [CHANGELOG](CHANGELOG.md) for the full diff.
 
-> **Where memgar fits in the OWASP ecosystem.** OWASP recently shipped [`agent-memory-guard`](https://github.com/OWASP/www-project-agent-memory-guard) as the official ASI06 reference implementation. Memgar adopts the same threat model and category names, then extends it for production deployments that need ML detection (the OWASP reference targets ML for Q3 2026), multi-language coverage, broader framework support (17 vs 4 adapters), and an EU AI Act compliance reporter. We recommend pairing both: OWASP's reference for the audit baseline, memgar for production breadth. Open-source PRs back to the OWASP project are welcome from this codebase.
+> **Where memgar fits in the OWASP ecosystem.** OWASP recently shipped [`agent-memory-guard`](https://github.com/OWASP/www-project-agent-memory-guard) as the official ASI06 reference implementation. Memgar adopts the same threat model and category names — English-only, same scope — then extends it for production deployments that need ML detection (the OWASP reference targets ML for Q3 2026), broader framework support (17 vs 4 adapters), and an EU AI Act compliance reporter. We recommend pairing both: OWASP's reference as the audit / governance baseline, memgar as the production library. Open-source PRs back to the OWASP project are welcome from this codebase.
 
 > **Honest baseline.** Three calibration numbers, because they tell different stories:
 >
 > | Corpus | Size | Recall | FPR | Notes |
 > |---|---|---|---|---|
 > | **Threat model** (memory poisoning — the one to plan against) | 74 attacks + 50 benign | **94.6 %** | **6.0 %** | EchoLeak, SpAIware, Morris-II, MINJA, MemoryGraft, EHR + benign memory writes. Reproduce: `python scripts/public_benchmark.py --threat-model-only`. |
-> | **Gold** (hand-curated regression) | 40 attacks + 250 benign | **97.5 %** | **5.6 %** | `Analyzer.analyze()` clean-workload reference; pinned by `scripts/check_calibration_gate.py` |
+> | **Gold** (hand-curated regression, EN-only) | 20 attacks + 155 benign | **100 %** | **14.8 %** | `Analyzer.analyze()` clean-workload reference; pinned by `scripts/check_calibration_gate.py`. The FPR reflects the bundled Layer 2-ML v2 transformer firing on prosaic memory-write benigns with template-attack phrasing ("FYI…", "Just so you know…") — set `use_transformer_ml=False` or retrain on domain-representative benigns to lower it. |
 > | **Cross-domain stress test** (jailbreak corpora — different threat model) | AdvBench/JBB/HarmBench/Gandalf/TrustAIR (500 attacks + 300 benign) | 0.574 / 0.087 | — | Reported for transparency. Red-team-authored goals; deploy memgar with input-side prompt-injection defenses, not alone. |
 >
 > "Recall" and "FPR" count BLOCK *and* QUARANTINE decisions — both prevent the content from reaching agent memory in production. `SecureMemoryStore` refuses to commit a quarantined write to the backend until human review. Memgar is one layer of defense, **not a silver bullet** — pair it with input-side prompt-injection defenses and your existing observability stack.
@@ -45,17 +45,7 @@ See [CHANGELOG](CHANGELOG.md) for the full diff.
 >
 > Same operations were ~514 ms on every call before the v1.2 cleanup; the gate + cache + ML gate deliver a 37–55× speedup on the benign hot path with zero gold-gate recall or FPR regression. See `memgar/analyzer.py` (Layer 1.5 + 2-ML gates) and `memgar/similarity_layer.py` (LRU cache) for the implementation.
 
-> **Multilingual coverage — honest depth.** "We support N languages" usually means "we ship patterns labelled with N flags". The real question is how deep each one is. The table below is the truth:
->
-> | Language | Patterns | Gold-gate validation | Production status |
-> |---|---|---|---|
-> | English | 782 dedicated | ✅ 1.000 recall / 0.032 FPR on 179 EN samples | **Production-grade** |
-> | Turkish | 11 dedicated | ✅ 0.950 recall / 0.095 FPR on 111 TR samples | **Production-light** (gold-gated but thin pattern set) |
-> | Japanese | 36 dedicated | ❌ no dedicated gold-gate samples (100% recall on translated attack templates only) | **Pattern coverage, not production-validated** |
-> | Chinese (Simplified + Traditional) | 8 dedicated | ❌ no dedicated gold-gate samples (100% recall on translated attack templates only) | **Starter coverage — extend with customer-specific patterns** |
-> | German / Spanish / French / Russian / Arabic | 3 `MULTILANG-*` patterns (cover override / system-prompt-disclosure / exfil intent in any romance + cyrillic + arabic script) | ❌ not gold-gated | **Generic intent coverage only — don't rely on it for memory poisoning specific to those locales** |
->
-> If your deployment is heavily JA/ZH/DE/ES/AR, plan to (a) measure your own corpus against memgar's analyzer and (b) author deployment-specific patterns. The toolchain to do this is part of the package (`memgar.patterns.register_threat()`, `scripts/build_threat_model_corpus.py`).
+> **Language scope — English only, by design.** Memgar's 782 patterns, gold-gate calibration corpus, and ML training data are all English. This matches the scope of the OWASP `agent-memory-guard` reference and avoids the common "we support N languages" trap where pattern flags exceed real validation depth. If your deployment needs JA / ZH / DE / ES / AR coverage, author deployment-specific patterns and corpora using the toolchain that ships with the package (`memgar.patterns.register_threat()`, `scripts/build_threat_model_corpus.py`) and measure them on your own traffic before relying on them.
 
 ## What Memgar protects
 
@@ -80,7 +70,7 @@ Memgar is designed around a clear policy model:
 Memgar should be treated as a measurable security control, not a perfect oracle. Tune it against your own agent traffic before production.
 
 - False positives can happen, especially in strict mode, with security research text, policy documents, admin instructions, or aggressive jailbreak test suites. Expected handling is `sanitize`, `quarantine`, or `human_review` rather than silently storing the original content.
-- False negatives are still possible. Novel, obfuscated, multilingual, low-and-slow, or context-dependent memory poisoning attempts may bypass any single detector. Use Memgar with gateway controls, signed snapshots, canary checks, review queues, egress limits, and normal application security controls.
+- False negatives are still possible. Novel, obfuscated, low-and-slow, or context-dependent memory poisoning attempts may bypass any single detector. Use Memgar with gateway controls, signed snapshots, canary checks, review queues, egress limits, and normal application security controls.
 - Production tuning should measure both clean-memory pass rate and adversarial detection rate. Keep separate clean, suspicious, and confirmed-attack corpora, then choose `strict`, `balanced`, or custom policy thresholds based on the blast radius of the agent.
 - High-risk autonomous agents should prefer fail-closed behavior. A safe launch posture is to block critical findings, quarantine uncertain findings, and only lower thresholds after reviewing operational data.
 
