@@ -1146,7 +1146,7 @@ class Analyzer:
         memory_store: Any = None,
         semantic_guard: bool = True,
         context_buffer: bool = True,
-        use_transformer_ml: bool = True,
+        use_transformer_ml: bool = False,
         integrity_store: Any = None,
         stego_detector: bool = True,
         correlation_detector: bool = True,
@@ -1170,6 +1170,14 @@ class Analyzer:
             memory_store: Optional MemoryStore for hunter retroactive scanning
             semantic_guard: Enable Layer 1.5 SemanticGuard (embedding similarity)
             context_buffer: Enable stateful context-split detection per session
+            use_transformer_ml: Enable Layer 2-ML (fine-tuned ONNX transformer).
+                Defaults to **False**. The bundled artifact is trained against
+                template attacks + academic benigns and over-fires on prosaic
+                memory-writes ("grant Sofia view access" scores 0.9999, higher
+                than genuine attacks) — it adds no recall on the gold corpus
+                while raising FPR ~5x. Opt in for external-/RAG-source-heavy
+                deployments, or retrain on a domain-representative corpus with
+                scripts/train_transformer_v2.py before relying on it.
         """
         self.use_llm = use_llm
         self.api_key = api_key
