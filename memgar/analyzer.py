@@ -893,11 +893,19 @@ def _decode_transposition_variants(content: str) -> list[str]:
     """Candidate decodings for transposition/substitution-hidden directives.
 
     A reversed (".tpmorp metsys ... erongI") or ROT13 ("Vtaber nyy ...")
-    instruction is inert until decoded, so it slips past Layer 1. We scan
-    the decoded forms too. Decoding *benign* text yields gibberish that
-    matches no pattern, so the false-positive risk is minimal.
+    instruction is inert until decoded, so it scan the decoded forms too.
+
+    Critical FP guard: short keywords can accidentally collide under ROT13
+    (e.g. "PII" → "CVV", "the" → "gur"). We therefore only ROT13-decode
+    content that does NOT already look like ordinary English prose — real
+    obfuscated attacks read as gibberish in the original. The reversed
+    variant has the same risk (e.g. trailing single letters), so we apply
+    the same guard. Decoding benign English text under these guards yields
+    nothing, while obfuscated payloads still get decoded and scanned.
     """
     out: list[str] = []
+    if _looks_like_english(content):
+        return out
     rev = content[::-1]
     if rev != content:
         out.append(rev)
@@ -909,6 +917,42 @@ def _decode_transposition_variants(content: str) -> list[str]:
     except Exception:
         pass
     return out
+
+
+_ENGLISH_STOPWORDS = frozenset({
+    "the", "and", "of", "to", "in", "is", "it", "you", "that", "for",
+    "on", "with", "as", "this", "are", "was", "but", "be", "have", "or",
+    "all", "from", "by", "an", "at", "we", "they", "if", "not", "can",
+    "will", "would", "should", "could", "may", "do", "does", "did",
+    "i", "my", "your", "our", "their", "his", "her",
+})
+
+
+def _looks_like_english(content: str) -> bool:
+    """Heuristic: does this text already read as ordinary English?
+
+    Real ROT13 / reversed attack payloads look like gibberish (no English
+    function words). Skipping the transposition decoders on natural English
+    eliminates ROT13 collision FPs ("PII" → "CVV", "the" → "gur") without
+    weakening the obfuscation defence on actually-obfuscated input.
+    """
+    # Pull lowercase alphabetic tokens; if the text is too short to judge,
+    # default to assuming it COULD be obfuscated (safer: decode + scan).
+    tokens = re.findall(r"[a-zA-Z]{2,}", content)
+    if not tokens:
+        return True  # nothing to decode
+    lower = [t.lower() for t in tokens]
+    stop_hits = sum(1 for t in lower if t in _ENGLISH_STOPWORDS)
+    # Any English stopword anywhere is a strong signal — ROT13/reversed
+    # natural English has essentially zero stopwords. Catches short benign
+    # phrases ("PII review needed" — "needed" not a stopword but absent of
+    # stopwords PLUS short → treat as English to avoid keyword-collision FPs).
+    if stop_hits >= 1:
+        return True
+    # Tail guard: very short text (<5 tokens) with no stopwords is more
+    # likely benign noise than a serious ROT13 attack — short obfuscated
+    # probes are weak; serious attacks are sentences. Skip decoding.
+    return len(tokens) < 5
 
 
 _LATIN_RE = re.compile(r'[a-zA-Z]')
