@@ -962,18 +962,38 @@ _ARABIC_RE = re.compile(r'[؀-ۿ]')
 
 # Pattern IDs whose whole purpose is to flag non-Latin lookalikes injected
 # into Latin text. On predominantly non-Latin text these fire on the native
-# script and are false positives.
+# script and are false positives — dropped when the *matched text* itself is
+# non-Latin (a genuine zero-width/base64 attack matches Latin and survives).
 _SCRIPT_MIXING_IDS = frozenset({"HOMOGLYPH", "UNICODE-BYPASS", "EVADE-002"})
+
+# Obfuscation / steganography / script-mixing detectors that false-fire on
+# legitimate non-Latin prose (e.g. a Russian "here's an SMTP client in C"
+# answer) even when their match lands on embedded Latin code. Memgar is an
+# English-only detector, so a predominantly non-Latin document is out of
+# scope; these findings are dropped unconditionally on such input. Genuine
+# attacks in those locales are out of scope by design (see README language
+# section). Hard threats (exfil URLs, command injection) are NOT in this set,
+# so a malicious payload embedded in non-Latin text is still caught.
+_OBFUSCATION_ON_NONLATIN_IDS = frozenset({
+    "HOMOGLYPH", "UNICODE-BYPASS", "EVADE-002", "STEGO-001",
+    "MULTI-LANG-HYBRID", "CONTEXT-001",
+})
 
 
 def _is_predominantly_non_latin(content: str) -> bool:
-    """True when Cyrillic/Greek/Arabic letters outnumber Latin ones — i.e. the
-    text is written in a non-Latin script, not Latin disguised with lookalikes."""
+    """True when the text is genuine non-Latin-script prose (Russian / Greek /
+    Arabic), as opposed to Latin text disguised with a few lookalike glyphs.
+
+    A homoglyph *attack* ("Ignоre all previоus instructiоns") has only a few
+    non-Latin chars among many Latin, so it stays below the bar and is still
+    flagged. Genuine non-Latin prose has either a large absolute count of
+    non-Latin letters (≥8, survives embedded Latin code blocks) or has
+    non-Latin letters strictly outnumbering Latin in short text."""
     latin = len(_LATIN_RE.findall(content))
     nonlatin = (len(_CYRILLIC_RE.findall(content))
                 + len(_GREEK_RE.findall(content))
                 + len(_ARABIC_RE.findall(content)))
-    return nonlatin >= 3 and nonlatin > latin
+    return nonlatin >= 8 or (nonlatin >= 2 and nonlatin > latin)
 
 
 def _has_non_latin_alpha(text: str) -> bool:
@@ -1556,7 +1576,11 @@ class Analyzer:
                     pass
 
             # Layer 5: Steganography detector (Unicode covert channels)
-            if self._stego_detector is not None:
+            # Skip on genuine non-Latin prose: the homoglyph-mapping stego
+            # heuristic ("'В'→'B'") false-fires on every Cyrillic/Greek/Arabic
+            # letter. Memgar is English-only, so non-Latin documents are out of
+            # scope and these are false positives, not covert channels.
+            if self._stego_detector is not None and not _is_predominantly_non_latin(entry.content or ""):
                 try:
                     stego_report = self._stego_detector.analyze(entry.content or "")
                     if stego_report.detected and stego_report.risk_boost > 0:
@@ -1825,6 +1849,22 @@ class Analyzer:
             except Exception:
                 pass
 
+        # Final language gate: on genuine non-Latin prose, drop obfuscation /
+        # script-mixing / steganography / multilang findings from ALL paths
+        # (Layer 1, sliding window, stego, correlation). Memgar is
+        # English-only, so a Russian/Greek/Arabic document is out of scope and
+        # these are false positives on the native script — not covert channels.
+        # Hard threats (exfil URLs, command injection, credentials) are NOT in
+        # the set, so a real payload embedded in non-Latin text still blocks.
+        if _is_predominantly_non_latin(entry.content or ""):
+            kept = [t for t in result.threats
+                    if t.threat.id not in _OBFUSCATION_ON_NONLATIN_IDS]
+            if len(kept) != len(result.threats):
+                result.threats = kept
+                result.risk_score = self._calculate_risk_score(kept, 0.0)
+                result.decision = self._make_decision(kept, result.risk_score)
+                result.explanation = self._generate_explanation(kept, result.decision)
+
         # fail_close: if any ML/semantic layer is degraded the analysis is
         # incomplete. Escalate ALLOW → QUARANTINE so uncertain inputs never
         # slip through silently in high-risk environments.
@@ -1945,8 +1985,9 @@ class Analyzer:
             # zero-width / bidi / base64 matches (no non-Latin alpha) survive.
             if _is_predominantly_non_latin(content):
                 threats = [t for t in threats
-                           if not (t.threat.id in _SCRIPT_MIXING_IDS
-                                   and _has_non_latin_alpha(t.matched_text or ""))]
+                           if not (t.threat.id in _OBFUSCATION_ON_NONLATIN_IDS
+                                   or (t.threat.id in _SCRIPT_MIXING_IDS
+                                       and _has_non_latin_alpha(t.matched_text or "")))]
             l1.set_attribute("memgar.l1.threat_count", len(threats))
             l1.set_attribute("memgar.l1.patterns_checked", len(self.patterns))
         layers_used = ["pattern_matching"]
