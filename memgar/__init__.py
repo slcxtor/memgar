@@ -609,6 +609,15 @@ from memgar.supply import (
 )
 
 # Composite Trust Scorer (v0.5.12)
+from memgar.tenant_learning import (
+    BenignRecord,
+    MarkAttackRecord,
+    PoisoningRefused,
+    RateLimited,
+    TenantLearningStore,
+    TenantPolicy,
+    TenantStoreFull,
+)
 from memgar.trust_scorer import (
     CompositeTrustResult,
     CompositeTrustScorer,

@@ -1218,6 +1218,7 @@ class Analyzer:
         canary_manager: Any = None,
         similarity_layer: bool = True,
         fail_close: bool | None = None,
+        tenant_learning: Any = False,
     ) -> None:
         """
         Initialize the analyzer.
@@ -1379,6 +1380,27 @@ class Analyzer:
             except Exception:
                 pass
 
+        # Per-tenant continuous learning (opt-in). When enabled, customer
+        # operators can `analyzer.mark_as_benign(...)` to teach memgar that
+        # specific content shapes are legitimate in their deployment. The
+        # store is isolated per tenant_id (from MemoryEntry.metadata) and is
+        # gated against poisoning — never overrides CRITICAL Layer-1 hits.
+        # Pass tenant_learning=True for the default disk-backed store, or a
+        # ready TenantLearningStore instance for custom storage.
+        self._tenant_learning: Any = None
+        if tenant_learning:
+            try:
+                from memgar.tenant_learning import TenantLearningStore
+                if isinstance(tenant_learning, TenantLearningStore):
+                    self._tenant_learning = tenant_learning
+                else:
+                    self._tenant_learning = TenantLearningStore(
+                        similarity_layer=self._similarity_layer
+                    )
+                logger.info("Analyzer: tenant_learning enabled")
+            except Exception as exc:
+                logger.warning("Analyzer: tenant_learning init failed (%s)", exc)
+
         # Layer 8: Canary token manager (memory exfiltration proof)
         self._canary_manager: Any = canary_manager
         if canary_manager is None:
@@ -1472,6 +1494,89 @@ class Analyzer:
             return self._canary_manager.scan(text, sink=sink)
         except Exception:
             return []
+
+    # -----------------------------------------------------------------
+    # Per-tenant continuous learning (opt-in)
+    # -----------------------------------------------------------------
+
+    def mark_as_benign(
+        self,
+        entry: "MemoryEntry",
+        reason: str,
+        marked_by: str = "operator",
+        analyzer_result: Any = None,
+    ) -> Any:
+        """Teach memgar that this content is benign for ``entry``'s tenant.
+
+        The tenant id is read from ``entry.metadata['tenant_id']`` (or
+        ``workspace_id``), defaulting to ``"default"``. Anti-poisoning: if
+        ``analyzer_result`` (from a prior ``analyze(entry)``) shows a
+        CRITICAL severity threat or risk_score ≥ 80, the call is refused
+        with ``PoisoningRefused``. Pass the result from your previous
+        ``analyze`` call so this guard can run.
+
+        Returns the stored ``BenignRecord``. Future calls to ``analyze``
+        with the same tenant id will see the risk_score dampened on
+        matches (exact or near-duplicate). Requires
+        ``Analyzer(tenant_learning=True)``.
+        """
+        if self._tenant_learning is None:
+            raise RuntimeError(
+                "tenant_learning not enabled — construct with "
+                "Analyzer(tenant_learning=True)"
+            )
+        meta = entry.metadata or {}
+        tenant_id = str(meta.get("tenant_id") or meta.get("workspace_id") or "default")
+        return self._tenant_learning.mark_as_benign(
+            tenant_id,
+            entry.content or "",
+            reason=reason,
+            marked_by=marked_by,
+            analyzer_result=analyzer_result,
+        )
+
+    def mark_as_attack(
+        self,
+        entry: "MemoryEntry",
+        reason: str,
+        marked_by: str = "operator",
+        analyzer_result: Any = None,
+    ) -> Any:
+        """Flag a content as an attack memgar missed (queue for review).
+
+        Does NOT change current decisions; the record goes into the
+        tenant's ``attacks.jsonl`` for a maintainer to promote into the
+        global corpus during the next retraining pass.
+        """
+        if self._tenant_learning is None:
+            raise RuntimeError(
+                "tenant_learning not enabled — construct with "
+                "Analyzer(tenant_learning=True)"
+            )
+        meta = entry.metadata or {}
+        tenant_id = str(meta.get("tenant_id") or meta.get("workspace_id") or "default")
+        return self._tenant_learning.mark_as_attack(
+            tenant_id,
+            entry.content or "",
+            reason=reason,
+            marked_by=marked_by,
+            analyzer_result=analyzer_result,
+        )
+
+    def forget_tenant(self, tenant_id: str) -> int:
+        """Erase everything memgar learned for a tenant (GDPR / right to
+        erasure). Returns the number of benign entries removed."""
+        if self._tenant_learning is None:
+            return 0
+        return self._tenant_learning.forget_tenant(tenant_id)
+
+    def tenant_stats(self, tenant_id: str = "default") -> dict:
+        """Return per-tenant learning state summary."""
+        if self._tenant_learning is None:
+            return {"enabled": False}
+        s = self._tenant_learning.stats(tenant_id)
+        s["enabled"] = True
+        return s
 
     def issue_canary(
         self,
@@ -1864,6 +1969,32 @@ class Analyzer:
                 result.risk_score = self._calculate_risk_score(kept, 0.0)
                 result.decision = self._make_decision(kept, result.risk_score)
                 result.explanation = self._generate_explanation(kept, result.decision)
+
+        # Per-tenant learning: dampen risk_score on content the tenant has
+        # marked as benign. Bounded — never overrides critical Layer-1 hits,
+        # never crosses CRITICAL_RISK_FLOOR. See memgar/tenant_learning.py.
+        if self._tenant_learning is not None:
+            try:
+                from memgar.tenant_learning import compute_dampen
+                meta = entry.metadata or {}
+                tenant_id = str(meta.get("tenant_id") or meta.get("workspace_id") or "default")
+                rec, sim = self._tenant_learning.lookup_benign(tenant_id, entry.content or "")
+                if rec is not None and sim > 0:
+                    severities = [t.threat.severity for t in result.threats]
+                    dampen = compute_dampen(int(result.risk_score), float(sim), severities)
+                    if dampen > 0:
+                        new_score = max(0, int(result.risk_score) - dampen)
+                        result.risk_score = new_score
+                        result.decision = self._make_decision(result.threats, new_score)
+                        result.layers_used = list(result.layers_used) + [
+                            f"tenant_learning:{tenant_id}"
+                        ]
+                        result.explanation = (
+                            f"[tenant_learning] benign match sim={sim:.3f} → "
+                            f"risk -{dampen}. Original: {result.explanation}"
+                        )
+            except Exception as exc:
+                logger.debug("tenant_learning skip on analyze (%s)", exc)
 
         # fail_close: if any ML/semantic layer is degraded the analysis is
         # incomplete. Escalate ALLOW → QUARANTINE so uncertain inputs never
