@@ -4,8 +4,8 @@ Zero-Shot Attack Generalization Benchmark
 ==========================================
 
 Evaluates how well the memgar detection stack (Layer 1 pattern matching +
-optional SemanticGuard) catches attack categories that were NOT present in
-the training dataset.
+optional semantic similarity layer) catches attack categories that were NOT
+present in the training dataset.
 
 Novel attack vectors tested (not in training_data.json):
   1. Supply-chain README injection  — malicious instructions in package docs

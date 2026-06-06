@@ -10,12 +10,18 @@ Memgar is a production-grade AI agent memory security library. It detects and bl
 
 ```
 Layer 1   — Pattern Matching             <1ms    always on
-Layer 1.5 — SemanticGuard (embeddings)   ~5ms    optional (sentence-transformers)
 Layer 2   — LLM Semantic Analysis        ~200ms  optional (use_llm=True)
 Layer 2-ML — Transformer (ONNX)          ~7ms    optional (artifact required, see below)
+Layer 2.5 — Semantic Similarity (cosine) ~5ms    optional (similarity_layer, sentence-transformers)
 Layer 3   — Trust-Aware Scoring          <0.1ms  auto (when source registered)
 Layer 4   — Behavioral Baseline          <1ms    auto (per-agent, after warm-up)
 ```
+
+> **Removed (2026-06):** Layer 1.5 SemanticGuard (centroid-based embedding
+> classifier). Ablation proved it added **+0 recall** over Layer 2.5 on every
+> corpus tested — clean threat-model, advbench OOD, and obfuscated
+> homoglyph/leetspeak variants — while costing an extra ~28ms encode per
+> analysis. Semantic detection is now Layer 2.5 (`similarity_layer`) alone.
 
 Layer 2-ML is **infrastructure-only by default** — memgar ships the
 TransformerDetector code and the training script (`scripts/train_transformer.py`)

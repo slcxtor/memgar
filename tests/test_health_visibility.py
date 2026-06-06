@@ -1,7 +1,7 @@
 """
 Health-visibility tests for the systemic "silently disabled subsystem" fix.
 
-Regression guard for the failure mode where SemanticGuard / TransformerDetector
+Regression guard for the failure mode where TransformerDetector
 / FeedLoader end up disabled (missing artifacts, network policy, etc.) without
 any operator-visible signal. Each subsystem must report degraded state through
 its own ``health()``, and ``Analyzer.health_check()`` must aggregate them.
@@ -140,7 +140,6 @@ class TestAnalyzerHealthCheck:
         h = a.health_check()
         assert set(h["layers"].keys()) >= {
             "layer1_patterns",
-            "layer1_5_semantic_guard",
             "layer2_llm",
             "layer2_ml_transformer",
             "layer3_trust",
@@ -153,7 +152,7 @@ class TestAnalyzerHealthCheck:
 
         a = Analyzer(use_llm=False)
         h = a.health_check()
-        # At least one of SemanticGuard / TransformerDetector / feed is
+        # At least one of TransformerDetector / feed is
         # expected to be degraded in CI (artifacts not built, no network).
         # If any are degraded, the overall status must reflect that — that's
         # the whole point of the aggregator.
@@ -177,10 +176,8 @@ class TestAnalyzerHealthCheck:
 
         a = Analyzer(
             use_llm=False,
-            semantic_guard=False,
             use_transformer_ml=False,
         )
         h = a.health_check()
         assert "status" in h
-        assert h["layers"]["layer1_5_semantic_guard"]["status"] == "disabled"
         assert h["layers"]["layer2_ml_transformer"]["status"] == "disabled"

@@ -90,7 +90,7 @@ def load_injecagent():
 
 
 def main() -> int:
-    a = Analyzer(use_llm=False, semantic_guard=False, use_transformer_ml=False)
+    a = Analyzer(use_llm=False, use_transformer_ml=False)
     import random
     MAX_PER_SOURCE = 150
     raw = load_external() + load_agentdojo()  # InjecAgent skipped (rate-limited)

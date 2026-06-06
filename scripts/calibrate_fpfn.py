@@ -223,11 +223,7 @@ def main() -> int:
 
     analyzer = Analyzer(use_llm=use_llm)
     health = analyzer.health_check()
-    logger.info(
-        "Analyzer health: %s (layer1.5=%s)",
-        health["status"],
-        health["layers"]["layer1_5_semantic_guard"].get("status"),
-    )
+    logger.info("Analyzer health: %s", health["status"])
 
     # Score every sample
     rows: list[dict[str, Any]] = []
@@ -389,7 +385,6 @@ def main() -> int:
           f"({report['n_attack']} attack, {report['n_benign']} benign)")
     print("=" * 72)
     print(f"Analyzer health   : {health['status']}")
-    print(f"Layer 1.5 status  : {health['layers']['layer1_5_semantic_guard'].get('status')}")
     print()
     print("At default Analyzer thresholds (Decision.block):")
     m = report["analyzer_default_metrics"]

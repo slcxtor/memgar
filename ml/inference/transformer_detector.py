@@ -181,9 +181,9 @@ class TransformerDetector:
         """
         Return a structured readiness snapshot.
 
-        Mirrors ``SemanticGuard.health()`` so the Analyzer's per-layer health
-        check has a uniform shape across optional ML subsystems. ``status``
-        is one of ``"ok"`` / ``"degraded"``.
+        Has a uniform shape across the Analyzer's optional ML subsystems so the
+        per-layer health check stays consistent. ``status`` is one of
+        ``"ok"`` / ``"degraded"``.
         """
         ready = self.is_ready
         status = "ok" if ready else "degraded"
