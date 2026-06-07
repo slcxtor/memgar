@@ -703,3 +703,108 @@
         font-size: 1.5rem !important;
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Design polish v2 — tighter rhythm, cleaner hero, refined honest box
+   (appended last so these rules win over the base styles above)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Hero: balanced button row, a touch more breathing room */
+.memgar-hero {
+    padding-top: 6rem;
+}
+
+.memgar-hero p:last-of-type {
+    margin-bottom: 2.25rem;
+}
+
+/* The 3 hero buttons: wrap cleanly and share even spacing */
+.memgar-hero .md-button {
+    margin: 0.375rem;
+}
+
+/* Eyebrow pill: monospace version tag reads as a build badge */
+.memgar-eyebrow {
+    font-family: var(--md-code-font);
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+    padding: 0.4rem 0.9rem;
+}
+
+/* Stat numbers: tabular figures, slightly tighter */
+.memgar-stat strong {
+    font-size: 2.4rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.memgar-stat:hover strong {
+    filter: brightness(1.08);
+}
+
+/* Honest-baseline box: accent edge + flatten the nested table so it doesn't
+   read as a card-inside-a-card */
+.memgar-honest {
+    border-left: 3px solid var(--memgar-accent);
+    padding: 1.5rem 1.75rem;
+    max-width: 780px;
+}
+
+.memgar-honest > p:first-child {
+    font-size: 0.95rem;
+    color: var(--memgar-fg);
+    margin-top: 0;
+}
+
+[data-md-color-scheme="slate"] .memgar-honest table:not([class]),
+[data-md-color-scheme="default"] .memgar-honest table:not([class]) {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    margin: 1rem 0;
+}
+
+.memgar-honest table:not([class]) th {
+    background: transparent !important;
+    border-bottom: 1px solid var(--memgar-border-strong) !important;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--memgar-fg-dim) !important;
+}
+
+.memgar-honest table:not([class]) td {
+    border-top: 1px solid var(--memgar-border) !important;
+}
+
+/* Section eyebrows: left-aligned for body sections reads cleaner than centered
+   (the hero stays centered via its own rules) */
+.md-content .memgar-section-eyebrow {
+    text-align: left;
+}
+
+/* Give the H2 that follows an eyebrow no top border/padding — the eyebrow is
+   already the visual separator, so the double rule looks busy */
+.memgar-section-eyebrow + h2 {
+    border-top: none !important;
+    margin-top: 0.25rem !important;
+    padding-top: 0 !important;
+}
+
+/* Feature cards: equal-height, title baseline aligned */
+.grid.cards > ul > li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Light mode: give the hero the same soft glow the dark theme has */
+[data-md-color-scheme="default"] .memgar-stat strong,
+[data-md-color-scheme="default"] .memgar-honest {
+    /* keep gradient text crisp on white */
+    -webkit-font-smoothing: antialiased;
+}
+
+/* CTA: a hair more compact, links sit on one row */
+.memgar-cta .md-button {
+    margin: 0.375rem;
+}
