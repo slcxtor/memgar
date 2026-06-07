@@ -31,16 +31,16 @@ from memgar.models import (
 class Scanner:
     """
     Batch scanner for memory files and directories.
-    
+
     Scans various file formats for memory poisoning threats:
     - JSON files containing memory entries
-    - SQLite databases with memory tables  
+    - SQLite databases with memory tables
     - Plain text files (one entry per line)
     - Directories with recursive scanning
-    
+
     Attributes:
         analyzer: The analyzer instance to use for scanning
-        
+
     Example:
         >>> scanner = Scanner()
         >>> result = scanner.scan_file("./memories.json")
@@ -50,7 +50,7 @@ class Scanner:
     def __init__(self, analyzer: Analyzer | None = None) -> None:
         """
         Initialize the scanner.
-        
+
         Args:
             analyzer: Optional analyzer instance. Creates default if not provided.
         """
@@ -59,12 +59,12 @@ class Scanner:
     def scan_memories(self, memories: list[dict[str, Any] | str]) -> ScanResult:
         """
         Scan a list of memory entries.
-        
+
         Args:
             memories: List of memory entries. Each entry can be:
                      - A string (the content itself)
                      - A dict with at least a 'content' key
-        
+
         Returns:
             ScanResult with aggregated statistics and all detected threats
         """
@@ -123,15 +123,15 @@ class Scanner:
     def scan_file(self, path: str) -> ScanResult:
         """
         Scan a file for memory poisoning threats.
-        
+
         Automatically detects file format based on extension:
         - .json: JSON array or object
         - .db, .sqlite, .sqlite3: SQLite database
         - .txt, .log, others: Plain text (one entry per line)
-        
+
         Args:
             path: Path to the file to scan
-        
+
         Returns:
             ScanResult with analysis of all entries in the file
         """
@@ -163,12 +163,12 @@ class Scanner:
     ) -> ScanResult:
         """
         Scan a directory for memory files.
-        
+
         Args:
             path: Path to the directory
             recursive: Whether to scan subdirectories
             extensions: File extensions to scan (default: json, txt, db)
-        
+
         Returns:
             ScanResult with aggregated results from all files
         """
@@ -237,7 +237,7 @@ class Scanner:
     def _scan_sqlite_file(self, path: str) -> ScanResult:
         """
         Scan a SQLite database for memory entries.
-        
+
         Security: Uses whitelist validation and identifier quoting to prevent SQL injection.
         Table names are validated against a strict pattern before use.
         """
@@ -245,7 +245,7 @@ class Scanner:
 
         # Whitelist pattern for valid SQLite identifiers (alphanumeric + underscore)
         import re
-        SAFE_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+        SAFE_IDENTIFIER_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
         def is_safe_identifier(name: str) -> bool:
             """Validate table/column name against whitelist pattern."""
@@ -316,7 +316,7 @@ class Scanner:
                                 "source_type": f"sqlite:{table}",
                                 "source_id": str(row[0])  # rowid
                             })
-                except sqlite3.Error as e:
+                except sqlite3.Error:
                     # Log but continue - don't expose error details
                     continue
 
@@ -343,12 +343,12 @@ class Scanner:
     ) -> Generator[AnalysisResult, None, None]:
         """
         Generator that yields results as they're analyzed.
-        
+
         Useful for progress tracking with large batches.
-        
+
         Args:
             memories: List of memory entries to scan
-        
+
         Yields:
             AnalysisResult for each entry as it's analyzed
         """
@@ -376,7 +376,7 @@ class Scanner:
 class FileWatcher:
     """
     Watch files or directories for changes and scan new content.
-    
+
     This is a basic implementation. In production, you'd use
     watchdog or similar library for efficient file watching.
     """
@@ -388,7 +388,7 @@ class FileWatcher:
     ) -> None:
         """
         Initialize the file watcher.
-        
+
         Args:
             scanner: Scanner instance to use
             callback: Function to call when threats are found
@@ -400,7 +400,7 @@ class FileWatcher:
     def check_file(self, path: str) -> ScanResult | None:
         """
         Check if a file has changed and scan it if so.
-        
+
         Returns ScanResult if file changed, None if unchanged.
         """
         path_obj = Path(path)

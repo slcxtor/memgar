@@ -18,6 +18,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -110,12 +111,27 @@ def sync_cves(
         logger.info("Reading cached NVD JSON from %s", cached_json)
         pages = [json.loads(cached_json.read_text())]
     else:
+        # NVD throttles hard: ~5 requests / 30 s without an API key, 50 with one.
+        # Space requests accordingly, and — critically — treat a fetch failure
+        # (429 after retries, transient network) as a soft stop: keep the pages
+        # already collected and move on. A partial sync is fine (the curator
+        # reviews everything anyway); crashing here used to kill the whole job
+        # and every other source with it.
+        req_delay = 0.7 if nvd_api_key else 6.0
+        max_pages = 50  # safety cap (10k results) against pathological loops
         pages = []
         start_index = 0
-        while True:
+        for _ in range(max_pages):
             url = _build_url(start, end, start_index)
             logger.info("Fetching %s", url)
-            raw = request_get(url, headers=headers)
+            try:
+                raw = request_get(url, headers=headers)
+            except Exception as exc:  # noqa: BLE001 — any fetch error is soft here
+                logger.warning(
+                    "NVD fetch failed at startIndex=%d (%s); continuing with "
+                    "%d page(s) already collected", start_index, exc, len(pages)
+                )
+                break
             page = json.loads(raw)
             pages.append(page)
             total = int(page.get("totalResults", 0))
@@ -123,6 +139,7 @@ def sync_cves(
             start_index += per
             if start_index >= total or per == 0:
                 break
+            time.sleep(req_delay)
 
     for page in pages:
         for entry in page.get("vulnerabilities", []) or []:

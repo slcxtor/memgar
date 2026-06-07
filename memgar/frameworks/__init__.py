@@ -17,7 +17,7 @@ Available integrations:
 
 from __future__ import annotations
 
-__version__ = '1.0.0'
+__version__ = "1.0.0"
 
 # LangChain deep integration
 try:
@@ -83,23 +83,23 @@ def get_available_frameworks():
     """Return list of available framework integrations"""
     available = []
     if LANGCHAIN_AVAILABLE:
-        available.append('langchain')
+        available.append("langchain")
     if LLAMAINDEX_AVAILABLE:
-        available.append('llamaindex')
+        available.append("llamaindex")
     if CREWAI_AVAILABLE:
-        available.append('crewai')
+        available.append("crewai")
     if AUTOGEN_AVAILABLE:
-        available.append('autogen')
+        available.append("autogen")
     return available
 
 
 def check_framework(name):
     """Check if a framework is available"""
     frameworks = {
-        'langchain': LANGCHAIN_AVAILABLE,
-        'llamaindex': LLAMAINDEX_AVAILABLE,
-        'crewai': CREWAI_AVAILABLE,
-        'autogen': AUTOGEN_AVAILABLE,
+        "langchain": LANGCHAIN_AVAILABLE,
+        "llamaindex": LLAMAINDEX_AVAILABLE,
+        "crewai": CREWAI_AVAILABLE,
+        "autogen": AUTOGEN_AVAILABLE,
     }
     return frameworks.get(name.lower(), False)
 

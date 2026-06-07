@@ -14,16 +14,16 @@ time window. This is critical for memory poisoning defense because:
 
 Usage:
     from memgar.circuit_breaker import CircuitBreaker, CircuitState
-    
+
     breaker = CircuitBreaker(threshold=5, window_seconds=60)
-    
+
     # In your memory processing loop
     for content in incoming_content:
         result = analyzer.analyze(content)
-        
+
         if result.decision == Decision.BLOCK:
             breaker.record_threat(result)
-        
+
         if breaker.is_tripped:
             # Stop all operations, alert humans
             raise AgentHaltedException(breaker.get_summary())
@@ -99,10 +99,10 @@ class AgentHaltedException(Exception):
 class CircuitBreaker:
     """
     Circuit breaker for AI agent memory protection.
-    
+
     Monitors threat detection rate and automatically halts operations
     when thresholds are exceeded.
-    
+
     Args:
         threshold: Number of threats to trigger trip (default: 5)
         window_seconds: Time window for counting threats (default: 60)
@@ -110,17 +110,17 @@ class CircuitBreaker:
         on_trip: Callback when breaker trips
         on_reset: Callback when breaker resets
         severity_weights: Weight multipliers by severity
-    
+
     Example:
         breaker = CircuitBreaker(
             threshold=5,
             window_seconds=60,
             on_trip=lambda stats: alert_security_team(stats)
         )
-        
+
         # Record threats as they're detected
         breaker.record_threat(threat_event)
-        
+
         # Check before processing
         if breaker.is_tripped:
             raise AgentHaltedException("Security circuit breaker active")
@@ -188,7 +188,7 @@ class CircuitBreaker:
     ) -> bool:
         """
         Record a threat event.
-        
+
         Returns True if circuit tripped as a result.
         """
         event = ThreatEvent(
@@ -216,25 +216,25 @@ class CircuitBreaker:
     def record_from_result(self, result, content: str = "", source: str = "unknown") -> bool:
         """
         Record threat from AnalysisResult or GuardResult.
-        
+
         Args:
             result: AnalysisResult or GuardResult object
             content: Original content (for preview)
             source: Source identifier
-        
+
         Returns True if circuit tripped.
         """
-        if not hasattr(result, 'threats') or not result.threats:
+        if not hasattr(result, "threats") or not result.threats:
             return False
 
         tripped = False
         for threat_match in result.threats:
-            threat = threat_match.threat if hasattr(threat_match, 'threat') else threat_match
+            threat = threat_match.threat if hasattr(threat_match, "threat") else threat_match
 
             if self.record_threat(
-                threat_id=getattr(threat, 'id', 'UNKNOWN'),
-                severity=getattr(threat.severity, 'value', 'medium') if hasattr(threat, 'severity') else 'medium',
-                risk_score=getattr(result, 'risk_score', 50),
+                threat_id=getattr(threat, "id", "UNKNOWN"),
+                severity=getattr(threat.severity, "value", "medium") if hasattr(threat, "severity") else "medium",
+                risk_score=getattr(result, "risk_score", 50),
                 content_preview=content[:100],
                 source=source,
             ):
@@ -350,19 +350,19 @@ class CircuitBreaker:
 class MultiCircuitBreaker:
     """
     Manage multiple circuit breakers for different scopes.
-    
+
     Useful for:
     - Per-session breakers
     - Per-source breakers
     - Per-agent breakers in multi-agent systems
-    
+
     Example:
         multi = MultiCircuitBreaker(default_threshold=5)
-        
+
         # Get or create breaker for specific session
         breaker = multi.get_breaker("session_123")
         breaker.record_threat(...)
-        
+
         # Check all breakers
         if multi.any_tripped():
             multi.get_tripped_breakers()

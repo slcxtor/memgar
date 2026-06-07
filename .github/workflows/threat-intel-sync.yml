@@ -54,12 +54,18 @@ jobs:
           fi
           echo "sources=$input" >> "$GITHUB_OUTPUT"
 
+      # Each source is fault-isolated: a single source failing (e.g. NVD
+      # rate-limiting an unauthenticated runner with HTTP 429) must not kill
+      # the others or skip the curator PR. The job still surfaces partial
+      # results; an empty/failed source just contributes nothing this run.
       - name: Run MITRE ATT&CK sync
         if: contains(steps.srcs.outputs.sources, 'mitre')
+        continue-on-error: true
         run: python scripts/intel/sync_mitre.py
 
       - name: Run CVE/NVD sync
         if: contains(steps.srcs.outputs.sources, 'cve')
+        continue-on-error: true
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: |
@@ -68,6 +74,7 @@ jobs:
 
       - name: Run OWASP releases sync
         if: contains(steps.srcs.outputs.sources, 'owasp')
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -75,10 +82,12 @@ jobs:
 
       - name: Run jailbreak-repos sync
         if: contains(steps.srcs.outputs.sources, 'jailbreak')
+        continue-on-error: true
         run: python scripts/intel/sync_jailbreak_repos.py --max-per-source 25
 
       - name: Run HuggingFace datasets sync
         if: contains(steps.srcs.outputs.sources, 'huggingface')
+        continue-on-error: true
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |

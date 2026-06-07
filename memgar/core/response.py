@@ -13,10 +13,10 @@ Features:
 
 Usage:
     from memgar.core.response import EnhancedResponse, format_result
-    
+
     result = analyzer.analyze(content)
     response = EnhancedResponse.from_analysis(result)
-    
+
     # Different formats
     print(response.to_json())
     print(response.to_markdown())
@@ -239,7 +239,7 @@ class RiskBreakdown:
 class EnhancedResponse:
     """
     Enhanced API response with rich explanations.
-    
+
     Provides human-readable threat information and actionable steps.
     """
     # Core fields
@@ -275,7 +275,7 @@ class EnhancedResponse:
     ) -> "EnhancedResponse":
         """
         Create enhanced response from AnalysisResult.
-        
+
         Args:
             result: AnalysisResult from analyzer
             content: Original content (for preview)
@@ -291,8 +291,8 @@ class EnhancedResponse:
 
         for match in result.threats:
             threat = match.threat
-            cat = threat.category.value if hasattr(threat.category, 'value') else str(threat.category)
-            sev = threat.severity.value if hasattr(threat.severity, 'value') else str(threat.severity)
+            cat = threat.category.value if hasattr(threat.category, "value") else str(threat.category)
+            sev = threat.severity.value if hasattr(threat.severity, "value") else str(threat.severity)
 
             # Get category info
             cat_info = CATEGORY_EXPLANATIONS.get(cat, CATEGORY_EXPLANATIONS.get("default", {}))
@@ -327,10 +327,10 @@ class EnhancedResponse:
         # Generate summary
         summary = _generate_summary(result, threats)
         primary_concern = _get_primary_concern(threats)
-        recommended_action = _get_recommended_action(result.decision.value if hasattr(result.decision, 'value') else result.decision, threats)
+        recommended_action = _get_recommended_action(result.decision.value if hasattr(result.decision, "value") else result.decision, threats)
 
         return cls(
-            decision=result.decision.value if hasattr(result.decision, 'value') else result.decision,
+            decision=result.decision.value if hasattr(result.decision, "value") else result.decision,
             risk_score=result.risk_score,
             risk_level=risk_level,
             threat_count=len(threats),
@@ -472,15 +472,15 @@ class EnhancedResponse:
             '<div class="memgar-report">',
             f'  <div class="alert alert-{status_class}">',
             f'    <h4>{sev_info["emoji"]} Decision: {self.decision.upper()}</h4>',
-            f'    <p>Risk Score: <strong>{self.risk_score}/100</strong> ({self.risk_level})</p>',
-            '  </div>',
+            f"    <p>Risk Score: <strong>{self.risk_score}/100</strong> ({self.risk_level})</p>",
+            "  </div>",
         ]
 
         if self.summary:
             html_parts.append(f'  <p class="summary">{html.escape(self.summary)}</p>')
 
         if self.threats:
-            html_parts.append(f'  <h5>Threats ({self.threat_count})</h5>')
+            html_parts.append(f"  <h5>Threats ({self.threat_count})</h5>")
             html_parts.append('  <ul class="threat-list">')
             for threat in self.threats:
                 sev = SEVERITY_INFO.get(threat.severity, {})
@@ -491,12 +491,12 @@ class EnhancedResponse:
                     f'      <small>{html.escape(threat.explanation[:100])}</small>'
                     f'    </li>'
                 )
-            html_parts.append('  </ul>')
+            html_parts.append("  </ul>")
 
         if self.recommended_action:
             html_parts.append(f'  <div class="action-box"><strong>Action:</strong> {html.escape(self.recommended_action)}</div>')
 
-        html_parts.append('</div>')
+        html_parts.append("</div>")
 
         return "\n".join(html_parts)
 
@@ -550,7 +550,7 @@ def _generate_summary(result, threats: List[ThreatDetail]) -> str:
     if not threats:
         return "No threats detected. Content appears safe for processing."
 
-    decision = result.decision.value if hasattr(result.decision, 'value') else result.decision
+    decision = result.decision.value if hasattr(result.decision, "value") else result.decision
 
     # Get primary threat info
     primary = threats[0]
@@ -615,12 +615,12 @@ def format_result(
 ) -> str:
     """
     Format analysis result in specified format.
-    
+
     Args:
         result: AnalysisResult from analyzer
         content: Original content
         format: Output format (json, markdown, plain, html)
-    
+
     Returns:
         Formatted string
     """
@@ -638,13 +638,13 @@ def format_result(
 
 def quick_explain(result) -> str:
     """Get quick one-line explanation."""
-    decision = result.decision.value if hasattr(result.decision, 'value') else result.decision
+    decision = result.decision.value if hasattr(result.decision, "value") else result.decision
 
     if not result.threats:
         return f"✅ Clean (score: {result.risk_score})"
 
     threat = result.threats[0]
-    name = threat.threat.name if hasattr(threat, 'threat') else str(threat)
+    name = threat.threat.name if hasattr(threat, "threat") else str(threat)
 
     return f"{'🚨' if decision == 'block' else '⚠️'} {name} detected (score: {result.risk_score})"
 

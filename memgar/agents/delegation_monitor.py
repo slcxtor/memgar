@@ -52,23 +52,23 @@ class DelegationAlert:
 class DelegationMonitor:
     """
     Monitors and controls permission delegation between agents.
-    
+
     Features:
     - Track all delegation events
     - Detect delegation abuse patterns
     - Enforce delegation limits
     - Alert on suspicious activity
-    
+
     Usage:
         monitor = DelegationMonitor()
-        
+
         # Record delegation
         event = monitor.record_delegation(
             delegator="coordinator",
             delegate="worker",
             capability="file_write",
         )
-        
+
         # Check alerts
         alerts = monitor.get_alerts()
     """
@@ -120,14 +120,14 @@ class DelegationMonitor:
     ) -> DelegationEvent:
         """
         Record a delegation event.
-        
+
         Args:
             delegator: Agent granting permission
             delegate: Agent receiving permission
             capability: The capability being delegated
             duration_hours: How long delegation is valid
             reason: Optional reason for delegation
-            
+
         Returns:
             DelegationEvent
         """
@@ -258,7 +258,7 @@ class DelegationMonitor:
 
         while True:
             found = False
-            for (delegator, delegate, cap), event in self._active.items():
+            for (delegator, delegate, cap), _event in self._active.items():
                 if delegate == current and cap == capability:
                     if delegator not in visited:
                         chain.append(delegator)

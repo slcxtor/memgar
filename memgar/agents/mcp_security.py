@@ -18,12 +18,12 @@ MCP Attack Vectors Covered:
 
 Usage:
     from memgar.agents import MCPSecurityLayer
-    
+
     mcp = MCPSecurityLayer()
-    
+
     # Validate tool definition
     result = mcp.validate_tool_definition(tool_schema)
-    
+
     # Validate tool call
     result = mcp.validate_tool_call(
         agent_id="agent-1",
@@ -79,7 +79,7 @@ class MCPValidationResult:
 class MCPSecurityLayer:
     """
     Security layer for Model Context Protocol operations.
-    
+
     Features:
     - Tool definition validation
     - Parameter injection detection
@@ -87,17 +87,17 @@ class MCPSecurityLayer:
     - Rate limiting per tool
     - Tool chain analysis
     - Response validation
-    
+
     Usage:
         mcp = MCPSecurityLayer()
-        
+
         # Validate a tool call
         result = mcp.validate_tool_call(
             agent_id="worker-1",
             tool_name="execute_code",
             parameters={"code": "import os; os.system('rm -rf /')"}
         )
-        
+
         if not result.is_allowed:
             print(f"Blocked: {result.blocked_reason}")
     """
@@ -164,7 +164,7 @@ class MCPSecurityLayer:
     ):
         """
         Initialize MCPSecurityLayer.
-        
+
         Args:
             text_analyzer: Optional Memgar text analyzer
             allowed_tools: Whitelist of allowed tools (if set, only these allowed)
@@ -198,10 +198,10 @@ class MCPSecurityLayer:
     ) -> MCPValidationResult:
         """
         Validate a tool definition schema.
-        
+
         Args:
             tool_schema: Tool definition (name, description, parameters, etc.)
-            
+
         Returns:
             MCPValidationResult
         """
@@ -273,13 +273,13 @@ class MCPSecurityLayer:
     ) -> MCPValidationResult:
         """
         Validate a tool call from an agent.
-        
+
         Args:
             agent_id: The calling agent
             tool_name: Name of the tool
             parameters: Tool parameters
             context: Optional context
-            
+
         Returns:
             MCPValidationResult
         """
@@ -381,12 +381,12 @@ class MCPSecurityLayer:
     ) -> MCPValidationResult:
         """
         Validate a tool's response for poisoning.
-        
+
         Args:
             tool_name: Name of the tool
             response: The tool's response
             agent_id: The requesting agent
-            
+
         Returns:
             MCPValidationResult
         """

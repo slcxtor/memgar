@@ -33,7 +33,7 @@ import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 from .anonymizer import PilotAnonymizer
 from .consent import PilotConsent

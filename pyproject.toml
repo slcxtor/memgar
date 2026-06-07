@@ -173,8 +173,22 @@ target-version = ["py39", "py310", "py311", "py312", "py313"]
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B", "Q"]
-ignore = ["E501"]
+# pyflakes (F), import-sort (I), whitespace (W), bugbear (B), quotes (Q) and the
+# pycodestyle error core (E) are enforced. pep8-naming (N) is intentionally NOT
+# enforced: the codebase uses domain exception names without an `Error` suffix
+# (PoisoningRefused, RateLimited, MemoryWriteBlocked …) and single-letter matrix
+# / scoring variables (S1…S7) by design; renaming the public exceptions would be
+# a breaking API change for callers that catch them.
+select = ["E", "F", "I", "W", "B", "Q"]
+ignore = [
+    "E501",  # line length — long pattern strings / URLs are unavoidable here
+    "E402",  # module import not at top — used for sys.path setup + optional-dep guards
+    "E701",  # multiple statements on one line (colon) — terse guard clauses kept on purpose
+    "E702",  # multiple statements on one line (semicolon) — same
+    "E741",  # ambiguous variable name — short names are fine in tight local scopes
+    "B904",  # raise-without-from — exception chaining is nice-to-have, not enforced
+    "B007",  # unused loop control variable — not worth churning to `_`
+]
 
 [tool.ruff.lint.per-file-ignores]
 # Re-export modules: F401 is intent (public API surface), documented by __all__
@@ -183,8 +197,18 @@ ignore = ["E501"]
 "memgar/agents/__init__.py" = ["F401"]
 "memgar/core/__init__.py" = ["F401"]
 "memgar/feed/__init__.py" = ["F401"]
+"memgar/frameworks/__init__.py" = ["F401"]
 "memgar/multimodal/__init__.py" = ["F401"]
 "memgar/observability/__init__.py" = ["F401"]
+# Availability-probe modules: a bare `import optional_dep` is the documented way
+# these detect whether an optional backend is installed; F401 is the intent.
+"memgar/embeddings.py" = ["F401"]
+"memgar/cli.py" = ["F401"]
+"memgar/frameworks/langchain_deep.py" = ["F401"]
+"memgar/frameworks/llamaindex_deep.py" = ["F401"]
+"memgar/integrations/mcp_server.py" = ["F401"]
+"memgar/multimodal/pdf_analyzer.py" = ["F401"]
+"memgar/observability/tracing.py" = ["F401"]
 # Test files: unused imports often intentional (fixtures, parametrize markers)
 "tests/*" = ["F401"]
 

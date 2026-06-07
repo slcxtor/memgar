@@ -12,7 +12,7 @@ Validates messages between AI agents to prevent:
 
 Usage:
     from memgar.agents import AgentMessageValidator
-    
+
     validator = AgentMessageValidator()
     result = validator.validate(
         source_agent="coordinator",
@@ -20,7 +20,7 @@ Usage:
         message="Please process the user's request",
         context={"task": "summarization"}
     )
-    
+
     if not result.is_valid:
         print(f"Blocked: {result.threats}")
 """
@@ -74,24 +74,24 @@ class MessageValidationResult:
 class AgentMessageValidator:
     """
     Validates messages between AI agents.
-    
+
     Detects and prevents malicious inter-agent communication including:
     - Prompt injection through agent messages
     - Attempts to exfiltrate credentials or data
     - Authority/permission escalation
     - Hidden instructions using encoding/obfuscation
     - Trust chain manipulation
-    
+
     Usage:
         validator = AgentMessageValidator()
-        
+
         # Validate a message
         result = validator.validate(
             source_agent="orchestrator",
             target_agent="tool-agent",
             message="Execute the following task...",
         )
-        
+
         if not result.is_valid:
             # Handle threat
             for threat in result.threats:
@@ -197,7 +197,7 @@ class AgentMessageValidator:
     ):
         """
         Initialize AgentMessageValidator.
-        
+
         Args:
             text_analyzer: Optional Memgar text analyzer
             strict_mode: Enable stricter validation
@@ -231,14 +231,14 @@ class AgentMessageValidator:
     ) -> MessageValidationResult:
         """
         Validate an agent-to-agent message.
-        
+
         Args:
             source_agent: Identifier of sending agent
             target_agent: Identifier of receiving agent
             message: Message content
             context: Optional context (task, permissions, etc.)
             message_id: Optional unique message ID
-            
+
         Returns:
             MessageValidationResult
         """
@@ -386,8 +386,8 @@ class AgentMessageValidator:
                 break
 
         # Check for email addresses (potential exfil destinations)
-        emails = re.findall(r'[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}', message.lower())
-        suspicious_domains = ['.ru', '.cn', '.tk', '.ml', '.ga']
+        emails = re.findall(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", message.lower())
+        suspicious_domains = [".ru", ".cn", ".tk", ".ml", ".ga"]
 
         for email in emails:
             for domain in suspicious_domains:
@@ -615,10 +615,10 @@ class AgentMessageValidator:
         sanitized = message
 
         # Remove zero-width characters
-        sanitized = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f]', '', sanitized)
+        sanitized = re.sub(r"[\u200b-\u200f\u2028-\u202f\u2060-\u206f]", "", sanitized)
 
         # Remove RTL override
-        sanitized = sanitized.replace('\u202e', '').replace('\u202d', '')
+        sanitized = sanitized.replace("\u202e", "").replace("\u202d", "")
 
         return sanitized
 
@@ -753,7 +753,7 @@ class AgentMessageValidator:
                 validation_time_ms=(time.time() - start) * 1000,
             )
 
-        mid = message_id or hashlib.sha256(
+        message_id or hashlib.sha256(
             f"{agent_id}:{output[:80]}:{time.time()}".encode()
         ).hexdigest()[:16]
 

@@ -6,11 +6,11 @@ Monitor files for changes and scan automatically.
 
 Usage:
     from memgar.watcher import MemoryWatcher
-    
+
     # Watch a file
     watcher = MemoryWatcher()
     watcher.watch("memories.txt")
-    
+
     # CLI usage
     memgar watch memories.txt
     memgar watch ./data/ --pattern "*.txt"
@@ -51,11 +51,11 @@ class WatchStats:
 class MemoryWatcher:
     """
     Watch files for changes and scan automatically.
-    
+
     Example:
         watcher = MemoryWatcher(on_threat=lambda e: print(f"Threat: {e}"))
         watcher.watch("memories.txt")
-        
+
         # Or watch directory
         watcher.watch_directory("./data", pattern="*.txt")
     """
@@ -71,7 +71,7 @@ class MemoryWatcher:
     ):
         """
         Initialize watcher.
-        
+
         Args:
             mode: Scan mode (protect, monitor, audit) - reserved for future use
             interval: Check interval in seconds
@@ -214,7 +214,7 @@ class MemoryWatcher:
     ) -> None:
         """
         Watch a single file.
-        
+
         Args:
             filepath: Path to file
             blocking: Block main thread
@@ -254,7 +254,7 @@ class MemoryWatcher:
     ) -> None:
         """
         Watch all matching files in directory.
-        
+
         Args:
             directory: Directory path
             pattern: File pattern (glob)
@@ -361,7 +361,7 @@ FileChangeHandler = MemoryWatcher
 def watch_file(filepath: str, **kwargs) -> None:
     """
     Quick function to watch a file.
-    
+
     Args:
         filepath: Path to file
         **kwargs: Arguments for MemoryWatcher
@@ -373,7 +373,7 @@ def watch_file(filepath: str, **kwargs) -> None:
 def watch_directory(directory: str, pattern: str = "*.txt", **kwargs) -> None:
     """
     Quick function to watch a directory.
-    
+
     Args:
         directory: Directory path
         pattern: File pattern

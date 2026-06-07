@@ -84,14 +84,14 @@ class AudioAnalysisResult:
 class AudioAnalyzer:
     """
     Analyzes audio files for hidden threats.
-    
+
     Features:
     - Ultrasonic frequency analysis (hidden commands)
     - LSB steganography detection
     - Metadata analysis
     - Speech-to-text with threat detection
     - Spectrogram anomaly detection
-    
+
     Usage:
         analyzer = AudioAnalyzer()
         result = analyzer.analyze(audio_bytes)
@@ -119,7 +119,7 @@ class AudioAnalyzer:
     ):
         """
         Initialize AudioAnalyzer.
-        
+
         Args:
             text_analyzer: Optional Memgar analyzer
             enable_speech_recognition: Enable speech-to-text
@@ -146,11 +146,11 @@ class AudioAnalyzer:
     ) -> AudioAnalysisResult:
         """
         Analyze audio for hidden threats.
-        
+
         Args:
             audio_data: Audio bytes or base64 string
             filename: Optional filename
-            
+
         Returns:
             AudioAnalysisResult
         """
@@ -186,7 +186,7 @@ class AudioAnalyzer:
         threats.extend(meta_threats)
 
         # WAV-specific analysis
-        if audio_bytes.startswith(b'RIFF') and b'WAVE' in audio_bytes[:20]:
+        if audio_bytes.startswith(b"RIFF") and b"WAVE" in audio_bytes[:20]:
             wav_result = self._analyze_wav(audio_bytes)
             threats.extend(wav_result.get("threats", []))
             file_info.update(wav_result.get("info", {}))
@@ -267,13 +267,13 @@ class AudioAnalyzer:
             info["filename"] = filename
 
         # Detect format
-        if data.startswith(b'RIFF'):
+        if data.startswith(b"RIFF"):
             info["format"] = "WAV"
-        elif data.startswith(b'ID3') or data.startswith(b'\xff\xfb'):
+        elif data.startswith(b"ID3") or data.startswith(b"\xff\xfb"):
             info["format"] = "MP3"
-        elif data.startswith(b'OggS'):
+        elif data.startswith(b"OggS"):
             info["format"] = "OGG"
-        elif data.startswith(b'fLaC'):
+        elif data.startswith(b"fLaC"):
             info["format"] = "FLAC"
 
         return info
@@ -283,11 +283,11 @@ class AudioAnalyzer:
         threats = []
 
         # ID3 tags (MP3)
-        if data.startswith(b'ID3'):
+        if data.startswith(b"ID3"):
             try:
                 # Simple ID3v2 parsing
                 # Check for suspicious content in tags
-                content = data[:10000].decode('latin-1', errors='ignore')
+                content = data[:10000].decode("latin-1", errors="ignore")
 
                 for pattern in self._patterns:
                     if pattern.search(content):
@@ -300,7 +300,7 @@ class AudioAnalyzer:
                         break
 
                 # Check for URLs in metadata
-                if re.search(r'https?://[a-z0-9.-]+\.(ru|cn|tk)', content, re.I):
+                if re.search(r"https?://[a-z0-9.-]+\.(ru|cn|tk)", content, re.I):
                     threats.append(AudioThreat(
                         threat_type=AudioThreatType.METADATA_INJECTION,
                         severity="medium",
@@ -322,7 +322,7 @@ class AudioAnalyzer:
             if len(data) < 44:
                 return result
 
-            riff, size, wave = struct.unpack('<4sI4s', data[:12])
+            riff, size, wave = struct.unpack("<4sI4s", data[:12])
 
             result["info"]["riff_size"] = size
 
@@ -343,13 +343,13 @@ class AudioAnalyzer:
             pos = 12
             while pos < len(data) - 8:
                 chunk_id = data[pos:pos+4]
-                chunk_size = struct.unpack('<I', data[pos+4:pos+8])[0]
+                chunk_size = struct.unpack("<I", data[pos+4:pos+8])[0]
 
-                if chunk_id == b'fmt ':
+                if chunk_id == b"fmt ":
                     if chunk_size >= 16:
                         fmt_data = data[pos+8:pos+8+16]
                         audio_format, channels, sample_rate, byte_rate, block_align, bits = \
-                            struct.unpack('<HHIIHH', fmt_data)
+                            struct.unpack("<HHIIHH", fmt_data)
 
                         result["info"]["channels"] = channels
                         result["info"]["sample_rate"] = sample_rate
@@ -403,7 +403,7 @@ class AudioAnalyzer:
             cutoff = self.ULTRASONIC_THRESHOLD_HZ / nyquist
 
             if cutoff < 1:
-                b, a = signal.butter(5, cutoff, btype='high')
+                b, a = signal.butter(5, cutoff, btype="high")
                 ultrasonic = signal.filtfilt(b, a, samples)
 
                 # Calculate energy in ultrasonic band
@@ -499,7 +499,7 @@ class AudioAnalyzer:
                 ascii_ratio = ascii_count / len(byte_samples) if byte_samples else 0
 
                 if ascii_ratio > 0.6:
-                    hidden_text = ''.join(chr(b) for b in byte_samples if 32 <= b <= 126)
+                    hidden_text = "".join(chr(b) for b in byte_samples if 32 <= b <= 126)
 
                     threats.append(AudioThreat(
                         threat_type=AudioThreatType.STEGANOGRAPHY_LSB,

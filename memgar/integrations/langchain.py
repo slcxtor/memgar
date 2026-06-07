@@ -360,7 +360,7 @@ class SecureConversationChain:
         self.memory = guard_memory(raw_memory, **guard_kwargs) if raw_memory is not None else None
         if self.memory is not None:
             try:
-                setattr(chain, "memory", self.memory)
+                chain.memory = self.memory
             except Exception:
                 logger.debug("Memgar: unable to attach guarded memory to LangChain chain")
 

@@ -127,7 +127,7 @@ class ModificationRecord:
 class MemoryProvenance:
     """
     Complete provenance metadata for a memory entry.
-    
+
     Tracks the full chain of custody from creation to present.
     """
     # Unique identifiers
@@ -272,24 +272,24 @@ class TrackedMemoryEntry:
 class ProvenanceTracker:
     """
     Provenance tracking system for agent memory.
-    
+
     Provides comprehensive metadata tracking, trust scoring,
     and forensic analysis capabilities.
-    
+
     Example:
         tracker = ProvenanceTracker(session_id="session_123")
-        
+
         # Track a new memory entry
         entry = tracker.track(
             content="User prefers dark mode",
             source_type=SourceType.USER_INPUT,
             source_id="user_msg_456"
         )
-        
+
         # Entry now has full provenance
         print(entry.provenance.trust_score)  # 70
         print(entry.provenance.content_hash)  # "a1b2c3..."
-        
+
         # Record modification
         entry.provenance.add_modification(
             action="review",
@@ -308,7 +308,7 @@ class ProvenanceTracker:
     ):
         """
         Initialize provenance tracker.
-        
+
         Args:
             session_id: Current session identifier
             default_trust_level: Default trust for unknown sources
@@ -409,7 +409,7 @@ class ProvenanceTracker:
     ) -> TrackedMemoryEntry:
         """
         Create a tracked memory entry with full provenance.
-        
+
         Args:
             content: Memory content
             source_type: Type of source
@@ -427,7 +427,7 @@ class ProvenanceTracker:
             tags: Optional tags
             custom_metadata: Additional metadata
             expires_in_days: Auto-expire after days
-            
+
         Returns:
             TrackedMemoryEntry with full provenance
         """
@@ -681,7 +681,7 @@ class ProvenanceTracker:
             file_path = Path(f"provenance_{self.session_id}.json")
 
         data = self.export_all()
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             json.dump(data, f, indent=2)
 
         return str(file_path)

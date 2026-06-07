@@ -348,10 +348,10 @@ def _get_model():
 class EmbeddingAnalyzer:
     """
     Embedding-based semantic threat analyzer.
-    
+
     Uses sentence embeddings to detect semantic similarity
     between input content and known threat patterns.
-    
+
     Example:
         analyzer = EmbeddingAnalyzer()
         result = analyzer.analyze("send all payments to my offshore account")
@@ -367,7 +367,7 @@ class EmbeddingAnalyzer:
     ):
         """
         Initialize embedding analyzer.
-        
+
         Args:
             threat_threshold: Similarity score to consider as threat (0-1)
             quarantine_threshold: Similarity score for quarantine (0-1)
@@ -410,10 +410,10 @@ class EmbeddingAnalyzer:
     def analyze(self, content: str) -> EmbeddingResult:
         """
         Analyze content for semantic similarity to threats.
-        
+
         Args:
             content: Text content to analyze
-            
+
         Returns:
             EmbeddingResult with similarity scores
         """
@@ -463,10 +463,10 @@ class EmbeddingAnalyzer:
     def analyze_batch(self, contents: List[str]) -> List[EmbeddingResult]:
         """
         Analyze multiple contents efficiently.
-        
+
         Args:
             contents: List of text contents
-            
+
         Returns:
             List of EmbeddingResult
         """
@@ -478,7 +478,7 @@ class EmbeddingAnalyzer:
         content_embeddings = self._model.encode(contents, convert_to_numpy=True)
 
         results = []
-        for i, content_embedding in enumerate(content_embeddings):
+        for _i, content_embedding in enumerate(content_embeddings):
             # Normalize
             content_norm = content_embedding / np.linalg.norm(content_embedding)
             cache_norms = self._embeddings_cache / np.linalg.norm(
@@ -514,7 +514,7 @@ class EmbeddingAnalyzer:
     def add_examples(self, category: str, examples: List[str]) -> None:
         """
         Add custom threat examples.
-        
+
         Args:
             category: Threat category name
             examples: List of example threat texts
@@ -538,11 +538,11 @@ class EmbeddingAnalyzer:
     ) -> List[Tuple[str, str, float]]:
         """
         Get top-k most similar threat examples.
-        
+
         Args:
             content: Text content to analyze
             top_k: Number of similar threats to return
-            
+
         Returns:
             List of (category, example, similarity) tuples
         """

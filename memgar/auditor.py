@@ -18,12 +18,12 @@ This is critical for memory poisoning defense because:
 
 Usage:
     from memgar.auditor import MemoryAuditor
-    
+
     auditor = MemoryAuditor(storage_path="./memory_snapshots")
-    
+
     # Take periodic snapshots
     snapshot_id = auditor.snapshot(memory_store)
-    
+
     # Verify integrity
     if not auditor.verify(memory_store, snapshot_id):
         # Memory was modified!
@@ -123,26 +123,26 @@ class IntegrityReport:
 class MemoryAuditor:
     """
     Memory integrity auditor for AI agents.
-    
+
     Provides snapshot, verification, and rollback capabilities
     for agent memory stores.
-    
+
     Args:
         storage_path: Directory for storing snapshots
         max_snapshots: Maximum snapshots to retain (default: 100)
         compress: Whether to compress snapshots (default: True)
         on_integrity_failure: Callback when integrity check fails
         session_id: Current session identifier
-    
+
     Example:
         auditor = MemoryAuditor("./snapshots")
-        
+
         # Snapshot before risky operation
         snap_id = auditor.snapshot(memory_data, "Before email import")
-        
+
         # Process potentially dangerous content
         process_emails(memory_data)
-        
+
         # Verify nothing was poisoned
         report = auditor.verify(memory_data, snap_id)
         if not report.is_valid:
@@ -197,11 +197,11 @@ class MemoryAuditor:
     def _serialize(self, data: Any) -> bytes:
         """Serialize data for storage."""
         json_str = json.dumps(data, sort_keys=True, default=str, indent=2)
-        return json_str.encode('utf-8')
+        return json_str.encode("utf-8")
 
     def _deserialize(self, data: bytes) -> Any:
         """Deserialize data from storage."""
-        return json.loads(data.decode('utf-8'))
+        return json.loads(data.decode("utf-8"))
 
     def _get_snapshot_path(self, snapshot_id: str) -> Path:
         """Get file path for snapshot."""
@@ -214,7 +214,7 @@ class MemoryAuditor:
         serialized = self._serialize(data)
 
         if self.compress:
-            with gzip.open(filepath, 'wb') as f:
+            with gzip.open(filepath, "wb") as f:
                 f.write(serialized)
         else:
             filepath.write_bytes(serialized)
@@ -229,7 +229,7 @@ class MemoryAuditor:
             raise FileNotFoundError(f"Snapshot not found: {snapshot_id}")
 
         if self.compress:
-            with gzip.open(filepath, 'rb') as f:
+            with gzip.open(filepath, "rb") as f:
                 return self._deserialize(f.read())
         else:
             return self._deserialize(filepath.read_bytes())
@@ -272,7 +272,7 @@ class MemoryAuditor:
                 for s in sorted(self._snapshots.values(), key=lambda x: x.timestamp)
             ]
         }
-        with open(index_path, 'w') as f:
+        with open(index_path, "w") as f:
             json.dump(index_data, f, indent=2)
 
     def _log_event(self, event_type: AuditEventType, details: Dict = None, snapshot_id: str = None) -> None:
@@ -307,12 +307,12 @@ class MemoryAuditor:
     ) -> str:
         """
         Take a snapshot of memory state.
-        
+
         Args:
             memory_data: The memory data to snapshot (dict, list, or serializable)
             description: Optional description of this snapshot
             snapshot_id: Optional custom ID (auto-generated if not provided)
-        
+
         Returns:
             Snapshot ID
         """
@@ -365,12 +365,12 @@ class MemoryAuditor:
     ) -> IntegrityReport:
         """
         Verify memory integrity against a snapshot.
-        
+
         Args:
             memory_data: Current memory data
             snapshot_id: Snapshot ID to verify against
             detailed: If True, compute detailed differences
-        
+
         Returns:
             IntegrityReport with verification results
         """
@@ -417,7 +417,7 @@ class MemoryAuditor:
         """Compute differences between original and current data."""
         differences = []
 
-        if type(original) != type(current):
+        if type(original) is not type(current):
             differences.append(f"{path or 'root'}: type changed from {type(original).__name__} to {type(current).__name__}")
             return differences
 
@@ -451,10 +451,10 @@ class MemoryAuditor:
     def rollback(self, snapshot_id: str) -> Any:
         """
         Load and return data from a snapshot for rollback.
-        
+
         Args:
             snapshot_id: Snapshot ID to rollback to
-        
+
         Returns:
             The memory data from the snapshot
         """
@@ -526,7 +526,7 @@ class MemoryAuditor:
     ) -> None:
         """
         Log a memory operation for audit trail.
-        
+
         Args:
             operation: "write", "delete", "read"
             content_preview: Preview of content (will be truncated)
@@ -551,7 +551,7 @@ class MemoryAuditor:
 
     def export_audit_log(self, filepath: Union[str, Path]) -> None:
         """Export audit log to file."""
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(
                 [e.to_dict() for e in self._audit_log],
                 f,
@@ -566,19 +566,19 @@ class MemoryAuditor:
 class MemoryGuardWithAudit:
     """
     Wrapper that combines MemoryGuard with auditing.
-    
+
     Automatically logs all memory operations and can take
     snapshots before risky operations.
-    
+
     Example:
         from memgar.memory_guard import MemoryGuard
         from memgar.auditor import MemoryGuardWithAudit
-        
+
         guard = MemoryGuardWithAudit(
             storage_path="./audit",
             auto_snapshot_interval=100,  # Snapshot every 100 operations
         )
-        
+
         result = guard.process(content, memory_store)
         if result.allowed:
             memory_store.append(result.safe_content)

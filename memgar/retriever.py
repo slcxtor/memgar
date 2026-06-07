@@ -192,18 +192,18 @@ class DecayFunction(Enum):
 class TemporalDecay:
     """
     Temporal decay calculator for memory freshness.
-    
+
     Reduces the influence of older memories over time.
-    
+
     Example:
         decay = TemporalDecay(
             half_life_days=30,
             decay_function=DecayFunction.EXPONENTIAL
         )
-        
+
         # Memory from 30 days ago
         weight = decay.calculate(days_old=30)  # ~0.5
-        
+
         # Memory from 90 days ago
         weight = decay.calculate(days_old=90)  # ~0.125
     """
@@ -218,7 +218,7 @@ class TemporalDecay:
     ):
         """
         Initialize temporal decay.
-        
+
         Args:
             half_life_days: Days until memory weight is halved
             decay_function: Type of decay function
@@ -244,13 +244,13 @@ class TemporalDecay:
     ) -> float:
         """
         Calculate temporal decay weight.
-        
+
         Args:
             created_at: When the memory was created
             days_old: Age in days (alternative to created_at)
             last_accessed_at: When memory was last accessed
             access_count: Number of times accessed
-            
+
         Returns:
             Weight between min_weight and 1.0
         """
@@ -342,21 +342,21 @@ class AnomalyEvent:
 class RetrievalAnomalyDetector:
     """
     Detects anomalous retrieval patterns.
-    
+
     Monitors for:
     - Documents retrieved with unusual frequency
     - Documents activated by narrow query patterns
     - Sudden changes in retrieval patterns
     - Low-trust documents appearing in many contexts
-    
+
     Example:
         detector = RetrievalAnomalyDetector()
-        
+
         # Record retrievals
         detector.record_retrieval("doc_123", "query about finances")
         detector.record_retrieval("doc_123", "different query")
         detector.record_retrieval("doc_123", "yet another query")
-        
+
         # Check for anomalies
         anomalies = detector.check_anomalies("doc_123")
     """
@@ -378,7 +378,7 @@ class RetrievalAnomalyDetector:
     ):
         """
         Initialize anomaly detector.
-        
+
         Args:
             high_frequency_threshold: Max normal retrievals per hour
             narrow_query_threshold: Similarity threshold for narrow patterns
@@ -430,7 +430,7 @@ class RetrievalAnomalyDetector:
         self._doc_trust_scores[doc_id] = trust_score
 
         # Update hourly rate
-        hour_key = now.replace(minute=0, second=0, microsecond=0)
+        now.replace(minute=0, second=0, microsecond=0)
         self._hourly_rates[doc_id].append((now, 1))
 
         # Cleanup old records
@@ -501,16 +501,16 @@ class RetrievalAnomalyDetector:
     ) -> List[AnomalyEvent]:
         """
         Check for anomalies related to a document.
-        
+
         Args:
             doc_id: Document to check
             include_global: Include global pattern checks
-            
+
         Returns:
             List of detected anomalies
         """
         anomalies = []
-        now = datetime.now(timezone.utc)
+        datetime.now(timezone.utc)
 
         # Check 1: High frequency retrieval
         recent = self._get_recent_retrievals(doc_id, self.frequency_window_hours)
@@ -636,13 +636,13 @@ class RetrievalAnomalyDetector:
 class TrustAwareRetriever:
     """
     Trust-aware retrieval system for RAG.
-    
+
     Wraps any retriever and adds:
     1. Trust-weighted ranking
     2. Temporal decay
     3. Anomaly detection
     4. Filtering of untrusted content
-    
+
     Example:
         # Wrap your existing retriever
         retriever = TrustAwareRetriever(
@@ -650,10 +650,10 @@ class TrustAwareRetriever:
             min_trust_score=0.3,
             enable_temporal_decay=True,
         )
-        
+
         # Retrieve with trust awareness
         result = retriever.retrieve("What are our payment policies?")
-        
+
         # Get only trusted documents
         trusted_docs = result.get_trusted_docs()
     """
@@ -693,7 +693,7 @@ class TrustAwareRetriever:
     ):
         """
         Initialize trust-aware retriever.
-        
+
         Args:
             base_retriever: Base retriever object (with .invoke() or .get_relevant_documents())
             retrieve_fn: Alternative: function that takes query and returns docs
@@ -781,18 +781,18 @@ class TrustAwareRetriever:
     ) -> Tuple[str, str, float, Optional[RetrievalMetadata]]:
         """Extract doc_id, content, similarity, and metadata from a document."""
         # Handle different document formats
-        if hasattr(doc, 'page_content'):
+        if hasattr(doc, "page_content"):
             # LangChain Document
             content = doc.page_content
-            doc_id = doc.metadata.get('doc_id', doc.metadata.get('id', str(hash(content))))
-            similarity = doc.metadata.get('score', doc.metadata.get('similarity', 0.5))
+            doc_id = doc.metadata.get("doc_id", doc.metadata.get("id", str(hash(content))))
+            similarity = doc.metadata.get("score", doc.metadata.get("similarity", 0.5))
         elif isinstance(doc, dict):
-            content = doc.get('content', doc.get('text', doc.get('page_content', '')))
-            doc_id = doc.get('doc_id', doc.get('id', str(hash(content))))
-            similarity = doc.get('score', doc.get('similarity', 0.5))
+            content = doc.get("content", doc.get("text", doc.get("page_content", "")))
+            doc_id = doc.get("doc_id", doc.get("id", str(hash(content))))
+            similarity = doc.get("score", doc.get("similarity", 0.5))
         elif isinstance(doc, tuple) and len(doc) >= 2:
             # (Document, score) tuple
-            content = doc[0].page_content if hasattr(doc[0], 'page_content') else str(doc[0])
+            content = doc[0].page_content if hasattr(doc[0], "page_content") else str(doc[0])
             doc_id = str(hash(content))
             similarity = doc[1]
         else:
@@ -873,12 +873,12 @@ class TrustAwareRetriever:
     ) -> RetrievalResult:
         """
         Retrieve documents with trust-aware ranking.
-        
+
         Args:
             query: Query string
             top_k: Number of documents (overrides default)
             **kwargs: Additional args for base retriever
-            
+
         Returns:
             RetrievalResult with trust-adjusted documents
         """
@@ -1003,13 +1003,13 @@ class TrustAwareRetriever:
 
         if self.base_retriever:
             # Try different retriever interfaces
-            if hasattr(self.base_retriever, 'invoke'):
+            if hasattr(self.base_retriever, "invoke"):
                 return self.base_retriever.invoke(query, k=k, **kwargs)
-            elif hasattr(self.base_retriever, 'get_relevant_documents'):
+            elif hasattr(self.base_retriever, "get_relevant_documents"):
                 return self.base_retriever.get_relevant_documents(query, k=k, **kwargs)
-            elif hasattr(self.base_retriever, 'similarity_search_with_score'):
+            elif hasattr(self.base_retriever, "similarity_search_with_score"):
                 return self.base_retriever.similarity_search_with_score(query, k=k, **kwargs)
-            elif hasattr(self.base_retriever, 'similarity_search'):
+            elif hasattr(self.base_retriever, "similarity_search"):
                 return self.base_retriever.similarity_search(query, k=k, **kwargs)
             elif callable(self.base_retriever):
                 return self.base_retriever(query, k=k, **kwargs)

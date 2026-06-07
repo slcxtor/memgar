@@ -783,7 +783,7 @@ class EUAIActReport:
 
     def generate_html(self) -> str:
         """HTML compliance report with styling."""
-        md = self.generate_markdown()
+        self.generate_markdown()
         rc = self._classify_risk()
         checks = self._build_checks()
         gap = self._gap_summary(checks)

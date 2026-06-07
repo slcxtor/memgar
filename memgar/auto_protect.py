@@ -666,7 +666,7 @@ class _MemgarImportHook:
 
 
 # We use a different approach: wrap __import__ to detect when targets load
-_original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else None
+_original_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else None
 
 _hook_instance = _MemgarImportHook()
 

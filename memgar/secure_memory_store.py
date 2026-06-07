@@ -895,7 +895,7 @@ def _coerce_entry(value: Any) -> MemoryEntry:
         return value
     if hasattr(value, "content"):
         return MemoryEntry(
-            content=str(getattr(value, "content")),
+            content=str(value.content),
             source_type=getattr(value, "source_type", "unknown"),
             source_id=getattr(value, "source_id", None),
             metadata=dict(getattr(value, "metadata", {}) or {}),

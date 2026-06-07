@@ -17,10 +17,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from memgar import Analyzer, MemoryEntry
-from memgar.models import AnalysisResult, Decision
+from memgar.models import Decision
 
 logger = logging.getLogger("memgar.integrations.vector")
 

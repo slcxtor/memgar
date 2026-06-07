@@ -114,8 +114,8 @@ class MemgarPGVectorStore:
                 safe_docs.append(type(original)(page_content=t, metadata=new_meta))
             except Exception:
                 try:
-                    setattr(original, "page_content", t)
-                    setattr(original, "metadata", new_meta)
+                    original.page_content = t
+                    original.metadata = new_meta
                 except Exception:
                     pass
                 safe_docs.append(original)
@@ -132,11 +132,11 @@ class MemgarPGVectorStore:
         for i, node in enumerate(nodes):
             if safe_texts[i] != texts[i]:
                 try:
-                    setattr(node, "text", safe_texts[i])
+                    node.text = safe_texts[i]
                 except Exception:
                     pass
                 try:
-                    setattr(node, "content", safe_texts[i])
+                    node.content = safe_texts[i]
                 except Exception:
                     pass
         return self._store.add(nodes, **kwargs)
@@ -204,7 +204,7 @@ class MemgarPGVectorStore:
                     meta.update(patch)
                     continue
             try:
-                setattr(doc, "memgar_metadata", patch)
+                doc.memgar_metadata = patch
             except Exception:
                 pass
 

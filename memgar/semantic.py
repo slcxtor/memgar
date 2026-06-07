@@ -9,11 +9,11 @@ Memgar Semantic Analyzer (Hybrid)
 
 Usage:
     from memgar.semantic import SemanticAnalyzer
-    
+
     # Basic usage (Regex + Embeddings)
     analyzer = SemanticAnalyzer()
     result = analyzer.analyze("transfer funds to external account")
-    
+
     # With LLM for edge cases
     analyzer = SemanticAnalyzer(
         llm_provider="anthropic",
@@ -89,29 +89,29 @@ class SemanticResult:
 class SemanticAnalyzer:
     """
     Hybrid 3-layer semantic threat analyzer.
-    
+
     Layer 1 (Regex): Fast pattern matching (~5ms)
         - Catches obvious threats immediately
         - Uses existing Memgar patterns
-        
+
     Layer 2 (Embeddings): Semantic similarity (~50ms)
         - Catches paraphrased/obfuscated threats
         - Works offline with local model
-        
+
     Layer 3 (LLM): Deep analysis (~500ms)
         - Highest accuracy for edge cases
         - Optional, requires API key
-    
+
     Flow:
         Content → Regex (certain? return) → Embeddings (certain? return) → LLM → Final
-    
+
     Example:
         analyzer = SemanticAnalyzer(
             enable_embeddings=True,
             llm_provider="anthropic",
             llm_api_key="<your-anthropic-key>"
         )
-        
+
         result = analyzer.analyze("send all money to my account")
         print(result.decision)  # "BLOCK"
         print(result.risk_score)  # 92
@@ -143,23 +143,23 @@ class SemanticAnalyzer:
     ):
         """
         Initialize semantic analyzer.
-        
+
         Args:
             enable_regex: Enable regex/pattern layer
             regex_block_threshold: Score threshold to block without further analysis
             regex_allow_threshold: Score threshold to allow without further analysis
-            
+
             enable_embeddings: Enable embedding similarity layer
             embedding_threat_threshold: Similarity threshold for threat (0-1)
             embedding_quarantine_threshold: Similarity threshold for quarantine (0-1)
-            
+
             enable_llm: Enable LLM layer
             llm_provider: "anthropic" or "openai"
             llm_api_key: API key for LLM
             llm_model: Model name
             llm_for_uncertain: Only use LLM for uncertain cases
             llm_score_range: Score range to trigger LLM analysis
-            
+
             verbose: Enable verbose logging
         """
         self.enable_regex = enable_regex
@@ -238,10 +238,10 @@ class SemanticAnalyzer:
     def analyze(self, content: str) -> SemanticResult:
         """
         Analyze content using hybrid approach.
-        
+
         Args:
             content: Text content to analyze
-            
+
         Returns:
             SemanticResult with decision and details
         """
@@ -399,10 +399,10 @@ class SemanticAnalyzer:
     def analyze_batch(self, contents: List[str]) -> List[SemanticResult]:
         """
         Analyze multiple contents.
-        
+
         Args:
             contents: List of text contents
-            
+
         Returns:
             List of SemanticResult
         """
@@ -434,12 +434,12 @@ class SemanticAnalyzer:
 def quick_analyze(content: str, enable_llm: bool = False, **kwargs) -> SemanticResult:
     """
     Quick semantic analysis.
-    
+
     Args:
         content: Text to analyze
         enable_llm: Enable LLM layer
         **kwargs: Additional SemanticAnalyzer arguments
-        
+
     Returns:
         SemanticResult
     """

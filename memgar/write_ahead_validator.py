@@ -723,7 +723,7 @@ Content to evaluate:
             result = json.loads(text.strip())
         except json.JSONDecodeError:
             # JSON bulunamadı — metin içinde ara
-            m = re.search(r'\{[^}]+\}', text)
+            m = re.search(r"\{[^}]+\}", text)
             result = json.loads(m.group(0)) if m else {"decision": "UNCERTAIN", "risk_score": 50}
 
         decision = result.get("decision", "UNCERTAIN")

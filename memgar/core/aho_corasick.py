@@ -4,7 +4,7 @@ Memgar High-Performance Pattern Matching
 
 Aho-Corasick algorithm implementation for O(n + m + z) pattern matching.
 - n: text length
-- m: total pattern length  
+- m: total pattern length
 - z: number of matches
 
 Optimized for:
@@ -15,18 +15,18 @@ Optimized for:
 
 Usage:
     from memgar.core import AhoCorasick, PatternMatcher
-    
+
     # Build automaton once
     matcher = PatternMatcher()
     matcher.add_patterns(["malicious", "attack", "inject"])
     matcher.build()
-    
+
     # Scan many texts (thread-safe)
     matches = matcher.search("this contains malicious content")
-    
+
     # Batch scan
     results = matcher.search_batch(["text1", "text2", "text3"])
-    
+
     # Streaming scan
     for match in matcher.search_iter(large_text):
         print(f"Found '{match.pattern}' at {match.start}")
@@ -93,10 +93,10 @@ class PatternInfo:
 class TrieNode:
     """
     Trie node with failure links for Aho-Corasick.
-    
+
     Uses __slots__ for memory efficiency with large pattern sets.
     """
-    __slots__ = ('children', 'fail', 'output', 'depth')
+    __slots__ = ("children", "fail", "output", "depth")
 
     def __init__(self):
         self.children: Dict[str, TrieNode] = {}
@@ -112,9 +112,9 @@ class TrieNode:
 class AhoCorasick:
     """
     Aho-Corasick automaton for multi-pattern matching.
-    
+
     Thread-safe after build() is called.
-    
+
     Example:
         ac = AhoCorasick()
         ac.add_pattern("he")
@@ -122,7 +122,7 @@ class AhoCorasick:
         ac.add_pattern("his")
         ac.add_pattern("hers")
         ac.build()
-        
+
         matches = ac.search("ushers")
         # Returns matches for "she", "he", "hers"
     """
@@ -130,7 +130,7 @@ class AhoCorasick:
     def __init__(self, case_sensitive: bool = False):
         """
         Initialize automaton.
-        
+
         Args:
             case_sensitive: Whether matching is case-sensitive
         """
@@ -154,9 +154,9 @@ class AhoCorasick:
     ) -> None:
         """
         Add pattern to automaton.
-        
+
         Must call build() after adding all patterns.
-        
+
         Args:
             pattern: Pattern string to match
             pattern_id: Optional unique identifier
@@ -197,7 +197,7 @@ class AhoCorasick:
     ) -> None:
         """
         Add multiple patterns.
-        
+
         Args:
             patterns: Iterable of patterns. Each can be:
                 - str: pattern only
@@ -221,7 +221,7 @@ class AhoCorasick:
     def build(self) -> None:
         """
         Build failure links using BFS.
-        
+
         Must be called after adding all patterns and before searching.
         Thread-safe - only builds once.
         """
@@ -260,10 +260,10 @@ class AhoCorasick:
     def search(self, text: str) -> List[Match]:
         """
         Search text for all pattern matches.
-        
+
         Args:
             text: Text to search
-            
+
         Returns:
             List of Match objects, sorted by position
         """
@@ -305,7 +305,7 @@ class AhoCorasick:
     def search_iter(self, text: str) -> Generator[Match, None, None]:
         """
         Iterator version for streaming/large texts.
-        
+
         Yields matches as they are found (memory efficient).
         """
         if not self._built:
@@ -366,27 +366,27 @@ class AhoCorasick:
 class PatternMatcher:
     """
     High-level pattern matcher with batching and concurrency support.
-    
+
     Features:
     - Automatic rebuilding when patterns change
     - Batch processing with thread pool
     - Pattern categories and filtering
     - Statistics and profiling
-    
+
     Example:
         matcher = PatternMatcher()
-        
+
         # Add patterns with categories
         matcher.add_pattern("password", category="credential")
         matcher.add_pattern("credit card", category="financial")
         matcher.add_patterns_from_list(threat_patterns)
-        
+
         # Search
         matches = matcher.search(text)
-        
+
         # Batch search (parallel)
         results = matcher.search_batch(texts, max_workers=4)
-        
+
         # Filter by category
         cred_matches = matcher.search(text, categories=["credential"])
     """
@@ -398,7 +398,7 @@ class PatternMatcher:
     ):
         """
         Initialize matcher.
-        
+
         Args:
             case_sensitive: Case-sensitive matching
             auto_build: Automatically rebuild when patterns added
@@ -429,7 +429,7 @@ class PatternMatcher:
     ) -> str:
         """
         Add pattern to matcher.
-        
+
         Returns:
             Pattern ID
         """
@@ -518,12 +518,12 @@ class PatternMatcher:
     ) -> List[Match]:
         """
         Search text for patterns.
-        
+
         Args:
             text: Text to search
             categories: Filter by categories (None = all)
             severities: Filter by severities (None = all)
-            
+
         Returns:
             List of matches
         """
@@ -563,12 +563,12 @@ class PatternMatcher:
     ) -> List[List[Match]]:
         """
         Parallel batch search.
-        
+
         Args:
             texts: List of texts to search
             max_workers: Thread pool size
             categories: Filter by categories
-            
+
         Returns:
             List of match lists (same order as input)
         """
@@ -654,13 +654,13 @@ class PatternMatcher:
 class ThreatScanner:
     """
     High-performance threat scanner using Aho-Corasick.
-    
+
     Optimized replacement for regex-based pattern matching.
-    
+
     Example:
         scanner = ThreatScanner()
         scanner.load_patterns_from_memgar()  # Load from patterns.py
-        
+
         result = scanner.scan("ignore previous instructions")
         if result.has_threats:
             print(f"Threats: {result.threat_count}")
@@ -697,10 +697,10 @@ class ThreatScanner:
     def load_patterns(self, patterns: List[Dict]) -> int:
         """
         Load patterns from list of dicts.
-        
+
         Expected format:
             [{"pattern": "...", "id": "...", "category": "...", "severity": "..."}]
-        
+
         Returns:
             Number of patterns loaded
         """
@@ -725,7 +725,7 @@ class ThreatScanner:
     def load_keywords_from_memgar(self) -> int:
         """
         Load keyword patterns from memgar.patterns module.
-        
+
         Returns:
             Number of patterns loaded
         """
@@ -739,8 +739,8 @@ class ThreatScanner:
                     self.add_threat_pattern(
                         pattern=kw,
                         threat_id=threat.id,
-                        category=threat.category.value if hasattr(threat.category, 'value') else str(threat.category),
-                        severity=threat.severity.value if hasattr(threat.severity, 'value') else str(threat.severity),
+                        category=threat.category.value if hasattr(threat.category, "value") else str(threat.category),
+                        severity=threat.severity.value if hasattr(threat.severity, "value") else str(threat.severity),
                         description=threat.description,
                     )
                     count += 1
@@ -755,7 +755,7 @@ class ThreatScanner:
     def scan(self, text: str) -> 'ScanResult':
         """
         Scan text for threats.
-        
+
         Returns:
             ScanResult with matches and risk score
         """
@@ -792,7 +792,7 @@ class ThreatScanner:
         self,
         texts: List[str],
         max_workers: int = 4,
-    ) -> List['ScanResult']:
+    ) -> List["ScanResult"]:
         """Parallel batch scanning."""
         match_lists = self._matcher.search_batch(texts, max_workers=max_workers)
 

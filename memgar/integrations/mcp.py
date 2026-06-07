@@ -9,9 +9,9 @@ scanning for memory poisoning attacks before allowing the operation.
 
 Example:
     >>> from memgar.integrations.mcp import MCPSecurityMiddleware
-    >>> 
+    >>>
     >>> middleware = MCPSecurityMiddleware()
-    >>> 
+    >>>
     >>> # Wrap your MCP handlers
     >>> @middleware.protect_resource
     >>> async def handle_resource_write(uri: str, content: str):
@@ -34,18 +34,18 @@ F = TypeVar("F", bound=Callable[..., Any])
 class MCPSecurityMiddleware:
     """
     Security middleware for MCP servers.
-    
+
     Provides decorators and utilities to scan MCP resource writes
     and tool calls for memory poisoning threats.
-    
+
     Attributes:
         analyzer: Memgar analyzer instance
         mode: Operation mode (monitor, protect, audit)
         blocked_operations: List of blocked operation records
-    
+
     Example:
         >>> middleware = MCPSecurityMiddleware(mode="protect")
-        >>> 
+        >>>
         >>> @middleware.protect_resource
         >>> async def write_resource(uri: str, content: str):
         ...     # Content is scanned before this runs
@@ -62,7 +62,7 @@ class MCPSecurityMiddleware:
     ) -> None:
         """
         Initialize MCP security middleware.
-        
+
         Args:
             mode: Operation mode:
                   - "monitor": Log threats but allow operations
@@ -85,16 +85,16 @@ class MCPSecurityMiddleware:
     def protect_resource(self, func: F) -> F:
         """
         Decorator to protect resource write operations.
-        
+
         Scans content before allowing the write operation.
-        
+
         Args:
             func: Async function that writes to a resource.
                   Must accept (uri: str, content: str) or similar.
-        
+
         Returns:
             Wrapped function that scans before executing.
-        
+
         Example:
             >>> @middleware.protect_resource
             >>> async def save_note(uri: str, content: str):
@@ -139,14 +139,14 @@ class MCPSecurityMiddleware:
     ) -> Callable[[F], F]:
         """
         Decorator to protect tool calls that modify state.
-        
+
         Args:
             content_param: Name of parameter containing content to scan
             scan_output: Whether to scan the tool's output
-        
+
         Returns:
             Decorator function
-        
+
         Example:
             >>> @middleware.protect_tool(content_param="message")
             >>> async def send_message(to: str, message: str):
@@ -209,11 +209,11 @@ class MCPSecurityMiddleware:
     def scan(self, content: str, source: str = "mcp") -> AnalysisResult:
         """
         Manually scan content.
-        
+
         Args:
             content: Content to scan
             source: Source identifier
-        
+
         Returns:
             Analysis result
         """
@@ -315,12 +315,12 @@ def create_secure_handler(
 ) -> Callable[..., Awaitable[Any]]:
     """
     Create a secure MCP handler from an existing handler.
-    
+
     Args:
         handler: Original async handler function
         middleware: Optional middleware instance
         **middleware_kwargs: Arguments for creating middleware
-    
+
     Returns:
         Wrapped handler with security scanning
     """

@@ -10,12 +10,12 @@ Unified interface for analyzing multiple content types:
 
 Usage:
     from memgar.multimodal import MultiModalAnalyzer
-    
+
     analyzer = MultiModalAnalyzer()
-    
+
     # Auto-detect content type
     result = analyzer.analyze(file_bytes, filename="document.pdf")
-    
+
     # Or specify type
     result = analyzer.analyze_image(image_bytes)
     result = analyzer.analyze_pdf(pdf_bytes)
@@ -62,27 +62,27 @@ class MultiModalResult:
 class MultiModalAnalyzer:
     """
     Unified multi-modal content analyzer.
-    
+
     Automatically detects content type and applies appropriate analysis.
     Can integrate with Memgar text analyzer for extracted content.
-    
+
     Features:
     - Auto content type detection
     - Unified threat reporting
     - Combined risk scoring
     - Text extraction from all formats
-    
+
     Usage:
         from memgar.multimodal import MultiModalAnalyzer
         from memgar.analyzer import Analyzer
-        
+
         # With text analysis
         text_analyzer = Analyzer()
         mm_analyzer = MultiModalAnalyzer(text_analyzer=text_analyzer)
-        
+
         # Analyze any content
         result = mm_analyzer.analyze(file_bytes)
-        
+
         if not result.is_safe:
             print(f"Risk: {result.risk_score}")
             for threat in result.threats:
@@ -92,52 +92,52 @@ class MultiModalAnalyzer:
     # Magic bytes for content detection
     MAGIC_SIGNATURES = {
         # Images
-        b'\x89PNG\r\n\x1a\n': ContentType.IMAGE,
-        b'\xff\xd8\xff': ContentType.IMAGE,
-        b'GIF87a': ContentType.IMAGE,
-        b'GIF89a': ContentType.IMAGE,
-        b'RIFF': ContentType.AUDIO,  # Check for WEBP too
-        b'BM': ContentType.IMAGE,
+        b"\x89PNG\r\n\x1a\n": ContentType.IMAGE,
+        b"\xff\xd8\xff": ContentType.IMAGE,
+        b"GIF87a": ContentType.IMAGE,
+        b"GIF89a": ContentType.IMAGE,
+        b"RIFF": ContentType.AUDIO,  # Check for WEBP too
+        b"BM": ContentType.IMAGE,
 
         # PDF
-        b'%PDF': ContentType.PDF,
+        b"%PDF": ContentType.PDF,
 
         # Audio
-        b'ID3': ContentType.AUDIO,
-        b'\xff\xfb': ContentType.AUDIO,
-        b'\xff\xfa': ContentType.AUDIO,
-        b'OggS': ContentType.AUDIO,
-        b'fLaC': ContentType.AUDIO,
+        b"ID3": ContentType.AUDIO,
+        b"\xff\xfb": ContentType.AUDIO,
+        b"\xff\xfa": ContentType.AUDIO,
+        b"OggS": ContentType.AUDIO,
+        b"fLaC": ContentType.AUDIO,
     }
 
     # Extension mappings
     EXTENSION_MAP = {
         # Images
-        '.jpg': ContentType.IMAGE,
-        '.jpeg': ContentType.IMAGE,
-        '.png': ContentType.IMAGE,
-        '.gif': ContentType.IMAGE,
-        '.webp': ContentType.IMAGE,
-        '.bmp': ContentType.IMAGE,
-        '.ico': ContentType.IMAGE,
-        '.svg': ContentType.IMAGE,
+        ".jpg": ContentType.IMAGE,
+        ".jpeg": ContentType.IMAGE,
+        ".png": ContentType.IMAGE,
+        ".gif": ContentType.IMAGE,
+        ".webp": ContentType.IMAGE,
+        ".bmp": ContentType.IMAGE,
+        ".ico": ContentType.IMAGE,
+        ".svg": ContentType.IMAGE,
 
         # PDF
-        '.pdf': ContentType.PDF,
+        ".pdf": ContentType.PDF,
 
         # Audio
-        '.wav': ContentType.AUDIO,
-        '.mp3': ContentType.AUDIO,
-        '.ogg': ContentType.AUDIO,
-        '.flac': ContentType.AUDIO,
-        '.m4a': ContentType.AUDIO,
-        '.aac': ContentType.AUDIO,
+        ".wav": ContentType.AUDIO,
+        ".mp3": ContentType.AUDIO,
+        ".ogg": ContentType.AUDIO,
+        ".flac": ContentType.AUDIO,
+        ".m4a": ContentType.AUDIO,
+        ".aac": ContentType.AUDIO,
 
         # Documents
-        '.doc': ContentType.DOCUMENT,
-        '.docx': ContentType.DOCUMENT,
-        '.txt': ContentType.DOCUMENT,
-        '.rtf': ContentType.DOCUMENT,
+        ".doc": ContentType.DOCUMENT,
+        ".docx": ContentType.DOCUMENT,
+        ".txt": ContentType.DOCUMENT,
+        ".rtf": ContentType.DOCUMENT,
     }
 
     def __init__(
@@ -149,7 +149,7 @@ class MultiModalAnalyzer:
     ):
         """
         Initialize MultiModalAnalyzer.
-        
+
         Args:
             text_analyzer: Optional Memgar text analyzer
             enable_ocr: Enable OCR for images
@@ -182,12 +182,12 @@ class MultiModalAnalyzer:
     ) -> MultiModalResult:
         """
         Analyze any supported content type.
-        
+
         Args:
             data: File bytes or base64 string
             filename: Optional filename for type detection
             content_type: Optional explicit content type
-            
+
         Returns:
             MultiModalResult with threat details
         """
@@ -255,13 +255,13 @@ class MultiModalAnalyzer:
         for magic, ctype in self.MAGIC_SIGNATURES.items():
             if data.startswith(magic):
                 # Special case: RIFF could be WAV or WEBP
-                if magic == b'RIFF' and b'WEBP' in data[:20]:
+                if magic == b"RIFF" and b"WEBP" in data[:20]:
                     return ContentType.IMAGE
                 return ctype
 
         # Check filename extension
         if filename:
-            ext = '.' + filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+            ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
             if ext in self.EXTENSION_MAP:
                 return self.EXTENSION_MAP[ext]
 
@@ -402,8 +402,8 @@ class MultiModalAnalyzer:
         # Try to extract text if possible
         extracted_text = None
         try:
-            extracted_text = data.decode('utf-8', errors='ignore')[:5000]
-        except:
+            extracted_text = data.decode("utf-8", errors="ignore")[:5000]
+        except Exception:
             pass
 
         return MultiModalResult(
@@ -437,12 +437,12 @@ def analyze_content(
 ) -> MultiModalResult:
     """
     Quick analysis of any supported content.
-    
+
     Args:
         data: File bytes or base64 string
         filename: Optional filename
         text_analyzer: Optional Memgar analyzer
-        
+
     Returns:
         MultiModalResult
     """

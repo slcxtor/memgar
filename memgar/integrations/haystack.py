@@ -40,7 +40,6 @@ Usage::
 
 from __future__ import annotations
 
-import functools
 import logging
 from dataclasses import dataclass
 from typing import Any, List, Optional, Sequence
@@ -93,7 +92,7 @@ def _set_doc_content(doc: Any, safe: str) -> Any:
         except Exception:
             pass
     try:
-        setattr(doc, "content", safe)
+        doc.content = safe
     except Exception:
         pass
     return doc
@@ -234,7 +233,7 @@ class MemgarHaystackGuard:
                     except Exception:
                         pass
                 try:
-                    setattr(msg, "content", safe)
+                    msg.content = safe
                 except Exception:
                     pass
                 out.append(msg)

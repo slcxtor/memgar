@@ -900,7 +900,7 @@ class HITLCheckpoint:
 
         # CLI fallback or primary
         if has_cli or not sent:
-            result = self._wait_cli(req, timeout)
+            self._wait_cli(req, timeout)
             elapsed = (time.perf_counter() - t0) * 1000
             return ApprovalResult(
                 request_id = req.request_id,
