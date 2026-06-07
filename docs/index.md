@@ -10,10 +10,11 @@ hide:
 
 # Stop memory poisoning *before* it reaches your agent.
 
-Memgar is an open-source Python library that inspects, sanitizes, quarantines,
-and blocks unsafe content before it is written to an agent's memory — RAG store,
-conversation history, tool results, or preference cache. It targets one threat:
-**OWASP ASI06, memory poisoning**. It is not a general prompt-injection firewall.
+Memgar is a Python library that guards the memory layer of LLM agents
+against **OWASP ASI06 (Memory Poisoning)**. Every candidate write — RAG
+inserts, conversation turns, tool outputs, preference updates — is scored
+before it reaches the store; matches to known attack patterns are blocked
+or quarantined.
 
 [Quickstart](quickstart.md){ .md-button .md-button--primary }
 [Architecture](architecture/overview.md){ .md-button }
