@@ -172,7 +172,10 @@ OWASP reference as the governance baseline, memgar as the production library.
 ## Try it on your own data.
 
 `pip install memgar`, point the analyzer at your existing inserts, and see what
-comes up before committing to anything. Bring your own backend.
+comes up before committing to anything. Bring your own backend — **no API key, no
+account, no outbound call.** The core stack runs fully locally; the only key
+memgar ever reads is your own LLM provider key, and only if you opt into the
+optional Layer 2 analysis.
 
 [Quickstart guide](quickstart.md){ .md-button .md-button--primary }
 [Threat catalog](threats/catalog.md){ .md-button }

@@ -5,12 +5,30 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-7e57c2)](LICENSE)
 [![CI](https://github.com/slcxtor/memgar/actions/workflows/ci.yml/badge.svg)](https://github.com/slcxtor/memgar/actions/workflows/ci.yml)
 [![OWASP ASI06](https://img.shields.io/badge/OWASP-ASI06%20Memory%20Poisoning-blue)](https://genai.owasp.org/llmrisk2025/asi06-memory-poisoning/)
+[![No API key required](https://img.shields.io/badge/API%20key-not%20required-brightgreen)](#no-api-key-required)
 
 **Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer English-text analyzer (782 patterns + sentence-transformer similarity + trust-aware scoring + behavioral baseline, plus an opt-in fine-tuned ONNX transformer) with 17 framework adapters and an EU AI Act compliance reporter included. English-only by design — same scope as the OWASP reference; we focus on depth, not language breadth.
 
 Full documentation at **[memgar.com](https://memgar.com)**.
 
-Memgar inspects, sanitizes, quarantines, and blocks unsafe memory before it can influence an agent. Run it as a Python runtime guard, a FastAPI gateway in front of model providers, or an integrity vault with signed snapshots, hash baselines, diff, and rollback. Every memory write, retrieval chunk, tool result, and gateway request gets a security decision before reaching the model or long-term memory.
+Memgar inspects, scores, quarantines, and blocks unsafe memory before it can influence an agent. Run it as a Python runtime guard, a FastAPI gateway in front of model providers, or an integrity vault with signed snapshots, hash baselines, diff, and rollback. Every memory write, retrieval chunk, tool result, and gateway request gets a security decision before reaching the model or long-term memory.
+
+## No API key required
+
+The core detection stack runs entirely locally — `pip install memgar` and go. No
+account, no API key, no outbound call to memgar:
+
+| Capability | Needs a key? |
+|---|---|
+| Default analyzer (Layer 1 patterns + trust scoring + behavioral baseline) | **No** |
+| Bundled Layer 2-ML ONNX transformer (opt-in) | **No** |
+| Signed threat-feed download + verification | **No** — the Ed25519 public key ships in the package; the feed is fetched from a public GitHub release |
+| All 17 framework / vector-DB adapters | **No** |
+| Observability, SIEM events, memory forensics, integrity vault | **No** |
+| **Layer 2 LLM deep analysis** (`use_llm=True`, off by default) | Only this — and it uses **your own** provider key (`MEMGAR_LLM_API_KEY`), never one of ours |
+
+Memgar never ships or phones home a credential. The only key it ever reads is an
+LLM provider key *you* supply, *if* you opt into the optional LLM layer.
 
 ## What's new in v1.2.0
 
