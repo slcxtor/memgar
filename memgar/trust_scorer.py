@@ -745,9 +745,8 @@ class CompositeTrustScorer:
                 sr = s.compute(content, ctx)
             except Exception as e:
                 # Sinyal çöktü → nötr değer, işlemi durdurma
-                cls_name = s.__class__.__name__
                 sr = SignalResult(
-                    name=getattr(s, 'name', SignalName.ANOMALY_SCORE),
+                    name=getattr(s, "name", SignalName.ANOMALY_SCORE),
                     raw_score=50.0,
                     trust_contrib=50.0 * 0.1,
                     weight=0.1,

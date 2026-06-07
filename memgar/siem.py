@@ -287,7 +287,7 @@ class SIEMEvent:
         sev_num = {
             "info": 1, "low": 3, "medium": 5, "high": 7, "critical": 10
         }.get(self.severity.lower(), 5)
-        _msg = self.message[:200].replace('=', '\\=')
+        _msg = self.message[:200].replace("=", "\\=")
         ext_parts = [
             f"deviceExternalId={self.event_id}",
             f"msg={_msg}",

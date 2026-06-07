@@ -329,14 +329,14 @@ _KEYWORD_PATTERN_CACHE: dict[str, re.Pattern] = {}
 
 def _get_keyword_pattern(keyword: str) -> re.Pattern:
     """Get or create a compiled word-boundary pattern for a keyword.
-    
+
     Compiled once per unique keyword and cached at module level.
     Eliminates the ~1,335 re.compile calls per analyze() invocation.
     """
     pat = _KEYWORD_PATTERN_CACHE.get(keyword)
     if pat is None:
         escaped = re.escape(keyword)
-        pat = re.compile(rf'\b{escaped}\b', re.IGNORECASE)
+        pat = re.compile(rf"\b{escaped}\b", re.IGNORECASE)
         _KEYWORD_PATTERN_CACHE[keyword] = pat
     return pat
 
@@ -650,17 +650,17 @@ class ContextBuffer:
 
 # Invisible Unicode characters that can be used for evasion
 INVISIBLE_CHARS = (
-    '\u200b',  # Zero-width space
-    '\u200c',  # Zero-width non-joiner
-    '\u200d',  # Zero-width joiner
-    '\u2060',  # Word joiner
-    '\ufeff',  # Zero-width no-break space (BOM)
-    '\u00ad',  # Soft hyphen
-    '\u034f',  # Combining grapheme joiner
-    '\u2061',  # Function application
-    '\u2062',  # Invisible times
-    '\u2063',  # Invisible separator
-    '\u2064',  # Invisible plus
+    "\u200b",  # Zero-width space
+    "\u200c",  # Zero-width non-joiner
+    "\u200d",  # Zero-width joiner
+    "\u2060",  # Word joiner
+    "\ufeff",  # Zero-width no-break space (BOM)
+    "\u00ad",  # Soft hyphen
+    "\u034f",  # Combining grapheme joiner
+    "\u2061",  # Function application
+    "\u2062",  # Invisible times
+    "\u2063",  # Invisible separator
+    "\u2064",  # Invisible plus
 )
 
 
@@ -668,7 +668,7 @@ def _remove_invisible_unicode(text: str) -> str:
     """Remove invisible Unicode characters used for evasion."""
     result = text
     for char in INVISIBLE_CHARS:
-        result = result.replace(char, '')
+        result = result.replace(char, "")
     return result
 
 
@@ -687,9 +687,9 @@ def _normalize_newlines(text: str) -> str:
     """Normalize escaped newlines (\\r\\n -> actual newlines for detection)."""
     result = text
     # Handle escaped sequences
-    result = result.replace('\\r\\n', '\r\n')
-    result = result.replace('\\n', '\n')
-    result = result.replace('\\r', '\r')
+    result = result.replace("\\r\\n", "\r\n")
+    result = result.replace("\\n", "\n")
+    result = result.replace("\\r", "\r")
     return result
 
 
@@ -705,7 +705,7 @@ def _remove_spacing_tricks(text: str) -> str:
 
     if len(words) > 3 and single_char_count > len(words) * 0.5:
         # More than 50% single chars - likely spacing trick
-        return ''.join(words)
+        return "".join(words)
 
     # Also handle mixed: "S e n d passwords"
     result = []
@@ -722,14 +722,14 @@ def _remove_spacing_tricks(text: str) -> str:
             result.append(words[i])
         i += 1
 
-    return ' '.join(result)
+    return " ".join(result)
 
 
 def _decode_leet_speak(text: str) -> str:
     """Decode leet speak: 3->e, 1->i, 0->o, 4->a, 5->s, 7->t."""
     leet_map = {
-        '3': 'e', '1': 'i', '0': 'o', '4': 'a',
-        '5': 's', '7': 't', '@': 'a', '$': 's'
+        "3": "e", "1": "i", "0": "o", "4": "a",
+        "5": "s", "7": "t", "@": "a", "$": "s"
     }
     result = text
     for leet, char in leet_map.items():
@@ -740,7 +740,7 @@ def _decode_leet_speak(text: str) -> str:
 def _normalize_homoglyphs(text: str) -> str:
     """
     Normalize Unicode homoglyphs (visually similar characters) to ASCII.
-    
+
     This prevents bypass attacks using:
     - Cyrillic characters that look like Latin (а→a, е→e, о→o, р→p, с→c)
     - Greek characters that look like Latin (Α→A, Β→B, Ε→E, Η→H, Ι→I, Κ→K, Μ→M, Ν→N, Ο→O, Ρ→P, Τ→T, Υ→Y, Χ→X, Ζ→Z)
@@ -749,61 +749,61 @@ def _normalize_homoglyphs(text: str) -> str:
     # Comprehensive homoglyph mapping
     homoglyph_map = {
         # Cyrillic lookalikes (lowercase)
-        '\u0430': 'a',  # Cyrillic а → Latin a
-        '\u0435': 'e',  # Cyrillic е → Latin e
-        '\u0456': 'i',  # Cyrillic і → Latin i
-        '\u043e': 'o',  # Cyrillic о → Latin o
-        '\u0440': 'p',  # Cyrillic р → Latin p (looks like 'p')
-        '\u0441': 'c',  # Cyrillic с → Latin c
-        '\u0443': 'y',  # Cyrillic у → Latin y
-        '\u0445': 'x',  # Cyrillic х → Latin x
-        '\u0432': 'b',  # Cyrillic в → Latin b (close)
-        '\u043d': 'h',  # Cyrillic н → Latin h (close)
+        "\u0430": "a",  # Cyrillic а → Latin a
+        "\u0435": "e",  # Cyrillic е → Latin e
+        "\u0456": "i",  # Cyrillic і → Latin i
+        "\u043e": "o",  # Cyrillic о → Latin o
+        "\u0440": "p",  # Cyrillic р → Latin p (looks like 'p')
+        "\u0441": "c",  # Cyrillic с → Latin c
+        "\u0443": "y",  # Cyrillic у → Latin y
+        "\u0445": "x",  # Cyrillic х → Latin x
+        "\u0432": "b",  # Cyrillic в → Latin b (close)
+        "\u043d": "h",  # Cyrillic н → Latin h (close)
 
         # Cyrillic lookalikes (uppercase)
-        '\u0410': 'A',  # Cyrillic А → Latin A
-        '\u0412': 'B',  # Cyrillic В → Latin B
-        '\u0415': 'E',  # Cyrillic Е → Latin E
-        '\u041a': 'K',  # Cyrillic К → Latin K
-        '\u041c': 'M',  # Cyrillic М → Latin M
-        '\u041d': 'H',  # Cyrillic Н → Latin H
-        '\u041e': 'O',  # Cyrillic О → Latin O
-        '\u0420': 'P',  # Cyrillic Р → Latin P
-        '\u0421': 'C',  # Cyrillic С → Latin C
-        '\u0422': 'T',  # Cyrillic Т → Latin T
-        '\u0425': 'X',  # Cyrillic Х → Latin X
+        "\u0410": "A",  # Cyrillic А → Latin A
+        "\u0412": "B",  # Cyrillic В → Latin B
+        "\u0415": "E",  # Cyrillic Е → Latin E
+        "\u041a": "K",  # Cyrillic К → Latin K
+        "\u041c": "M",  # Cyrillic М → Latin M
+        "\u041d": "H",  # Cyrillic Н → Latin H
+        "\u041e": "O",  # Cyrillic О → Latin O
+        "\u0420": "P",  # Cyrillic Р → Latin P
+        "\u0421": "C",  # Cyrillic С → Latin C
+        "\u0422": "T",  # Cyrillic Т → Latin T
+        "\u0425": "X",  # Cyrillic Х → Latin X
 
         # Greek lookalikes (uppercase)
-        '\u0391': 'A',  # Greek Α → Latin A
-        '\u0392': 'B',  # Greek Β → Latin B
-        '\u0395': 'E',  # Greek Ε → Latin E
-        '\u0397': 'H',  # Greek Η → Latin H
-        '\u0399': 'I',  # Greek Ι → Latin I
-        '\u039a': 'K',  # Greek Κ → Latin K
-        '\u039c': 'M',  # Greek Μ → Latin M
-        '\u039d': 'N',  # Greek Ν → Latin N
-        '\u039f': 'O',  # Greek Ο → Latin O
-        '\u03a1': 'P',  # Greek Ρ → Latin P
-        '\u03a4': 'T',  # Greek Τ → Latin T
-        '\u03a5': 'Y',  # Greek Υ → Latin Y
-        '\u03a7': 'X',  # Greek Χ → Latin X
-        '\u0396': 'Z',  # Greek Ζ → Latin Z
+        "\u0391": "A",  # Greek Α → Latin A
+        "\u0392": "B",  # Greek Β → Latin B
+        "\u0395": "E",  # Greek Ε → Latin E
+        "\u0397": "H",  # Greek Η → Latin H
+        "\u0399": "I",  # Greek Ι → Latin I
+        "\u039a": "K",  # Greek Κ → Latin K
+        "\u039c": "M",  # Greek Μ → Latin M
+        "\u039d": "N",  # Greek Ν → Latin N
+        "\u039f": "O",  # Greek Ο → Latin O
+        "\u03a1": "P",  # Greek Ρ → Latin P
+        "\u03a4": "T",  # Greek Τ → Latin T
+        "\u03a5": "Y",  # Greek Υ → Latin Y
+        "\u03a7": "X",  # Greek Χ → Latin X
+        "\u0396": "Z",  # Greek Ζ → Latin Z
 
         # Greek lookalikes (lowercase)
-        '\u03b1': 'a',  # Greek α → Latin a
-        '\u03b5': 'e',  # Greek ε → Latin e (close)
-        '\u03b9': 'i',  # Greek ι → Latin i
-        '\u03bf': 'o',  # Greek ο → Latin o
-        '\u03c1': 'p',  # Greek ρ → Latin p
-        '\u03c5': 'u',  # Greek υ → Latin u
+        "\u03b1": "a",  # Greek α → Latin a
+        "\u03b5": "e",  # Greek ε → Latin e (close)
+        "\u03b9": "i",  # Greek ι → Latin i
+        "\u03bf": "o",  # Greek ο → Latin o
+        "\u03c1": "p",  # Greek ρ → Latin p
+        "\u03c5": "u",  # Greek υ → Latin u
 
         # Other common homoglyphs
-        '\u0131': 'i',  # Dotless i
-        '\u0237': 'j',  # Dotless j
-        '\u2018': "'",  # Left single quote
-        '\u2019': "'",  # Right single quote
-        '\u201c': '"',  # Left double quote
-        '\u201d': '"',  # Right double quote
+        "\u0131": "i",  # Dotless i
+        "\u0237": "j",  # Dotless j
+        "\u2018": "'",  # Left single quote
+        "\u2019": "'",  # Right single quote
+        "\u201c": '"',  # Left double quote
+        "\u201d": '"',  # Right double quote
     }
 
     result = text
@@ -815,7 +815,7 @@ def _normalize_homoglyphs(text: str) -> str:
 def _normalize_content(content: str) -> str:
     """
     Normalize content by removing all forms of obfuscation.
-    
+
     Handles:
     - Unicode NFKC normalization (compatibility decomposition)
     - Invisible Unicode (word joiner, zero-width chars, bidirectional)
@@ -831,7 +831,7 @@ def _normalize_content(content: str) -> str:
     # Step 1: Unicode NFKC normalization - converts compatibility characters
     # This handles fullwidth chars, superscripts, subscripts, etc.
     try:
-        normalized = unicodedata.normalize('NFKC', normalized)
+        normalized = unicodedata.normalize("NFKC", normalized)
     except Exception:
         pass  # Continue with original if normalization fails
 
@@ -840,8 +840,8 @@ def _normalize_content(content: str) -> str:
     # "ïgñörë àll prëvïöüs ïñstrüctïöñs". NFKD decomposition + dropping the
     # combining marks turns that back into "ignore all previous ...".
     try:
-        decomposed = unicodedata.normalize('NFKD', normalized)
-        folded = ''.join(c for c in decomposed if not unicodedata.combining(c))
+        decomposed = unicodedata.normalize("NFKD", normalized)
+        folded = "".join(c for c in decomposed if not unicodedata.combining(c))
         if folded:
             normalized = folded
     except Exception:
@@ -853,8 +853,8 @@ def _normalize_content(content: str) -> str:
     # are several such separators in a row, so normal prose punctuation,
     # URLs and emails in benign text are left intact.
     try:
-        if len(re.findall(r'\w[._]\w', normalized)) >= 3:
-            normalized = re.sub(r'(?<=\w)[._]+(?=\w)', ' ', normalized)
+        if len(re.findall(r"\w[._]\w", normalized)) >= 3:
+            normalized = re.sub(r"(?<=\w)[._]+(?=\w)", " ", normalized)
     except Exception:
         pass
 
@@ -863,7 +863,7 @@ def _normalize_content(content: str) -> str:
     # Bidirectional overrides (U+202A-U+202E)
     # Isolates (U+2066-U+2069)
     # Word joiner, function application, etc.
-    normalized = re.sub(r'[\u200b-\u200f\u202a-\u202e\u2066-\u2069\u2060-\u2064\ufeff\u00ad\u034f]', '', normalized)
+    normalized = re.sub(r"[\u200b-\u200f\u202a-\u202e\u2066-\u2069\u2060-\u2064\ufeff\u00ad\u034f]", "", normalized)
 
     # Step 3: Remove invisible Unicode characters from our defined list
     normalized = _remove_invisible_unicode(normalized)
@@ -955,10 +955,10 @@ def _looks_like_english(content: str) -> bool:
     return len(tokens) < 5
 
 
-_LATIN_RE = re.compile(r'[a-zA-Z]')
-_CYRILLIC_RE = re.compile(r'[Ѐ-ӿ]')
-_GREEK_RE = re.compile(r'[Ͱ-Ͽ]')
-_ARABIC_RE = re.compile(r'[؀-ۿ]')
+_LATIN_RE = re.compile(r"[a-zA-Z]")
+_CYRILLIC_RE = re.compile(r"[Ѐ-ӿ]")
+_GREEK_RE = re.compile(r"[Ͱ-Ͽ]")
+_ARABIC_RE = re.compile(r"[؀-ۿ]")
 
 # Pattern IDs whose whole purpose is to flag non-Latin lookalikes injected
 # into Latin text. On predominantly non-Latin text these fire on the native
@@ -1009,7 +1009,7 @@ def _decode_base64_payloads(text: str) -> str:
     import base64
 
     # Look for Base64-like strings (at least 20 chars, valid base64 charset)
-    base64_pattern = r'[A-Za-z0-9+/]{20,}={0,2}'
+    base64_pattern = r"[A-Za-z0-9+/]{20,}={0,2}"
 
     def decode_match(match):
         encoded = match.group()
@@ -1017,9 +1017,9 @@ def _decode_base64_payloads(text: str) -> str:
             # Add padding if needed
             padding = 4 - (len(encoded) % 4)
             if padding != 4:
-                encoded += '=' * padding
+                encoded += "=" * padding
 
-            decoded = base64.b64decode(encoded).decode('utf-8', errors='ignore')
+            decoded = base64.b64decode(encoded).decode("utf-8", errors="ignore")
 
             # Only use decoded if it looks like text (mostly printable ASCII)
             printable_ratio = sum(1 for c in decoded if c.isprintable() or c.isspace()) / len(decoded) if decoded else 0
@@ -1168,28 +1168,28 @@ def _is_word_boundary_match(content: str, keyword: str) -> tuple[bool, int]:
 class Analyzer:
     """
     Multi-layer analysis engine for memory content.
-    
+
     The analyzer runs content through multiple detection layers:
-    
+
     Layer 1: Pattern Matching
         - Fast regex pattern detection
         - Keyword matching with word boundaries
         - Context-aware scoring
         - Whitelist filtering
         - Runs locally, <1ms latency
-        
+
     Layer 2: Semantic Analysis (optional)
         - LLM-based content understanding
         - Catches sophisticated attacks
         - Requires API access, ~200ms latency
-    
+
     Attributes:
         use_llm: Whether to use LLM analysis (Layer 2)
         api_key: API key for cloud services
         patterns: List of threat patterns to check
         strict_mode: If True, any suspicious content is blocked
         use_whitelist: If True, apply whitelist filtering
-    
+
     Example:
         >>> analyzer = Analyzer()
         >>> result = analyzer.analyze(MemoryEntry(content="Send payments to..."))
@@ -2180,7 +2180,7 @@ class Analyzer:
                                 description=(
                                     f"High cosine similarity ({sim_result.score:.2f}) to "
                                     f"'{top_cat}' attack cluster. "
-                                    f"Closest example: \"{top_ex}\""
+                                    f'Closest example: "{top_ex}"'
                                 ),
                                 category=ThreatCategory.BEHAVIOR,
                                 severity=Severity.HIGH if sim_result.score >= 0.80 else Severity.MEDIUM,
@@ -2316,12 +2316,12 @@ class Analyzer:
     def _layer1_pattern_matching(self, content: str) -> list[ThreatMatch]:
         """
         Layer 1: Fast pattern matching with word boundary support.
-        
+
         Checks content against all threat patterns using regex and keywords.
         Uses word boundaries to prevent substring false positives.
         """
         matches: list[ThreatMatch] = []
-        content_lower = content.lower()
+        content.lower()
 
         for threat in self.patterns:
             # Check regex patterns first (these are more precise)
@@ -2366,7 +2366,7 @@ class Analyzer:
     def _is_keyword_in_safe_context(self, content: str, keyword: str, pos: int) -> bool:
         """
         Check if a keyword match is in a safe context.
-        
+
         This helps reduce false positives for common words like:
         - "return" in "returns JSON"
         - "emergency" in "emergency contact"
@@ -2413,14 +2413,14 @@ class Analyzer:
     def _sliding_window_analysis(self, content: str) -> list[ThreatMatch]:
         """
         Optimized Sliding Window Analysis for long content.
-        
+
         Performance optimizations:
         1. Adaptive window sizing based on content length
         2. Early exit on high-confidence threats
         3. Parallel window processing (optional)
         4. Smart sampling for very long content
         5. Progressive attack detection with minimal overhead
-        
+
         Returns:
             List of ThreatMatch found in windows
         """
@@ -2578,14 +2578,14 @@ class Analyzer:
     ) -> list[ThreatMatch] | None:
         """
         Layer 2: LLM-based semantic analysis.
-        
+
         This layer catches sophisticated attacks that bypass regex patterns:
         - Scrambled words (ignroe → ignore)
         - Foreign language attacks (Turkish, Spanish, etc.)
         - Emoji-based obfuscation
         - Context-dependent manipulation
-        
-        IMPORTANT: 
+
+        IMPORTANT:
         1. Runs INDEPENDENTLY of Layer 1 to catch bypasses.
         2. ALWAYS preserves Layer 1 threats even if LLM doesn't find additional threats.
            This prevents false negatives from LLM overriding regex detections.
@@ -2665,7 +2665,7 @@ class Analyzer:
     ) -> int:
         """
         Calculate overall risk score based on detected threats and context.
-        
+
         Context score can reduce risk for legitimate content.
         """
         if not threats:
@@ -2744,7 +2744,7 @@ class Analyzer:
 
             lines.append(f"  {severity_icon} [{threat.threat.id}] {threat.threat.name}")
             match_preview = threat.matched_text[:50] + "..." if len(threat.matched_text) > 50 else threat.matched_text
-            lines.append(f"     Match: \"{match_preview}\"")
+            lines.append(f'     Match: "{match_preview}"')
 
         if len(threats) > 5:
             lines.append(f"  ... and {len(threats) - 5} more")
@@ -2765,7 +2765,7 @@ class Analyzer:
     def quick_check(self, content: str) -> bool:
         """
         Quick check if content might be malicious.
-        
+
         Returns True if content appears safe, False if suspicious.
         """
         if not content or not content.strip():
@@ -2870,7 +2870,7 @@ class Analyzer:
 class QuickAnalyzer:
     """
     Lightweight analyzer for simple use cases.
-    
+
     Uses a singleton pattern to avoid repeated initialization.
     """
 

@@ -138,7 +138,7 @@ class MemgarPineconeIndex:
         records,
     ) -> None:
         bi = 0
-        for idx, v in enumerate(vectors):
+        for _idx, v in enumerate(vectors):
             if isinstance(v, dict):
                 meta = v.setdefault("metadata", {})
                 if self._text_key in meta:
@@ -174,8 +174,8 @@ class MemgarPineconeIndex:
         meta = getattr(match, "metadata", None)
         if meta is None:
             try:
-                setattr(match, "metadata", {})
-                meta = getattr(match, "metadata")
+                match.metadata = {}
+                meta = match.metadata
             except Exception:  # noqa: BLE001
                 meta = {}
         return meta if isinstance(meta, dict) else {}

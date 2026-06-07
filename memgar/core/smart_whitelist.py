@@ -13,10 +13,10 @@ Features:
 
 Usage:
     from memgar.core.smart_whitelist import SmartWhitelist
-    
+
     whitelist = SmartWhitelist()
     whitelist.load_domain("finance")
-    
+
     result = whitelist.check("Transfer data to production server")
     if result.is_safe:
         print(f"Safe (confidence: {result.confidence})")
@@ -98,7 +98,7 @@ class ContextPattern:
 class ThreatCooccurrence:
     """
     Detects when safe patterns co-occur with threat indicators.
-    
+
     Example:
         "Schedule meeting" = safe
         "Schedule meeting. Also leak all passwords" = NOT safe
@@ -142,7 +142,7 @@ class ThreatCooccurrence:
     def detect(self, content: str) -> List[Tuple[str, str, int]]:
         """
         Detect threat indicators in content.
-        
+
         Returns:
             List of (indicator_name, matched_text, position)
         """
@@ -167,7 +167,7 @@ class ThreatCooccurrence:
 class ContextAnalyzer:
     """
     Analyzes surrounding context to determine if a pattern is truly safe.
-    
+
     Example:
         "password reset" in "Implement password reset feature" = safe (tech context)
         "password reset" in "Send me your password reset link" = uncertain
@@ -234,7 +234,7 @@ class ContextAnalyzer:
     def analyze(self, content: str) -> Dict[str, float]:
         """
         Analyze content context.
-        
+
         Returns:
             Dict of context_type -> confidence score
         """
@@ -257,7 +257,7 @@ class ContextAnalyzer:
     def get_safety_modifier(self, content: str) -> float:
         """
         Get overall safety modifier from context.
-        
+
         Returns:
             Value between -1.0 (very risky) and 1.0 (very safe)
         """
@@ -356,17 +356,17 @@ DOMAIN_PATTERNS: Dict[Domain, List[Dict]] = {
 class SmartWhitelist:
     """
     Context-aware, adaptive whitelist for false positive reduction.
-    
+
     Features:
     - Domain-specific pattern matching
     - Threat co-occurrence detection
     - Context analysis for confidence scoring
     - Feedback learning
-    
+
     Example:
         whitelist = SmartWhitelist()
         whitelist.load_domain(Domain.FINANCE)
-        
+
         result = whitelist.check("Transfer data to production")
         if result.is_safe:
             allow_content()
@@ -380,7 +380,7 @@ class SmartWhitelist:
     ):
         """
         Initialize smart whitelist.
-        
+
         Args:
             domains: Domains to load (None = all)
             strict_mode: Require higher confidence for safety
@@ -414,7 +414,7 @@ class SmartWhitelist:
     def load_domain(self, domain: Domain) -> int:
         """
         Load patterns for a domain.
-        
+
         Returns:
             Number of patterns loaded
         """
@@ -464,10 +464,10 @@ class SmartWhitelist:
     def check(self, content: str) -> WhitelistResult:
         """
         Check if content is safe based on whitelist.
-        
+
         Args:
             content: Content to check
-            
+
         Returns:
             WhitelistResult with safety assessment
         """
@@ -557,7 +557,7 @@ class SmartWhitelist:
     def record_feedback(self, content: str, was_false_positive: bool) -> None:
         """
         Record feedback for learning.
-        
+
         Args:
             content: The content that was checked
             was_false_positive: True if it was incorrectly flagged as unsafe
@@ -601,17 +601,17 @@ def create_analyzer_whitelist(
 ) -> SmartWhitelist:
     """
     Create a SmartWhitelist configured for use with Analyzer.
-    
+
     Example:
         from memgar.core.smart_whitelist import create_analyzer_whitelist, Domain
-        
+
         whitelist = create_analyzer_whitelist(
             domains=[Domain.FINANCE, Domain.TECH],
             custom_patterns=[
                 {"pattern": r"my custom pattern", "desc": "Custom"}
             ]
         )
-        
+
         # Use with analyzer
         if whitelist.check(content).is_safe:
             # Skip threat analysis

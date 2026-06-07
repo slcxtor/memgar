@@ -153,16 +153,16 @@ class MemgarRetriever(BaseRetriever if LLAMAINDEX_AVAILABLE else object):
         """Call base retriever and convert to dict format."""
         query_bundle = QueryBundle(query_str=query) if LLAMAINDEX_AVAILABLE else query
 
-        if hasattr(self.base_retriever, 'retrieve'):
+        if hasattr(self.base_retriever, "retrieve"):
             nodes = self.base_retriever.retrieve(query_bundle)
-        elif hasattr(self.base_retriever, '_retrieve'):
+        elif hasattr(self.base_retriever, "_retrieve"):
             nodes = self.base_retriever._retrieve(query_bundle)
         else:
             nodes = []
 
         results = []
         for node_with_score in nodes[:k]:
-            if hasattr(node_with_score, 'node'):
+            if hasattr(node_with_score, "node"):
                 node = node_with_score.node
                 score = node_with_score.score or 0.5
             else:
@@ -184,7 +184,7 @@ class MemgarRetriever(BaseRetriever if LLAMAINDEX_AVAILABLE else object):
 
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         """Retrieve nodes with trust-aware ranking and runtime firewalling."""
-        query = query_bundle.query_str if hasattr(query_bundle, 'query_str') else str(query_bundle)
+        query = query_bundle.query_str if hasattr(query_bundle, "query_str") else str(query_bundle)
 
         result = self.trust_retriever.retrieve(query, top_k=self.similarity_top_k)
 
@@ -197,7 +197,7 @@ class MemgarRetriever(BaseRetriever if LLAMAINDEX_AVAILABLE else object):
         for doc in documents:
             node = self._node_from_retrieved(doc)
 
-            if self.return_metadata and hasattr(node, 'metadata'):
+            if self.return_metadata and hasattr(node, "metadata"):
                 node.metadata["memgar"] = {
                     "similarity_score": doc.similarity_score,
                     "trust_adjusted_score": doc.trust_adjusted_score,
@@ -415,7 +415,7 @@ class MemgarNodePostprocessor(BaseNodePostprocessor if LLAMAINDEX_AVAILABLE else
         if self.enable_reranking:
             filtered_nodes.sort(key=lambda x: x.score or 0, reverse=True)
 
-        query = query_bundle.query_str if hasattr(query_bundle, 'query_str') else str(query_bundle or "")
+        query = query_bundle.query_str if hasattr(query_bundle, "query_str") else str(query_bundle or "")
         return self._guard_nodes(filtered_nodes, query=query)
 
     def _guard_nodes(self, nodes: List[NodeWithScore], *, query: str) -> List[NodeWithScore]:
@@ -546,13 +546,13 @@ def extract_trust_from_metadata(
     trust_map = {}
 
     for node in nodes:
-        if hasattr(node, 'node'):
+        if hasattr(node, "node"):
             actual_node = node.node
         else:
             actual_node = node
 
-        node_id = actual_node.node_id if hasattr(actual_node, 'node_id') else str(hash(str(actual_node)))
-        metadata = actual_node.metadata if hasattr(actual_node, 'metadata') else {}
+        node_id = actual_node.node_id if hasattr(actual_node, "node_id") else str(hash(str(actual_node)))
+        metadata = actual_node.metadata if hasattr(actual_node, "metadata") else {}
 
         trust_map[node_id] = metadata.get(trust_key, default_trust)
 
@@ -560,12 +560,12 @@ def extract_trust_from_metadata(
 
 
 def _node_content(node: Any) -> str:
-    if hasattr(node, 'get_content'):
+    if hasattr(node, "get_content"):
         try:
             return str(node.get_content())
         except Exception:
             pass
-    for attr in ('text', 'content', 'page_content'):
+    for attr in ("text", "content", "page_content"):
         value = getattr(node, attr, None)
         if isinstance(value, str):
             return value
@@ -573,21 +573,21 @@ def _node_content(node: Any) -> str:
 
 
 def _node_id(node: Any, content: str) -> str:
-    value = getattr(node, 'node_id', None) or getattr(node, 'id_', None) or getattr(node, 'id', None)
+    value = getattr(node, "node_id", None) or getattr(node, "id_", None) or getattr(node, "id", None)
     if value:
         return str(value)
     return str(hash(content))
 
 
 def _node_metadata(node: Any) -> Dict[str, Any]:
-    metadata = getattr(node, 'metadata', None)
+    metadata = getattr(node, "metadata", None)
     if isinstance(metadata, dict):
         return dict(metadata)
     return {}
 
 
 def _record_content(record: Dict[str, Any], *, fallback: str) -> str:
-    for key in ('content', 'text', 'page_content'):
+    for key in ("content", "text", "page_content"):
         value = record.get(key)
         if isinstance(value, str):
             return value

@@ -14,23 +14,23 @@ Components:
 
 Usage:
     from memgar.agents import AgentSecurityGuard
-    
+
     guard = AgentSecurityGuard()
-    
+
     # Validate agent message
     result = guard.validate_message(
         source="coordinator",
         target="worker-1",
         message="Process this task"
     )
-    
+
     # Validate tool call
     result = guard.validate_tool_call(
         agent_id="worker-1",
         tool_name="file_read",
         parameters={"path": "/data/file.txt"}
     )
-    
+
     # Check for swarm attacks
     threats = guard.detect_swarm_attacks()
 """
@@ -81,35 +81,35 @@ class SecurityAssessment:
 class AgentSecurityGuard:
     """
     Unified security guard for multi-agent AI systems.
-    
+
     Provides comprehensive security including:
     - Message validation between agents
     - Trust chain management
     - Permission delegation monitoring
     - Swarm attack detection
     - MCP tool security
-    
+
     Usage:
         # Initialize with components
         guard = AgentSecurityGuard()
-        
+
         # Validate agent message
         result = guard.validate_message(
             source="orchestrator",
             target="tool-agent",
             message="Execute this query",
         )
-        
+
         # Manage trust
         guard.set_trust("orchestrator", "tool-agent", TrustLevel.HIGH)
-        
+
         # Validate tool usage
         result = guard.validate_tool_call(
             agent_id="tool-agent",
             tool_name="database_query",
             parameters={"query": "SELECT * FROM users"}
         )
-        
+
         # Monitor for swarm attacks
         threats = guard.detect_swarm_attacks()
     """
@@ -124,7 +124,7 @@ class AgentSecurityGuard:
     ):
         """
         Initialize AgentSecurityGuard.
-        
+
         Args:
             text_analyzer: Optional Memgar text analyzer for content analysis
             strict_mode: Enable stricter security policies
@@ -218,12 +218,12 @@ class AgentSecurityGuard:
     ) -> SecurityAssessment:
         """
         Validate a message between agents.
-        
+
         Args:
             source: Source agent ID
             target: Target agent ID
             context: Optional context
-            
+
         Returns:
             SecurityAssessment
         """
@@ -320,13 +320,13 @@ class AgentSecurityGuard:
     ) -> SecurityAssessment:
         """
         Validate an MCP tool call from an agent.
-        
+
         Args:
             agent_id: Calling agent
             tool_name: Tool being called
             parameters: Tool parameters
             context: Optional context
-            
+
         Returns:
             SecurityAssessment
         """
@@ -388,7 +388,7 @@ class AgentSecurityGuard:
     def detect_swarm_attacks(self) -> List[SwarmThreat]:
         """
         Check for coordinated swarm attacks.
-        
+
         Returns:
             List of detected SwarmThreat objects
         """
@@ -413,14 +413,14 @@ class AgentSecurityGuard:
     ) -> bool:
         """
         Set trust relationship between agents.
-        
+
         Args:
             source: Trusting agent
             target: Trusted agent
             level: Trust level
             capabilities: Specific capabilities to grant
             duration_hours: Trust duration
-            
+
         Returns:
             True if trust was set
         """
@@ -436,7 +436,7 @@ class AgentSecurityGuard:
             self._log_event("trust_established", {
                 "source": source,
                 "target": target,
-                "level": level.name if hasattr(level, 'name') else str(level),
+                "level": level.name if hasattr(level, "name") else str(level),
             })
 
         return success
@@ -462,13 +462,13 @@ class AgentSecurityGuard:
     ) -> DelegationEvent:
         """
         Delegate a capability from one agent to another.
-        
+
         Args:
             delegator: Agent granting capability
             delegate: Agent receiving capability
             capability: The capability
             duration_hours: Duration
-            
+
         Returns:
             DelegationEvent
         """
@@ -502,7 +502,7 @@ class AgentSecurityGuard:
     def block_agent(self, agent_id: str, reason: str = "") -> None:
         """
         Block an agent from all interactions.
-        
+
         Args:
             agent_id: Agent to block
             reason: Reason for blocking
@@ -530,7 +530,7 @@ class AgentSecurityGuard:
     def get_agent_profile(self, agent_id: str) -> Dict[str, Any]:
         """
         Get comprehensive profile for an agent.
-        
+
         Returns profile including trust, capabilities, and behavior.
         """
         return {
@@ -560,7 +560,7 @@ class AgentSecurityGuard:
     def get_security_summary(self) -> Dict[str, Any]:
         """
         Get overall security summary.
-        
+
         Returns:
             Summary of security state
         """

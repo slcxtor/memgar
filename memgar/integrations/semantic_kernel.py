@@ -31,7 +31,6 @@ Usage::
 
 from __future__ import annotations
 
-import functools
 import logging
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional
@@ -211,7 +210,7 @@ def _replace(message: Any, safe: str) -> Any:
             except Exception:
                 pass
     try:
-        setattr(message, "content", safe)
+        message.content = safe
     except Exception:
         pass
     return message

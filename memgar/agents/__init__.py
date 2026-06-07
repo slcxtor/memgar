@@ -23,16 +23,16 @@ Components:
 
 Usage:
     from memgar.agents import AgentSecurityGuard
-    
+
     guard = AgentSecurityGuard()
-    
+
     # Validate agent message
     result = guard.validate_message(
         source_agent="agent-1",
-        target_agent="agent-2", 
+        target_agent="agent-2",
         message=message_content,
     )
-    
+
     # Check tool call
     result = guard.validate_tool_call(
         agent_id="agent-1",

@@ -65,7 +65,7 @@ class RequirementCategory(Enum):
 class Requirement:
     """
     EU AI Act requirement
-    
+
     Represents a specific compliance requirement from the EU AI Act.
     """
     requirement_id: str
@@ -99,16 +99,16 @@ class Requirement:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'requirement_id': self.requirement_id,
-            'description': self.description,
-            'severity': self.severity,
-            'category': self.category.value if self.category else None,
-            'risk_level': self.risk_level.value if self.risk_level else None,
-            'mandatory': self.mandatory,
-            'deadline': self.deadline.isoformat() if self.deadline else None,
-            'status': self.status.value,
-            'evidence': self.evidence,
-            'notes': self.notes,
+            "requirement_id": self.requirement_id,
+            "description": self.description,
+            "severity": self.severity,
+            "category": self.category.value if self.category else None,
+            "risk_level": self.risk_level.value if self.risk_level else None,
+            "mandatory": self.mandatory,
+            "deadline": self.deadline.isoformat() if self.deadline else None,
+            "status": self.status.value,
+            "evidence": self.evidence,
+            "notes": self.notes,
         }
 
 
@@ -116,7 +116,7 @@ class Requirement:
 class ComplianceConfig:
     """
     Configuration for EU AI Act compliance tracking
-    
+
     Controls how compliance is monitored and reported.
     """
     enabled: bool = True
@@ -133,16 +133,16 @@ class ComplianceConfig:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'enabled': self.enabled,
-            'risk_level': self.risk_level.value,
-            'strict_mode': self.strict_mode,
-            'auto_report': self.auto_report,
-            'report_format': self.report_format,
-            'include_evidence': self.include_evidence,
-            'organization_name': self.organization_name,
-            'contact_email': self.contact_email,
-            'reporting_period': self.reporting_period,
-            'retention_days': self.retention_days,
+            "enabled": self.enabled,
+            "risk_level": self.risk_level.value,
+            "strict_mode": self.strict_mode,
+            "auto_report": self.auto_report,
+            "report_format": self.report_format,
+            "include_evidence": self.include_evidence,
+            "organization_name": self.organization_name,
+            "contact_email": self.contact_email,
+            "reporting_period": self.reporting_period,
+            "retention_days": self.retention_days,
         }
 
 
@@ -150,7 +150,7 @@ class ComplianceConfig:
 class ComplianceReport:
     """
     EU AI Act compliance report
-    
+
     Generated report showing compliance status across all requirements.
     """
     report_id: str
@@ -193,21 +193,21 @@ class ComplianceReport:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'report_id': self.report_id,
-            'generated_at': self.generated_at.isoformat(),
-            'organization': self.organization,
-            'risk_level': self.risk_level.value,
-            'overall_status': self.overall_status.value,
-            'statistics': {
-                'total_requirements': len(self.requirements),
-                'compliant': self.compliant_count,
-                'non_compliant': self.non_compliant_count,
-                'pending': self.pending_count,
-                'compliance_rate': self.compliance_rate(),
+            "report_id": self.report_id,
+            "generated_at": self.generated_at.isoformat(),
+            "organization": self.organization,
+            "risk_level": self.risk_level.value,
+            "overall_status": self.overall_status.value,
+            "statistics": {
+                "total_requirements": len(self.requirements),
+                "compliant": self.compliant_count,
+                "non_compliant": self.non_compliant_count,
+                "pending": self.pending_count,
+                "compliance_rate": self.compliance_rate(),
             },
-            'requirements': [r.to_dict() for r in self.requirements],
-            'summary': self.summary,
-            'recommendations': self.recommendations,
+            "requirements": [r.to_dict() for r in self.requirements],
+            "summary": self.summary,
+            "recommendations": self.recommendations,
         }
 
 
@@ -218,9 +218,9 @@ class ComplianceReport:
 class EUAIActReporter:
     """
     EU AI Act Compliance Reporter
-    
+
     Main class for tracking and reporting EU AI Act compliance.
-    
+
     Usage:
         reporter = EUAIActReporter(config)
         reporter.add_requirement(requirement)
@@ -408,15 +408,15 @@ def create_default_requirements() -> List[Requirement]:
 
 __all__ = [
     # Enums
-    'ComplianceStatus',
-    'RiskLevel',
-    'RequirementCategory',
+    "ComplianceStatus",
+    "RiskLevel",
+    "RequirementCategory",
     # Data Classes
-    'Requirement',
-    'ComplianceConfig',
-    'ComplianceReport',
+    "Requirement",
+    "ComplianceConfig",
+    "ComplianceReport",
     # Main Class
-    'EUAIActReporter',
+    "EUAIActReporter",
     # Helpers
-    'create_default_requirements',
+    "create_default_requirements",
 ]

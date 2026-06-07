@@ -93,7 +93,7 @@ class ImageAnalysisResult:
 class ImageAnalyzer:
     """
     Analyzes images for hidden threats and malicious content.
-    
+
     Features:
     - Steganography detection (LSB, DCT)
     - OCR text extraction and analysis
@@ -101,11 +101,11 @@ class ImageAnalyzer:
     - QR code payload inspection
     - Appended data detection
     - Polyglot file detection
-    
+
     Usage:
         analyzer = ImageAnalyzer()
         result = analyzer.analyze(image_bytes)
-        
+
         if not result.is_safe:
             for threat in result.threats:
                 print(f"Threat: {threat.threat_type.value}")
@@ -150,17 +150,17 @@ class ImageAnalyzer:
 
     # Magic bytes for polyglot detection
     MAGIC_BYTES = {
-        b'\x89PNG': 'PNG',
-        b'\xff\xd8\xff': 'JPEG',
-        b'GIF87a': 'GIF87',
-        b'GIF89a': 'GIF89',
-        b'%PDF': 'PDF',
-        b'PK\x03\x04': 'ZIP',
-        b'\x1f\x8b': 'GZIP',
-        b'MZ': 'EXE',
-        b'\x7fELF': 'ELF',
-        b'<script': 'HTML/JS',
-        b'<html': 'HTML',
+        b"\x89PNG": "PNG",
+        b"\xff\xd8\xff": "JPEG",
+        b"GIF87a": "GIF87",
+        b"GIF89a": "GIF89",
+        b"%PDF": "PDF",
+        b"PK\x03\x04": "ZIP",
+        b"\x1f\x8b": "GZIP",
+        b"MZ": "EXE",
+        b"\x7fELF": "ELF",
+        b"<script": "HTML/JS",
+        b"<html": "HTML",
     }
 
     def __init__(
@@ -174,7 +174,7 @@ class ImageAnalyzer:
     ):
         """
         Initialize ImageAnalyzer.
-        
+
         Args:
             enable_ocr: Enable OCR text extraction
             enable_stego_detection: Enable steganography detection
@@ -210,11 +210,11 @@ class ImageAnalyzer:
     ) -> ImageAnalysisResult:
         """
         Analyze an image for hidden threats.
-        
+
         Args:
             image_data: Image bytes, base64 string, or PIL Image
             filename: Optional filename for context
-            
+
         Returns:
             ImageAnalysisResult with threat details
         """
@@ -374,11 +374,11 @@ class ImageAnalyzer:
 
         # Check for script content in image
         script_patterns = [
-            b'<script',
-            b'javascript:',
-            b'onerror=',
-            b'onload=',
-            b'eval(',
+            b"<script",
+            b"javascript:",
+            b"onerror=",
+            b"onload=",
+            b"eval(",
         ]
         for pattern in script_patterns:
             if pattern in data:
@@ -401,8 +401,8 @@ class ImageAnalyzer:
         threats = []
 
         # JPEG ends with FFD9
-        if data.startswith(b'\xff\xd8\xff'):
-            eof_marker = data.rfind(b'\xff\xd9')
+        if data.startswith(b"\xff\xd8\xff"):
+            eof_marker = data.rfind(b"\xff\xd9")
             if eof_marker != -1 and eof_marker < len(data) - 2:
                 appended = data[eof_marker + 2:]
                 if len(appended) > 10:  # Significant appended data
@@ -411,13 +411,13 @@ class ImageAnalyzer:
                         severity="high",
                         confidence=0.9,
                         description=f"Data appended after JPEG EOF: {len(appended)} bytes",
-                        extracted_content=appended[:100].decode(errors='ignore'),
+                        extracted_content=appended[:100].decode(errors="ignore"),
                         metadata={"appended_size": len(appended)},
                     ))
 
         # PNG ends with IEND chunk
-        if data.startswith(b'\x89PNG'):
-            iend = data.find(b'IEND')
+        if data.startswith(b"\x89PNG"):
+            iend = data.find(b"IEND")
             if iend != -1:
                 # IEND chunk is 12 bytes (4 length + 4 type + 4 CRC)
                 expected_end = iend + 8
@@ -468,7 +468,7 @@ class ImageAnalyzer:
                             break
 
                     # Check for URLs/emails
-                    if re.search(r'https?://|@[a-z0-9.-]+\.[a-z]{2,}', value, re.I):
+                    if re.search(r"https?://|@[a-z0-9.-]+\.[a-z]{2,}", value, re.I):
                         threats.append(ImageThreat(
                             threat_type=ImageThreatType.EXIF_INJECTION,
                             severity="medium",
@@ -506,8 +506,8 @@ class ImageAnalyzer:
 
         try:
             # Convert to numpy array
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
+            if img.mode != "RGB":
+                img = img.convert("RGB")
 
             arr = np.array(img)
 
@@ -517,7 +517,7 @@ class ImageAnalyzer:
             # In natural images, LSBs should be roughly 50/50
             # Steganography often creates non-random patterns
             lsb_mean = np.mean(lsb)
-            lsb_std = np.std(lsb.flatten())
+            np.std(lsb.flatten())
 
             # Chi-square like analysis for LSB
             # Count 0s and 1s
@@ -555,7 +555,7 @@ class ImageAnalyzer:
 
                 if ascii_ratio > 0.7:
                     # Extract potential hidden text
-                    hidden_text = ''.join(chr(b) for b in byte_samples if 32 <= b <= 126)
+                    hidden_text = "".join(chr(b) for b in byte_samples if 32 <= b <= 126)
 
                     threats.append(ImageThreat(
                         threat_type=ImageThreatType.STEGANOGRAPHY_LSB,
@@ -566,7 +566,7 @@ class ImageAnalyzer:
                     ))
 
             # Histogram analysis for DCT steganography (JPEG)
-            if raw_bytes.startswith(b'\xff\xd8\xff'):
+            if raw_bytes.startswith(b"\xff\xd8\xff"):
                 # Simplified DCT analysis
                 hist = np.histogram(arr.flatten(), bins=256)[0]
 
@@ -584,7 +584,7 @@ class ImageAnalyzer:
                         metadata={"avg_pair_diff": float(avg_diff)},
                     ))
 
-        except Exception as e:
+        except Exception:
             pass  # Analysis failed
 
         return threats
@@ -657,13 +657,13 @@ class ImageAnalyzer:
             codes = pyzbar.decode(img)
 
             for code in codes:
-                data = code.data.decode(errors='ignore')
+                data = code.data.decode(errors="ignore")
                 code_type = code.type
 
                 # Check for malicious URLs
-                if re.match(r'https?://', data, re.I):
+                if re.match(r"https?://", data, re.I):
                     # Suspicious TLDs
-                    if re.search(r'\.(ru|cn|tk|ml|ga|cf|gq|xyz|top|buzz)(/|$)', data, re.I):
+                    if re.search(r"\.(ru|cn|tk|ml|ga|cf|gq|xyz|top|buzz)(/|$)", data, re.I):
                         threats.append(ImageThreat(
                             threat_type=ImageThreatType.QR_CODE_MALICIOUS,
                             severity="high",
@@ -674,7 +674,7 @@ class ImageAnalyzer:
                         ))
 
                     # URL shorteners often used maliciously
-                    if re.search(r'(bit\.ly|tinyurl|t\.co|goo\.gl|ow\.ly)', data, re.I):
+                    if re.search(r"(bit\.ly|tinyurl|t\.co|goo\.gl|ow\.ly)", data, re.I):
                         threats.append(ImageThreat(
                             threat_type=ImageThreatType.QR_CODE_MALICIOUS,
                             severity="medium",
@@ -696,9 +696,9 @@ class ImageAnalyzer:
                         break
 
                 # Base64 encoded payloads
-                if re.match(r'^[A-Za-z0-9+/]{20,}={0,2}$', data):
+                if re.match(r"^[A-Za-z0-9+/]{20,}={0,2}$", data):
                     try:
-                        decoded = base64.b64decode(data).decode(errors='ignore')
+                        decoded = base64.b64decode(data).decode(errors="ignore")
                         if any(p.search(decoded) for p in self._compiled_patterns):
                             threats.append(ImageThreat(
                                 threat_type=ImageThreatType.QR_CODE_MALICIOUS,
@@ -751,11 +751,11 @@ def analyze_image(
 ) -> ImageAnalysisResult:
     """
     Quick analysis of an image.
-    
+
     Args:
         image_data: Image bytes or base64 string
         text_analyzer: Optional Memgar analyzer
-        
+
     Returns:
         ImageAnalysisResult
     """

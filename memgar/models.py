@@ -56,7 +56,7 @@ class ThreatCategory(str, Enum):
 class Threat:
     """
     Definition of a threat pattern.
-    
+
     This represents a known attack pattern that Memgar can detect.
     Each threat has a unique ID, severity level, and detection patterns.
     """
@@ -83,7 +83,7 @@ class Threat:
 class ThreatMatch:
     """
     A detected threat match in analyzed content.
-    
+
     Contains information about what was detected and where.
     """
     threat: Threat
@@ -97,7 +97,7 @@ class ThreatMatch:
 class AnalysisResult:
     """
     Result of content analysis.
-    
+
     Contains the decision, risk score, and any detected threats.
     """
     decision: Decision
@@ -158,7 +158,7 @@ class AnalysisResult:
 class MemoryEntry:
     """
     A memory entry to be analyzed.
-    
+
     Represents a piece of content that should be checked for
     memory poisoning attacks before being stored.
     """
@@ -178,7 +178,7 @@ class MemoryEntry:
 class ScanResult:
     """
     Result of scanning multiple memories.
-    
+
     Contains statistics and individual results.
     """
     # Primary fields (used by Scanner)

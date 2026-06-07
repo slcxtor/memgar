@@ -503,7 +503,7 @@ def _replace_document_content(doc: Document, safe_content: Any) -> Document:
             pass
     try:
         cloned = copy.copy(doc)
-        setattr(cloned, "page_content", safe_text)
+        cloned.page_content = safe_text
         return cloned
     except Exception:
         logger.debug("Memgar: unable to clone LangChain Document for sanitized retrieval")

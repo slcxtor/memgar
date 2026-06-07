@@ -141,7 +141,7 @@ class PilotAnonymizer:
 
         # Then our extra regex categories.
         for label, pattern in _PATTERNS:
-            def _sub(match):
+            def _sub(match, label=label):
                 value = match.group(0)
                 if label == "CC" and not _luhn_ok(value):
                     return value

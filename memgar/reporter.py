@@ -6,11 +6,11 @@ Generate HTML and JSON reports from scan results.
 
 Usage:
     from memgar.reporter import ReportGenerator
-    
+
     # Generate HTML report
     generator = ReportGenerator()
     generator.generate_html(results, "report.html")
-    
+
     # CLI usage
     memgar scan-file memories.txt --output report.html
 """
@@ -35,7 +35,7 @@ class ReportMetadata:
 class ReportGenerator:
     """
     Generate security reports from scan results.
-    
+
     Supports HTML and JSON output formats.
     """
 
@@ -51,13 +51,13 @@ class ReportGenerator:
     ) -> str:
         """
         Generate HTML report.
-        
+
         Args:
             results: List of analysis results
             output_path: Output file path
             title: Report title
             source_file: Source file name (optional)
-            
+
         Returns:
             Path to generated report
         """
@@ -107,12 +107,12 @@ class ReportGenerator:
     ) -> str:
         """
         Generate JSON report.
-        
+
         Args:
             results: List of analysis results
             output_path: Output file path
             source_file: Source file name
-            
+
         Returns:
             Path to generated report
         """
@@ -192,8 +192,8 @@ class ReportGenerator:
             """
 
         # Generate category chart data
-        category_labels = list(categories.keys()) if categories else ["None"]
-        category_values = list(categories.values()) if categories else [0]
+        list(categories.keys()) if categories else ["None"]
+        list(categories.values()) if categories else [0]
 
         html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -207,7 +207,7 @@ class ReportGenerator:
             padding: 0;
             box-sizing: border-box;
         }}
-        
+
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -215,35 +215,35 @@ class ReportGenerator:
             min-height: 100vh;
             padding: 20px;
         }}
-        
+
         .container {{
             max-width: 1200px;
             margin: 0 auto;
         }}
-        
+
         .header {{
             text-align: center;
             padding: 30px 0;
             border-bottom: 1px solid #333;
             margin-bottom: 30px;
         }}
-        
+
         .header h1 {{
             font-size: 2.5em;
             color: #fff;
             margin-bottom: 10px;
         }}
-        
+
         .header .logo {{
             font-size: 3em;
             margin-bottom: 10px;
         }}
-        
+
         .header .subtitle {{
             color: #888;
             font-size: 1.1em;
         }}
-        
+
         .meta {{
             display: flex;
             justify-content: center;
@@ -252,14 +252,14 @@ class ReportGenerator:
             color: #666;
             font-size: 0.9em;
         }}
-        
+
         .stats-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }}
-        
+
         .stat-card {{
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
@@ -267,39 +267,39 @@ class ReportGenerator:
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }}
-        
+
         .stat-card.block {{
             border-color: #e74c3c;
             background: rgba(231, 76, 60, 0.1);
         }}
-        
+
         .stat-card.quarantine {{
             border-color: #f39c12;
             background: rgba(243, 156, 18, 0.1);
         }}
-        
+
         .stat-card.allow {{
             border-color: #2ecc71;
             background: rgba(46, 204, 113, 0.1);
         }}
-        
+
         .stat-number {{
             font-size: 3em;
             font-weight: bold;
             margin-bottom: 5px;
         }}
-        
+
         .stat-card.block .stat-number {{ color: #e74c3c; }}
         .stat-card.quarantine .stat-number {{ color: #f39c12; }}
         .stat-card.allow .stat-number {{ color: #2ecc71; }}
-        
+
         .stat-label {{
             color: #888;
             text-transform: uppercase;
             font-size: 0.85em;
             letter-spacing: 1px;
         }}
-        
+
         .section {{
             background: rgba(255, 255, 255, 0.03);
             border-radius: 12px;
@@ -307,7 +307,7 @@ class ReportGenerator:
             margin-bottom: 25px;
             border: 1px solid rgba(255, 255, 255, 0.08);
         }}
-        
+
         .section h2 {{
             font-size: 1.4em;
             margin-bottom: 20px;
@@ -316,18 +316,18 @@ class ReportGenerator:
             align-items: center;
             gap: 10px;
         }}
-        
+
         table {{
             width: 100%;
             border-collapse: collapse;
         }}
-        
+
         th, td {{
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }}
-        
+
         th {{
             background: rgba(255, 255, 255, 0.05);
             color: #fff;
@@ -336,19 +336,19 @@ class ReportGenerator:
             font-size: 0.85em;
             letter-spacing: 0.5px;
         }}
-        
+
         tr:hover {{
             background: rgba(255, 255, 255, 0.03);
         }}
-        
+
         tr.block {{
             background: rgba(231, 76, 60, 0.05);
         }}
-        
+
         tr.quarantine {{
             background: rgba(243, 156, 18, 0.05);
         }}
-        
+
         .badge {{
             display: inline-block;
             padding: 4px 12px;
@@ -356,51 +356,51 @@ class ReportGenerator:
             font-size: 0.85em;
             font-weight: 500;
         }}
-        
+
         .badge.block {{
             background: rgba(231, 76, 60, 0.2);
             color: #e74c3c;
         }}
-        
+
         .badge.quarantine {{
             background: rgba(243, 156, 18, 0.2);
             color: #f39c12;
         }}
-        
+
         .badge.allow {{
             background: rgba(46, 204, 113, 0.2);
             color: #2ecc71;
         }}
-        
+
         .risk-bar {{
             display: flex;
             gap: 5px;
             margin-top: 15px;
         }}
-        
+
         .risk-segment {{
             height: 8px;
             border-radius: 4px;
         }}
-        
+
         .risk-high {{ background: #e74c3c; }}
         .risk-medium {{ background: #f39c12; }}
         .risk-low {{ background: #2ecc71; }}
-        
+
         .category-list {{
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
             margin-top: 15px;
         }}
-        
+
         .category-tag {{
             background: rgba(255, 255, 255, 0.1);
             padding: 8px 16px;
             border-radius: 20px;
             font-size: 0.9em;
         }}
-        
+
         .category-tag span {{
             background: rgba(255, 255, 255, 0.2);
             padding: 2px 8px;
@@ -408,28 +408,28 @@ class ReportGenerator:
             margin-left: 8px;
             font-weight: bold;
         }}
-        
+
         .footer {{
             text-align: center;
             padding: 30px 0;
             color: #666;
             font-size: 0.9em;
         }}
-        
+
         .footer a {{
             color: #3498db;
             text-decoration: none;
         }}
-        
+
         @media (max-width: 768px) {{
             .stats-grid {{
                 grid-template-columns: repeat(2, 1fr);
             }}
-            
+
             table {{
                 font-size: 0.9em;
             }}
-            
+
             th, td {{
                 padding: 8px 10px;
             }}
@@ -448,7 +448,7 @@ class ReportGenerator:
                 <span>🔢 {total} entries scanned</span>
             </div>
         </div>
-        
+
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number">{total}</div>
@@ -467,7 +467,7 @@ class ReportGenerator:
                 <div class="stat-label">✅ Allowed</div>
             </div>
         </div>
-        
+
         <div class="section">
             <h2>📊 Risk Distribution</h2>
             <div class="risk-bar">
@@ -481,9 +481,9 @@ class ReportGenerator:
                 🟢 Low Risk: {low_risk}
             </p>
         </div>
-        
+
         {'<div class="section"><h2>📂 Threat Categories</h2><div class="category-list">' + ''.join(f'<div class="category-tag">{cat}<span>{count}</span></div>' for cat, count in sorted(categories.items(), key=lambda x: -x[1])) + '</div></div>' if categories else ''}
-        
+
         <div class="section">
             <h2>📋 Detailed Results</h2>
             <table>
@@ -502,7 +502,7 @@ class ReportGenerator:
                 </tbody>
             </table>
         </div>
-        
+
         <div class="footer">
             <p>Generated by <a href="https://github.com/slck-tor/memgar">Memgar</a> v0.2.0</p>
             <p>AI Agent Memory Security</p>
@@ -522,13 +522,13 @@ def generate_report(
 ) -> str:
     """
     Quick function to generate report.
-    
+
     Args:
         results: List of analysis results
         output_path: Output file path
         format: Output format (html, json)
         **kwargs: Additional arguments
-        
+
     Returns:
         Path to generated report
     """

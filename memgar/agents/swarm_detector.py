@@ -12,12 +12,12 @@ to compromise a system:
 
 Usage:
     from memgar.agents import SwarmDetector
-    
+
     detector = SwarmDetector()
-    
+
     # Report agent activity
     detector.report_activity(agent_id, action, target)
-    
+
     # Check for swarm behavior
     threats = detector.detect_swarm_threats()
 """
@@ -68,22 +68,22 @@ class AgentActivity:
 class SwarmDetector:
     """
     Detects coordinated swarm attacks across multiple agents.
-    
+
     Features:
     - Activity correlation analysis
     - Temporal pattern detection
     - Content similarity detection
     - Agent clustering
     - Behavior fingerprinting
-    
+
     Usage:
         detector = SwarmDetector()
-        
+
         # Report activities
         detector.report_activity("agent-1", "query", "sensitive_data")
         detector.report_activity("agent-2", "query", "sensitive_data")
         detector.report_activity("agent-3", "query", "sensitive_data")
-        
+
         # Detect swarm behavior
         threats = detector.detect_swarm_threats()
         for threat in threats:
@@ -103,7 +103,7 @@ class SwarmDetector:
     ):
         """
         Initialize SwarmDetector.
-        
+
         Args:
             min_swarm_size: Minimum agents to consider as swarm
             time_window_seconds: Time window for activity correlation
@@ -145,7 +145,7 @@ class SwarmDetector:
     ) -> None:
         """
         Report an agent activity for swarm analysis.
-        
+
         Args:
             agent_id: The acting agent
             action: Type of action performed
@@ -184,7 +184,7 @@ class SwarmDetector:
     def detect_swarm_threats(self) -> List[SwarmThreat]:
         """
         Analyze activities and detect swarm threats.
-        
+
         Returns:
             List of detected SwarmThreat objects
         """

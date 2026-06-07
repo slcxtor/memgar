@@ -179,8 +179,8 @@ class MemgarLettaGuard:
             else:
                 # SDK object — try to attach as attribute
                 try:
-                    setattr(item, "memgar_risk_score", patch["memgar_risk_score"])
-                    setattr(item, "memgar_decision", patch["memgar_decision"])
+                    item.memgar_risk_score = patch["memgar_risk_score"]
+                    item.memgar_decision = patch["memgar_decision"]
                 except Exception:  # noqa: BLE001
                     pass
         return results

@@ -385,14 +385,14 @@ class MemgarConfig:
 def get_config_path() -> Path:
     """
     Get configuration file path.
-    
+
     Checks in order:
     1. MEMGAR_CONFIG environment variable
     2. ./memgar.json (current directory)
     3. ./memgar.yaml (current directory)
     4. ~/.memgarrc (home directory)
     5. ~/.config/memgar/config.json (XDG config)
-    
+
     Returns:
         Path to configuration file (may not exist)
     """
@@ -724,15 +724,15 @@ def _dict_to_config(data: Dict[str, Any]) -> MemgarConfig:
 def load_config(config_path: Optional[Union[str, Path]] = None) -> MemgarConfig:
     """
     Load complete configuration.
-    
+
     Order of precedence (lowest to highest):
     1. Built-in defaults
     2. Config file
     3. Environment variables
-    
+
     Args:
         config_path: Optional path to config file
-        
+
     Returns:
         MemgarConfig instance
     """
@@ -757,11 +757,11 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> MemgarConfig:
 def save_config(config: MemgarConfig, path: Optional[Union[str, Path]] = None) -> Path:
     """
     Save configuration to file.
-    
+
     Args:
         config: MemgarConfig instance to save
         path: Optional path (defaults to ~/.memgarrc)
-        
+
     Returns:
         Path to saved file
     """
@@ -818,10 +818,10 @@ def save_config(config: MemgarConfig, path: Optional[Union[str, Path]] = None) -
 def init_config(path: Optional[Union[str, Path]] = None) -> Path:
     """
     Initialize configuration file with defaults.
-    
+
     Args:
         path: Optional path (defaults to ~/.memgarrc)
-        
+
     Returns:
         Path to created configuration file
     """
@@ -847,7 +847,7 @@ _global_config: Optional[MemgarConfig] = None
 def get_config() -> MemgarConfig:
     """
     Get global configuration instance.
-    
+
     Loads config on first call, then returns cached instance.
     """
     global _global_config
@@ -876,7 +876,7 @@ def reload_config() -> MemgarConfig:
 EXAMPLE_CONFIG_JSON = """{
   "config_version": "2.0",
   "log_level": "WARNING",
-  
+
   "llm": {
     "provider": "auto",
     "model": null,
@@ -891,7 +891,7 @@ EXAMPLE_CONFIG_JSON = """{
       "groq": ["llama-3.1-8b-instant", "mixtral-8x7b-32768"]
     }
   },
-  
+
   "analysis": {
     "risk_threshold_block": 80,
     "risk_threshold_quarantine": 40,
@@ -900,13 +900,13 @@ EXAMPLE_CONFIG_JSON = """{
     "use_sliding_window": true,
     "window_size": 1000
   },
-  
+
   "output": {
     "output_format": "text",
     "verbose": false,
     "color": true
   },
-  
+
   "ignore": {
     "patterns": ["test payment", "example.com"],
     "threat_ids": ["ANOM-002"]
@@ -926,7 +926,7 @@ llm:
   fallback_models: true
   cache_enabled: true
   cache_ttl: 3600
-  
+
   # Custom model lists per provider
   custom_models:
     openai:

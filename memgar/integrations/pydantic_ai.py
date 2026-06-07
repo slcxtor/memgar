@@ -36,7 +36,7 @@ from __future__ import annotations
 import functools
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 from .universal import MemoryBlockedError, UniversalMemoryGuard
 
@@ -205,7 +205,7 @@ class MemgarPydanticAIGuard:
                     safe_messages.append(new)
                 else:
                     try:
-                        setattr(msg, "parts", safe_parts)
+                        msg.parts = safe_parts
                     except Exception:
                         pass
                     safe_messages.append(msg)

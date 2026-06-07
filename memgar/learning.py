@@ -1414,7 +1414,7 @@ class PatternEvolutionEngine:
         if not llm:
             return []
 
-        prompt = f"""You are a security pattern generator. Given these attack samples:
+        f"""You are a security pattern generator. Given these attack samples:
 
 {chr(10).join(f"- {s}" for s in attack_samples[:5])}
 

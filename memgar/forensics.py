@@ -45,7 +45,7 @@ from memgar.models import AnalysisResult, Decision, MemoryEntry
 
 def _safe_table_name(name: str) -> str:
     """Validate SQLite table name to prevent SQL injection via identifier injection."""
-    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
         raise ValueError(f"Unsafe table name: {name!r}")
     return name
 
@@ -992,7 +992,7 @@ class MemoryForensicsEngine:
                 {cleaned_section}
             </div>"""
 
-        recs_html = "".join(f"<li>{r}</li>" for r in report.recommendations)
+        "".join(f"<li>{r}</li>" for r in report.recommendations)
 
         status_color = "#ef4444" if report.is_compromised else "#22c55e"
         status_label = "🚨 COMPROMISED" if report.is_compromised else "✅ CLEAN"

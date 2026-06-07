@@ -10,12 +10,12 @@ Manages trust relationships between AI agents to prevent:
 
 Usage:
     from memgar.agents import TrustChainManager, TrustLevel
-    
+
     manager = TrustChainManager()
-    
+
     # Establish trust
     manager.set_trust("coordinator", "worker-1", TrustLevel.HIGH)
-    
+
     # Check trust before allowing action
     if manager.can_delegate("coordinator", "worker-1", "file_read"):
         allow_action()
@@ -64,7 +64,7 @@ class TrustViolation:
 class TrustChainManager:
     """
     Manages trust relationships between agents.
-    
+
     Features:
     - Trust level management (NONE, LOW, MEDIUM, HIGH, FULL)
     - Capability-based permissions
@@ -72,17 +72,17 @@ class TrustChainManager:
     - Transitive trust control
     - Trust violation detection
     - Chain depth limiting
-    
+
     Usage:
         manager = TrustChainManager()
-        
+
         # Set up trust relationships
         manager.set_trust("orchestrator", "file-agent", TrustLevel.HIGH,
                          capabilities={"file_read", "file_write"})
-        
+
         # Validate delegation
         can_read = manager.can_delegate("orchestrator", "file-agent", "file_read")
-        
+
         # Check trust chain
         chain = manager.get_trust_chain("agent-a", "agent-d")
     """
@@ -107,7 +107,7 @@ class TrustChainManager:
     ):
         """
         Initialize TrustChainManager.
-        
+
         Args:
             max_chain_depth: Maximum depth of trust chains
             allow_transitive_trust: Whether to allow transitive trust
@@ -138,7 +138,7 @@ class TrustChainManager:
     ) -> bool:
         """
         Set trust relationship between agents.
-        
+
         Args:
             source_agent: The trusting agent
             target_agent: The trusted agent
@@ -146,7 +146,7 @@ class TrustChainManager:
             capabilities: Specific capabilities (or use defaults)
             duration_hours: Trust duration (or use default)
             granted_by: Who is granting this trust
-            
+
         Returns:
             True if trust was set successfully
         """
@@ -220,12 +220,12 @@ class TrustChainManager:
     ) -> bool:
         """
         Check if source can delegate capability to target.
-        
+
         Args:
             source_agent: Delegating agent
             target_agent: Receiving agent
             capability: The capability to delegate
-            
+
         Returns:
             True if delegation is allowed
         """
@@ -267,12 +267,12 @@ class TrustChainManager:
     ) -> Optional[List[str]]:
         """
         Find trust chain between agents.
-        
+
         Args:
             source_agent: Starting agent
             target_agent: Ending agent
             max_depth: Maximum chain depth
-            
+
         Returns:
             List of agents in chain, or None if no path
         """
@@ -373,7 +373,7 @@ class TrustChainManager:
     ) -> Tuple[bool, List[str]]:
         """
         Validate a trust establishment request.
-        
+
         Returns:
             (is_valid, list of concerns)
         """
@@ -415,7 +415,7 @@ class TrustChainManager:
         """Get maximum chain depth leading to an agent."""
         max_depth = 0
 
-        for (src, tgt), rel in self._trust_graph.items():
+        for (src, tgt), _rel in self._trust_graph.items():
             if tgt == agent_id:
                 chain = self.get_trust_chain(src, agent_id)
                 if chain:

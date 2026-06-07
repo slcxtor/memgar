@@ -14,7 +14,7 @@ Attack Vectors Covered:
 
 Usage:
     from memgar.multimodal import MultiModalAnalyzer
-    
+
     analyzer = MultiModalAnalyzer()
     result = analyzer.analyze_image(image_bytes)
     result = analyzer.analyze_pdf(pdf_bytes)

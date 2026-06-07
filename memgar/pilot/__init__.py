@@ -29,7 +29,7 @@ See ``PILOT_GUIDE.md`` for the privacy contract and operator checklist.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from .anonymizer import AnonymizationResult, PilotAnonymizer
 from .collector import (
