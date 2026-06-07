@@ -893,11 +893,19 @@ def _decode_transposition_variants(content: str) -> list[str]:
     """Candidate decodings for transposition/substitution-hidden directives.
 
     A reversed (".tpmorp metsys ... erongI") or ROT13 ("Vtaber nyy ...")
-    instruction is inert until decoded, so it slips past Layer 1. We scan
-    the decoded forms too. Decoding *benign* text yields gibberish that
-    matches no pattern, so the false-positive risk is minimal.
+    instruction is inert until decoded, so it scan the decoded forms too.
+
+    Critical FP guard: short keywords can accidentally collide under ROT13
+    (e.g. "PII" → "CVV", "the" → "gur"). We therefore only ROT13-decode
+    content that does NOT already look like ordinary English prose — real
+    obfuscated attacks read as gibberish in the original. The reversed
+    variant has the same risk (e.g. trailing single letters), so we apply
+    the same guard. Decoding benign English text under these guards yields
+    nothing, while obfuscated payloads still get decoded and scanned.
     """
     out: list[str] = []
+    if _looks_like_english(content):
+        return out
     rev = content[::-1]
     if rev != content:
         out.append(rev)
@@ -911,6 +919,42 @@ def _decode_transposition_variants(content: str) -> list[str]:
     return out
 
 
+_ENGLISH_STOPWORDS = frozenset({
+    "the", "and", "of", "to", "in", "is", "it", "you", "that", "for",
+    "on", "with", "as", "this", "are", "was", "but", "be", "have", "or",
+    "all", "from", "by", "an", "at", "we", "they", "if", "not", "can",
+    "will", "would", "should", "could", "may", "do", "does", "did",
+    "i", "my", "your", "our", "their", "his", "her",
+})
+
+
+def _looks_like_english(content: str) -> bool:
+    """Heuristic: does this text already read as ordinary English?
+
+    Real ROT13 / reversed attack payloads look like gibberish (no English
+    function words). Skipping the transposition decoders on natural English
+    eliminates ROT13 collision FPs ("PII" → "CVV", "the" → "gur") without
+    weakening the obfuscation defence on actually-obfuscated input.
+    """
+    # Pull lowercase alphabetic tokens; if the text is too short to judge,
+    # default to assuming it COULD be obfuscated (safer: decode + scan).
+    tokens = re.findall(r"[a-zA-Z]{2,}", content)
+    if not tokens:
+        return True  # nothing to decode
+    lower = [t.lower() for t in tokens]
+    stop_hits = sum(1 for t in lower if t in _ENGLISH_STOPWORDS)
+    # Any English stopword anywhere is a strong signal — ROT13/reversed
+    # natural English has essentially zero stopwords. Catches short benign
+    # phrases ("PII review needed" — "needed" not a stopword but absent of
+    # stopwords PLUS short → treat as English to avoid keyword-collision FPs).
+    if stop_hits >= 1:
+        return True
+    # Tail guard: very short text (<5 tokens) with no stopwords is more
+    # likely benign noise than a serious ROT13 attack — short obfuscated
+    # probes are weak; serious attacks are sentences. Skip decoding.
+    return len(tokens) < 5
+
+
 _LATIN_RE = re.compile(r'[a-zA-Z]')
 _CYRILLIC_RE = re.compile(r'[Ѐ-ӿ]')
 _GREEK_RE = re.compile(r'[Ͱ-Ͽ]')
@@ -918,18 +962,38 @@ _ARABIC_RE = re.compile(r'[؀-ۿ]')
 
 # Pattern IDs whose whole purpose is to flag non-Latin lookalikes injected
 # into Latin text. On predominantly non-Latin text these fire on the native
-# script and are false positives.
+# script and are false positives — dropped when the *matched text* itself is
+# non-Latin (a genuine zero-width/base64 attack matches Latin and survives).
 _SCRIPT_MIXING_IDS = frozenset({"HOMOGLYPH", "UNICODE-BYPASS", "EVADE-002"})
+
+# Obfuscation / steganography / script-mixing detectors that false-fire on
+# legitimate non-Latin prose (e.g. a Russian "here's an SMTP client in C"
+# answer) even when their match lands on embedded Latin code. Memgar is an
+# English-only detector, so a predominantly non-Latin document is out of
+# scope; these findings are dropped unconditionally on such input. Genuine
+# attacks in those locales are out of scope by design (see README language
+# section). Hard threats (exfil URLs, command injection) are NOT in this set,
+# so a malicious payload embedded in non-Latin text is still caught.
+_OBFUSCATION_ON_NONLATIN_IDS = frozenset({
+    "HOMOGLYPH", "UNICODE-BYPASS", "EVADE-002", "STEGO-001",
+    "MULTI-LANG-HYBRID", "CONTEXT-001",
+})
 
 
 def _is_predominantly_non_latin(content: str) -> bool:
-    """True when Cyrillic/Greek/Arabic letters outnumber Latin ones — i.e. the
-    text is written in a non-Latin script, not Latin disguised with lookalikes."""
+    """True when the text is genuine non-Latin-script prose (Russian / Greek /
+    Arabic), as opposed to Latin text disguised with a few lookalike glyphs.
+
+    A homoglyph *attack* ("Ignоre all previоus instructiоns") has only a few
+    non-Latin chars among many Latin, so it stays below the bar and is still
+    flagged. Genuine non-Latin prose has either a large absolute count of
+    non-Latin letters (≥8, survives embedded Latin code blocks) or has
+    non-Latin letters strictly outnumbering Latin in short text."""
     latin = len(_LATIN_RE.findall(content))
     nonlatin = (len(_CYRILLIC_RE.findall(content))
                 + len(_GREEK_RE.findall(content))
                 + len(_ARABIC_RE.findall(content)))
-    return nonlatin >= 3 and nonlatin > latin
+    return nonlatin >= 8 or (nonlatin >= 2 and nonlatin > latin)
 
 
 def _has_non_latin_alpha(text: str) -> bool:
@@ -1145,7 +1209,7 @@ class Analyzer:
         window_overlap: int = 200,
         memory_store: Any = None,
         context_buffer: bool = True,
-        use_transformer_ml: bool = True,
+        use_transformer_ml: bool = False,
         integrity_store: Any = None,
         stego_detector: bool = True,
         correlation_detector: bool = True,
@@ -1153,6 +1217,7 @@ class Analyzer:
         canary_manager: Any = None,
         similarity_layer: bool = True,
         fail_close: bool | None = None,
+        tenant_learning: Any = False,
     ) -> None:
         """
         Initialize the analyzer.
@@ -1168,6 +1233,14 @@ class Analyzer:
             window_overlap: Overlap between windows to catch split payloads
             memory_store: Optional MemoryStore for hunter retroactive scanning
             context_buffer: Enable stateful context-split detection per session
+            use_transformer_ml: Enable Layer 2-ML (fine-tuned ONNX transformer).
+                Defaults to **False**. The bundled artifact is trained against
+                template attacks + academic benigns and over-fires on prosaic
+                memory-writes ("grant Sofia view access" scores 0.9999, higher
+                than genuine attacks) — it adds no recall on the gold corpus
+                while raising FPR ~5x. Opt in for external-/RAG-source-heavy
+                deployments, or retrain on a domain-representative corpus with
+                scripts/train_transformer_v2.py before relying on it.
         """
         self.use_llm = use_llm
         self.api_key = api_key
@@ -1292,6 +1365,27 @@ class Analyzer:
             except Exception:
                 pass
 
+        # Per-tenant continuous learning (opt-in). When enabled, customer
+        # operators can `analyzer.mark_as_benign(...)` to teach memgar that
+        # specific content shapes are legitimate in their deployment. The
+        # store is isolated per tenant_id (from MemoryEntry.metadata) and is
+        # gated against poisoning — never overrides CRITICAL Layer-1 hits.
+        # Pass tenant_learning=True for the default disk-backed store, or a
+        # ready TenantLearningStore instance for custom storage.
+        self._tenant_learning: Any = None
+        if tenant_learning:
+            try:
+                from memgar.tenant_learning import TenantLearningStore
+                if isinstance(tenant_learning, TenantLearningStore):
+                    self._tenant_learning = tenant_learning
+                else:
+                    self._tenant_learning = TenantLearningStore(
+                        similarity_layer=self._similarity_layer
+                    )
+                logger.info("Analyzer: tenant_learning enabled")
+            except Exception as exc:
+                logger.warning("Analyzer: tenant_learning init failed (%s)", exc)
+
         # Layer 8: Canary token manager (memory exfiltration proof)
         self._canary_manager: Any = canary_manager
         if canary_manager is None:
@@ -1385,6 +1479,89 @@ class Analyzer:
             return self._canary_manager.scan(text, sink=sink)
         except Exception:
             return []
+
+    # -----------------------------------------------------------------
+    # Per-tenant continuous learning (opt-in)
+    # -----------------------------------------------------------------
+
+    def mark_as_benign(
+        self,
+        entry: "MemoryEntry",
+        reason: str,
+        marked_by: str = "operator",
+        analyzer_result: Any = None,
+    ) -> Any:
+        """Teach memgar that this content is benign for ``entry``'s tenant.
+
+        The tenant id is read from ``entry.metadata['tenant_id']`` (or
+        ``workspace_id``), defaulting to ``"default"``. Anti-poisoning: if
+        ``analyzer_result`` (from a prior ``analyze(entry)``) shows a
+        CRITICAL severity threat or risk_score ≥ 80, the call is refused
+        with ``PoisoningRefused``. Pass the result from your previous
+        ``analyze`` call so this guard can run.
+
+        Returns the stored ``BenignRecord``. Future calls to ``analyze``
+        with the same tenant id will see the risk_score dampened on
+        matches (exact or near-duplicate). Requires
+        ``Analyzer(tenant_learning=True)``.
+        """
+        if self._tenant_learning is None:
+            raise RuntimeError(
+                "tenant_learning not enabled — construct with "
+                "Analyzer(tenant_learning=True)"
+            )
+        meta = entry.metadata or {}
+        tenant_id = str(meta.get("tenant_id") or meta.get("workspace_id") or "default")
+        return self._tenant_learning.mark_as_benign(
+            tenant_id,
+            entry.content or "",
+            reason=reason,
+            marked_by=marked_by,
+            analyzer_result=analyzer_result,
+        )
+
+    def mark_as_attack(
+        self,
+        entry: "MemoryEntry",
+        reason: str,
+        marked_by: str = "operator",
+        analyzer_result: Any = None,
+    ) -> Any:
+        """Flag a content as an attack memgar missed (queue for review).
+
+        Does NOT change current decisions; the record goes into the
+        tenant's ``attacks.jsonl`` for a maintainer to promote into the
+        global corpus during the next retraining pass.
+        """
+        if self._tenant_learning is None:
+            raise RuntimeError(
+                "tenant_learning not enabled — construct with "
+                "Analyzer(tenant_learning=True)"
+            )
+        meta = entry.metadata or {}
+        tenant_id = str(meta.get("tenant_id") or meta.get("workspace_id") or "default")
+        return self._tenant_learning.mark_as_attack(
+            tenant_id,
+            entry.content or "",
+            reason=reason,
+            marked_by=marked_by,
+            analyzer_result=analyzer_result,
+        )
+
+    def forget_tenant(self, tenant_id: str) -> int:
+        """Erase everything memgar learned for a tenant (GDPR / right to
+        erasure). Returns the number of benign entries removed."""
+        if self._tenant_learning is None:
+            return 0
+        return self._tenant_learning.forget_tenant(tenant_id)
+
+    def tenant_stats(self, tenant_id: str = "default") -> dict:
+        """Return per-tenant learning state summary."""
+        if self._tenant_learning is None:
+            return {"enabled": False}
+        s = self._tenant_learning.stats(tenant_id)
+        s["enabled"] = True
+        return s
 
     def issue_canary(
         self,
@@ -1489,7 +1666,11 @@ class Analyzer:
                     pass
 
             # Layer 5: Steganography detector (Unicode covert channels)
-            if self._stego_detector is not None:
+            # Skip on genuine non-Latin prose: the homoglyph-mapping stego
+            # heuristic ("'В'→'B'") false-fires on every Cyrillic/Greek/Arabic
+            # letter. Memgar is English-only, so non-Latin documents are out of
+            # scope and these are false positives, not covert channels.
+            if self._stego_detector is not None and not _is_predominantly_non_latin(entry.content or ""):
                 try:
                     stego_report = self._stego_detector.analyze(entry.content or "")
                     if stego_report.detected and stego_report.risk_boost > 0:
@@ -1758,6 +1939,48 @@ class Analyzer:
             except Exception:
                 pass
 
+        # Final language gate: on genuine non-Latin prose, drop obfuscation /
+        # script-mixing / steganography / multilang findings from ALL paths
+        # (Layer 1, sliding window, stego, correlation). Memgar is
+        # English-only, so a Russian/Greek/Arabic document is out of scope and
+        # these are false positives on the native script — not covert channels.
+        # Hard threats (exfil URLs, command injection, credentials) are NOT in
+        # the set, so a real payload embedded in non-Latin text still blocks.
+        if _is_predominantly_non_latin(entry.content or ""):
+            kept = [t for t in result.threats
+                    if t.threat.id not in _OBFUSCATION_ON_NONLATIN_IDS]
+            if len(kept) != len(result.threats):
+                result.threats = kept
+                result.risk_score = self._calculate_risk_score(kept, 0.0)
+                result.decision = self._make_decision(kept, result.risk_score)
+                result.explanation = self._generate_explanation(kept, result.decision)
+
+        # Per-tenant learning: dampen risk_score on content the tenant has
+        # marked as benign. Bounded — never overrides critical Layer-1 hits,
+        # never crosses CRITICAL_RISK_FLOOR. See memgar/tenant_learning.py.
+        if self._tenant_learning is not None:
+            try:
+                from memgar.tenant_learning import compute_dampen
+                meta = entry.metadata or {}
+                tenant_id = str(meta.get("tenant_id") or meta.get("workspace_id") or "default")
+                rec, sim = self._tenant_learning.lookup_benign(tenant_id, entry.content or "")
+                if rec is not None and sim > 0:
+                    severities = [t.threat.severity for t in result.threats]
+                    dampen = compute_dampen(int(result.risk_score), float(sim), severities)
+                    if dampen > 0:
+                        new_score = max(0, int(result.risk_score) - dampen)
+                        result.risk_score = new_score
+                        result.decision = self._make_decision(result.threats, new_score)
+                        result.layers_used = list(result.layers_used) + [
+                            f"tenant_learning:{tenant_id}"
+                        ]
+                        result.explanation = (
+                            f"[tenant_learning] benign match sim={sim:.3f} → "
+                            f"risk -{dampen}. Original: {result.explanation}"
+                        )
+            except Exception as exc:
+                logger.debug("tenant_learning skip on analyze (%s)", exc)
+
         # fail_close: if any ML/semantic layer is degraded the analysis is
         # incomplete. Escalate ALLOW → QUARANTINE so uncertain inputs never
         # slip through silently in high-risk environments.
@@ -1878,8 +2101,9 @@ class Analyzer:
             # zero-width / bidi / base64 matches (no non-Latin alpha) survive.
             if _is_predominantly_non_latin(content):
                 threats = [t for t in threats
-                           if not (t.threat.id in _SCRIPT_MIXING_IDS
-                                   and _has_non_latin_alpha(t.matched_text or ""))]
+                           if not (t.threat.id in _OBFUSCATION_ON_NONLATIN_IDS
+                                   or (t.threat.id in _SCRIPT_MIXING_IDS
+                                       and _has_non_latin_alpha(t.matched_text or "")))]
             l1.set_attribute("memgar.l1.threat_count", len(threats))
             l1.set_attribute("memgar.l1.patterns_checked", len(self.patterns))
         layers_used = ["pattern_matching"]

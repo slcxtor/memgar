@@ -11,7 +11,7 @@ Memgar is a production-grade AI agent memory security library. It detects and bl
 ```
 Layer 1   — Pattern Matching             <1ms    always on
 Layer 2   — LLM Semantic Analysis        ~200ms  optional (use_llm=True)
-Layer 2-ML — Transformer (ONNX)          ~7ms    optional (artifact required, see below)
+Layer 2-ML — Transformer (ONNX)          ~7ms    opt-in (use_transformer_ml=True, see below)
 Layer 2.5 — Semantic Similarity (cosine) ~5ms    optional (similarity_layer, sentence-transformers)
 Layer 3   — Trust-Aware Scoring          <0.1ms  auto (when source registered)
 Layer 4   — Behavioral Baseline          <1ms    auto (per-agent, after warm-up)
@@ -23,20 +23,23 @@ Layer 4   — Behavioral Baseline          <1ms    auto (per-agent, after warm-u
 > homoglyph/leetspeak variants — while costing an extra ~28ms encode per
 > analysis. Semantic detection is now Layer 2.5 (`similarity_layer`) alone.
 
-Layer 2-ML is **infrastructure-only by default** — memgar ships the
-TransformerDetector code and the training script (`scripts/train_transformer.py`)
-but does NOT bundle a pre-trained ONNX artifact. Reason: the default
-training_data.json distribution (academic AI Q&A benigns + template attacks)
-does not match real production-agent traffic; a model trained against it
-generalises poorly to prosaic everyday inputs ("User prefers dark mode")
-and raises Analyzer FPR from 0.09 to 0.5+ in the ensemble. Bring your own
-domain-representative dataset and run:
+Layer 2-ML is **off by default** (`use_transformer_ml=False`). A bundled INT8
+ONNX artifact (`ml/artifacts/transformer_model/model.int8.onnx`) ships for
+opt-in use, but the default Analyzer is Layer 1 + 3 + 4. Reason: the artifact's
+training distribution (academic AI Q&A benigns + template attacks) does not
+match real production-agent traffic; it over-fires on prosaic memory-writes
+("grant Sofia view access" scores 0.9999 — *higher* than genuine attacks),
+adding no recall on the gold corpus while raising gold-gate FPR from ~0.02 to
+~0.15. It does add +5.4pp recall on the external-/RAG-sourced threat-model
+corpus, so opt in for untrusted-source-heavy traffic — or retrain on a
+domain-representative dataset first:
 
-    python scripts/train_transformer.py --data path/to/your_data.json
+    python scripts/train_transformer_v2.py --data path/to/your_data.json
 
-When `ml/artifacts/transformer_model/model.onnx` is present, Layer 2-ML
-activates automatically; when absent, it disables gracefully and
-`Analyzer.health_check()` reports `tokenizer_dir_missing` (no exception).
+To enable: `Analyzer(use_transformer_ml=True)`. When enabled with the artifact
+absent, it disables gracefully and `health_check()` reports the degraded layer
+(no exception). When disabled (default), `health_check()` reports
+`layer2_ml_transformer: disabled`.
 
 **Layer 1** (`_layer1_pattern_matching`): Regex + keyword matching against 736 threat patterns loaded from `memgar/patterns.py` (pickle-cached for 3ms load vs 3500ms cold).
 

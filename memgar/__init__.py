@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-__version__ = "1.0.1"
+__version__ = "1.2.0"
 __author__ = "Memgar"
 __license__ = "MIT"
 __email__ = "hello@memgar.com"
@@ -60,6 +60,7 @@ from memgar.auditor import (
     MemoryAuditor,
     Snapshot,
 )
+
 # =============================================================================
 # DETECTION LAYERS 8-9 — canary tracers + tool-use guard
 # =============================================================================
@@ -450,13 +451,11 @@ try:
     )
     from memgar.eu_ai_act import (
         ComplianceConfig,
+        EUAIActReporter,
+        Requirement,
     )
     from memgar.eu_ai_act import (
         ComplianceStatus as EUAIActComplianceStatus,
-    )
-    from memgar.eu_ai_act import (
-        EUAIActReporter,
-        Requirement,
     )
     COMPLIANCE_AVAILABLE = True
 except ImportError:
@@ -610,6 +609,15 @@ from memgar.supply import (
 )
 
 # Composite Trust Scorer (v0.5.12)
+from memgar.tenant_learning import (
+    BenignRecord,
+    MarkAttackRecord,
+    PoisoningRefused,
+    RateLimited,
+    TenantLearningStore,
+    TenantPolicy,
+    TenantStoreFull,
+)
 from memgar.trust_scorer import (
     CompositeTrustResult,
     CompositeTrustScorer,

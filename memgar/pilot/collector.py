@@ -38,7 +38,6 @@ from typing import Any, Dict, List, Optional, Sequence
 from .anonymizer import PilotAnonymizer
 from .consent import PilotConsent
 
-
 SCHEMA_VERSION = 1
 
 

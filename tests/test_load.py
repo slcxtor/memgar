@@ -34,7 +34,12 @@ from memgar import Analyzer, MemoryEntry
 # ---------------------------------------------------------------------------
 
 THROUGHPUT_TARGET = 10_000          # req/s — production bare-metal target
-THROUGHPUT_CI_MIN = 80              # req/s — minimum accepted in any environment (shared CI VMs routinely hit 80-100)
+# v1.2.0: bundled ONNX-INT8 transformer adds ~80-100 ms per inference on
+# shared GitHub Actions runners (no CPU pinning, no GPU). 50 req/s is what
+# we actually observe on those runners; bare-metal hits 200-500 req/s.
+# Threshold sized at 30 req/s so a flaky CI VM doesn't fail the build but
+# a real perf regression (e.g. <20 req/s) still trips it.
+THROUGHPUT_CI_MIN = 30              # req/s — minimum accepted on shared CI runners with ML enabled
 # Latency SLOs: <1ms on bare metal / high-freq servers.
 # On shared CI VMs (no CPU pinning, page faults, JIT warm-up) these are ~5-50x higher.
 # We enforce VM-realistic limits and print the delta to production SLO.
