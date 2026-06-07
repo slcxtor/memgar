@@ -4,6 +4,51 @@ All notable changes to Memgar are documented here.
 
 ---
 
+## [1.3.0] — 2026-06-07
+
+Threat-coverage, scope, and maintenance release on top of 1.2.0.
+
+### ⚠️ Breaking
+
+- **Removed Layer 1.5 SemanticGuard** and the `semantic_guard` argument to
+  `Analyzer(...)`. An ablation showed it added **+0 recall** over the Layer 2.5
+  cosine similarity layer on every corpus tested (clean threat-model, AdvBench
+  OOD, and obfuscated homoglyph/leetspeak variants) while costing ~28 ms/encode.
+  Semantic detection is now Layer 2.5 (`similarity_layer`) alone. If you passed
+  `Analyzer(semantic_guard=...)`, drop the argument — everything else is
+  unchanged.
+
+### Added
+
+- **OWASP LLM03 / LLM05 / LLM08 coverage** — new patterns for supply-chain
+  (dependency confusion, MCP/plugin/tool-registry poisoning), improper output
+  handling (XSS/SQLi/SSRF in generated output), and vector & embedding
+  weaknesses (RAG/vector-store poisoning, embedding inversion / cross-tenant
+  leak, retrieval-ranking manipulation). `scripts/vector_coverage_eval.py` now
+  covers **10/10** OWASP LLM-Top-10 categories (was 7/10).
+- **Cross-domain agent-tooling patterns** — agent-as-tooling malware, system
+  intrusion, financial/identity fraud, phishing/scam-kit, deepfake
+  impersonation, and a named-persona uncensored-jailbreak pattern mined from
+  external corpora. Threat patterns **782 → 801**, all added at 0 FP on the
+  benign corpora.
+- **Per-tenant continuous learning** (`memgar.tenant_learning`) with
+  anti-poisoning guards.
+
+### Fixed
+
+- **Threat-intel sync** no longer dies when one source fails: the NVD/CVE step
+  is resilient to HTTP 429 (soft-stop, polite backoff) and every source step is
+  fault-isolated, so the curator PR still opens. No secret required.
+- Gold-gate FPR tightened; CI calibration gates hardened.
+
+### Changed
+
+- Dropped the "English-only" limitation framing in docs in favour of stating the
+  OWASP ASI06 scope positively; added an explicit "no API key required" note.
+- Cleared the entire ruff lint backlog in `memgar/` (1740 → 0).
+
+---
+
 ## [1.0.0] — 2026-05-19
 
 First stable release. The API contract under `memgar/` is now considered
