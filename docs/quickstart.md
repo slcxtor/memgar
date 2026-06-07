@@ -6,6 +6,14 @@ recommended production path is simple: keep `SecureMemoryStore` as the only
 memory write/read/retrieval boundary and run the gateway when model traffic or
 tool arguments need central enforcement.
 
+!!! tip "No API key required"
+
+    The core detection stack runs entirely locally — `pip install memgar` and
+    go. No account, no key, no outbound call to memgar. The only credential the
+    library ever reads is *your own* LLM provider key (`MEMGAR_LLM_API_KEY`),
+    and only if you opt into the optional Layer 2 LLM analysis (`use_llm=True`,
+    off by default).
+
 ## Choose a setup path
 
 === "SDK Integration"

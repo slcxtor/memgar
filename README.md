@@ -5,12 +5,30 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-7e57c2)](LICENSE)
 [![CI](https://github.com/slcxtor/memgar/actions/workflows/ci.yml/badge.svg)](https://github.com/slcxtor/memgar/actions/workflows/ci.yml)
 [![OWASP ASI06](https://img.shields.io/badge/OWASP-ASI06%20Memory%20Poisoning-blue)](https://genai.owasp.org/llmrisk2025/asi06-memory-poisoning/)
+[![No API key required](https://img.shields.io/badge/API%20key-not%20required-brightgreen)](#no-api-key-required)
 
-**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer English-text analyzer (782 patterns + sentence-transformer similarity + trust-aware scoring + behavioral baseline, plus an opt-in fine-tuned ONNX transformer) with 17 framework adapters and an EU AI Act compliance reporter included. English-only by design — same scope as the OWASP reference; we focus on depth, not language breadth.
+**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer analyzer (782 patterns + sentence-transformer similarity + trust-aware scoring + behavioral baseline, plus an opt-in fine-tuned ONNX transformer) with 17 framework adapters and an EU AI Act compliance reporter included. Targets English-language attacks, the same scope as the OWASP ASI06 reference.
 
 Full documentation at **[memgar.com](https://memgar.com)**.
 
-Memgar inspects, sanitizes, quarantines, and blocks unsafe memory before it can influence an agent. Run it as a Python runtime guard, a FastAPI gateway in front of model providers, or an integrity vault with signed snapshots, hash baselines, diff, and rollback. Every memory write, retrieval chunk, tool result, and gateway request gets a security decision before reaching the model or long-term memory.
+Memgar inspects, scores, quarantines, and blocks unsafe memory before it can influence an agent. Run it as a Python runtime guard, a FastAPI gateway in front of model providers, or an integrity vault with signed snapshots, hash baselines, diff, and rollback. Every memory write, retrieval chunk, tool result, and gateway request gets a security decision before reaching the model or long-term memory.
+
+## No API key required
+
+The core detection stack runs entirely locally — `pip install memgar` and go. No
+account, no API key, no outbound call to memgar:
+
+| Capability | Needs a key? |
+|---|---|
+| Default analyzer (Layer 1 patterns + trust scoring + behavioral baseline) | **No** |
+| Bundled Layer 2-ML ONNX transformer (opt-in) | **No** |
+| Signed threat-feed download + verification | **No** — the Ed25519 public key ships in the package; the feed is fetched from a public GitHub release |
+| All 17 framework / vector-DB adapters | **No** |
+| Observability, SIEM events, memory forensics, integrity vault | **No** |
+| **Layer 2 LLM deep analysis** (`use_llm=True`, off by default) | Only this — and it uses **your own** provider key (`MEMGAR_LLM_API_KEY`), never one of ours |
+
+Memgar never ships or phones home a credential. The only key it ever reads is an
+LLM provider key *you* supply, *if* you opt into the optional LLM layer.
 
 ## What's new in v1.2.0
 
@@ -18,12 +36,12 @@ Memgar inspects, sanitizes, quarantines, and blocks unsafe memory before it can 
 - **Public benchmark CLI**: `python scripts/public_benchmark.py --threat-model-only --ablate` produces a reproducible, seed-locked report against externally-authored corpora. Numbers anyone can re-run.
 - **Hot-path latency**: benign user input p50 = 9 ms (gated), RAG hit p50 = 24 ms (cached). Was ~514 ms before the v1.2 cleanup.
 - **Slimmer surface**: dropped DoW / WebSocket / brand-bias / confidence-bypass / pattern-evolution / advanced-scoring modules and their tests. `pip install memgar[compliance]` keeps the EU AI Act reporter accessible as a standalone extra.
-- **English-only focus**: previous TR / JA / ZH / MULTILANG-* patterns removed — depth over breadth. Same scope as OWASP `agent-memory-guard`.
+- **Scope consolidated to the OWASP ASI06 reference**: unvalidated non-English pattern stubs (TR / JA / ZH / MULTILANG-*) were removed in favour of depth on the patterns that are gold-gated. Same scope as OWASP `agent-memory-guard`.
 - **Vector DB adapter coverage**: PGVector added; total now Chroma, Pinecone, Qdrant, Weaviate, Milvus-shape, PGVector, mem0, Letta.
 
 See [CHANGELOG](CHANGELOG.md) for the full diff.
 
-> **Where memgar fits in the OWASP ecosystem.** OWASP recently shipped [`agent-memory-guard`](https://github.com/OWASP/www-project-agent-memory-guard) as the official ASI06 reference implementation. Memgar adopts the same threat model and category names — English-only, same scope — then extends it for production deployments that need ML detection (the OWASP reference targets ML for Q3 2026), broader framework support (17 vs 4 adapters), and an EU AI Act compliance reporter. We recommend pairing both: OWASP's reference as the audit / governance baseline, memgar as the production library. Open-source PRs back to the OWASP project are welcome from this codebase.
+> **Where memgar fits in the OWASP ecosystem.** OWASP recently shipped [`agent-memory-guard`](https://github.com/OWASP/www-project-agent-memory-guard) as the official ASI06 reference implementation. Memgar adopts the same threat model, category names, and scope — then extends it for production deployments that need ML detection (the OWASP reference targets ML for Q3 2026), broader framework support (17 vs 4 adapters), and an EU AI Act compliance reporter. We recommend pairing both: OWASP's reference as the audit / governance baseline, memgar as the production library. Open-source PRs back to the OWASP project are welcome from this codebase.
 
 > **Honest baseline.** Three calibration numbers, because they tell different stories:
 >
@@ -45,7 +63,7 @@ See [CHANGELOG](CHANGELOG.md) for the full diff.
 >
 > Same operations were ~514 ms on every call before the v1.2 cleanup; the gate + cache + ML gate deliver a 37–55× speedup on the benign hot path with zero gold-gate recall or FPR regression. See `memgar/analyzer.py` (Layer 1.5 + 2-ML gates) and `memgar/similarity_layer.py` (LRU cache) for the implementation.
 
-> **Language scope — English only, by design.** Memgar's 782 patterns, gold-gate calibration corpus, and ML training data are all English. This matches the scope of the OWASP `agent-memory-guard` reference and avoids the common "we support N languages" trap where pattern flags exceed real validation depth. If your deployment needs JA / ZH / DE / ES / AR coverage, author deployment-specific patterns and corpora using the toolchain that ships with the package (`memgar.patterns.register_threat()`, `scripts/build_threat_model_corpus.py`) and measure them on your own traffic before relying on them.
+> **Language scope.** Memgar's 782 patterns, gold-gate calibration corpus, and ML training data target English-language attacks — the same scope as the OWASP `agent-memory-guard` reference, and a deliberate choice to keep validation depth ahead of breadth (rather than ship pattern flags that exceed real coverage). For JA / ZH / DE / ES / AR deployments, author deployment-specific patterns and corpora using the toolchain that ships with the package (`memgar.patterns.register_threat()`, `scripts/build_threat_model_corpus.py`) and measure them on your own traffic before relying on them.
 
 > **Latency, measured on the analyzer hot path.** Numbers below are local CPU, no GPU, sentence-transformers `all-MiniLM-L6-v2` warm:
 >

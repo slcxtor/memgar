@@ -6,7 +6,7 @@ hide:
 
 <div class="memgar-hero" markdown>
 
-<span class="memgar-eyebrow"><span class="dot"></span> v1.2.0 · MIT · English-only</span>
+<span class="memgar-eyebrow"><span class="dot"></span> v1.2.0 · MIT · OWASP ASI06</span>
 
 # Stop memory poisoning *before* it reaches your agent.
 
@@ -161,9 +161,9 @@ memory.save_context({"input": "..."}, {"output": "..."})
 
 OWASP ships [`agent-memory-guard`](https://github.com/OWASP/www-project-agent-memory-guard)
 as the official ASI06 reference. Memgar adopts the same threat model and category
-names — English-only, same scope — and adds an opt-in ML detector, 17 framework
-adapters, a signed feed, and an EU AI Act compliance reporter. Pair them: the
-OWASP reference as the governance baseline, memgar as the production library.
+names, and adds an opt-in ML detector, 17 framework adapters, a signed feed, and
+an EU AI Act compliance reporter. Pair them: the OWASP reference as the
+governance baseline, memgar as the production library.
 
 ---
 
@@ -172,7 +172,10 @@ OWASP reference as the governance baseline, memgar as the production library.
 ## Try it on your own data.
 
 `pip install memgar`, point the analyzer at your existing inserts, and see what
-comes up before committing to anything. Bring your own backend.
+comes up before committing to anything. Bring your own backend — **no API key, no
+account, no outbound call.** The core stack runs fully locally; the only key
+memgar ever reads is your own LLM provider key, and only if you opt into the
+optional Layer 2 analysis.
 
 [Quickstart guide](quickstart.md){ .md-button .md-button--primary }
 [Threat catalog](threats/catalog.md){ .md-button }
@@ -191,8 +194,10 @@ comes up before committing to anything. Bring your own backend.
   will shift as real adversaries probe.
 - **Not a hosted SaaS.** Self-hosted library plus an optional signed feed; no
   control plane.
-- **English-only.** Non-English patterns were intentionally dropped — depth over
-  breadth, matching the OWASP reference.
+
+Memgar's patterns and corpora target English-language attacks — the same scope
+as the OWASP ASI06 reference. For other languages, author deployment-specific
+patterns with the bundled toolchain.
 
 If any of those are dealbreakers, better to know now.
 [Open an issue](https://github.com/slcxtor/memgar/issues) — the roadmap follows
