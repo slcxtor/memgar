@@ -1,195 +1,189 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Memgar docs — Obsidian.md inspired dark + violet theme
+   Memgar docs — "clean technical" theme (Linear / Vercel inspired)
 
-   Pulled from obsidian.md design language:
-   - Deep near-black canvas with subtle violet undertones (#0d0c10)
-   - Vivid violet accent (#a855f7) for CTAs, links, and glow effects
-   - Gradient brand text on headlines
-   - Cards with subtle borders + low-opacity violet glow on hover
-   - Bold tracked-tight headlines, "second brain" punchy tagline style
-   - Solid filled buttons (no outlines), strong contrast
+   Principles:
+   - Light-first, with a fully-considered dark mode.
+   - One restrained accent (indigo). No gradient text, no glow.
+   - Hairline borders, generous whitespace, tight heading tracking.
+   - Subtle, fast micro-interactions (1px lift, border-colour shift).
+   - Mobile-perfect: fluid hero, collapsing stat grid, no horizontal scroll.
    ───────────────────────────────────────────────────────────────────────── */
+
+/* ─── Tokens ──────────────────────────────────────────────────────────── */
 
 :root,
 [data-md-color-scheme="default"] {
     --memgar-bg: #ffffff;
-    --memgar-bg-elevated: #faf9fc;
+    --memgar-bg-elevated: #fafafa;
     --memgar-bg-card: #ffffff;
-    --memgar-border: #e9e7ef;
-    --memgar-border-strong: #d4d0e0;
-    --memgar-fg: #1c1b22;
-    --memgar-fg-muted: #4a4858;
-    --memgar-fg-dim: #6e6b7e;
-    --memgar-accent: #7c3aed;
-    --memgar-accent-hover: #6d28d9;
-    --memgar-accent-glow: rgba(124, 58, 237, 0.15);
-    --memgar-accent-text: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    --memgar-border: #ececf1;
+    --memgar-border-strong: #dcdce4;
+    --memgar-fg: #09090b;
+    --memgar-fg-muted: #52525b;
+    --memgar-fg-dim: #8a8a94;
+    --memgar-accent: #5b54e0;        /* AA on white for links/buttons */
+    --memgar-accent-hover: #4740c4;
+    --memgar-accent-soft: rgba(99, 102, 241, 0.10);
+    --memgar-accent-border: rgba(99, 102, 241, 0.28);
+    --memgar-shadow: 0 1px 2px rgba(9, 9, 11, 0.04),
+                     0 4px 16px rgba(9, 9, 11, 0.05);
 }
 
 [data-md-color-scheme="slate"] {
-    --memgar-bg: #0d0c10;
-    --memgar-bg-elevated: #1a1822;
-    --memgar-bg-card: #15131c;
-    --memgar-border: #26242f;
-    --memgar-border-strong: #35323f;
-    --memgar-fg: #f3f1f7;
-    --memgar-fg-muted: #b8b6c4;
-    --memgar-fg-dim: #8e8b9c;
-    --memgar-accent: #a855f7;
-    --memgar-accent-hover: #c084fc;
-    --memgar-accent-glow: rgba(168, 85, 247, 0.18);
-    --memgar-accent-text: linear-gradient(135deg, #a855f7 0%, #d8b4fe 100%);
+    --memgar-bg: #08080a;
+    --memgar-bg-elevated: #121216;
+    --memgar-bg-card: #0d0d10;
+    --memgar-border: #1f1f25;
+    --memgar-border-strong: #2c2c34;
+    --memgar-fg: #f4f4f5;
+    --memgar-fg-muted: #a1a1aa;
+    --memgar-fg-dim: #6f6f78;
+    --memgar-accent: #818cf8;
+    --memgar-accent-hover: #a5b4fc;
+    --memgar-accent-soft: rgba(129, 140, 248, 0.12);
+    --memgar-accent-border: rgba(129, 140, 248, 0.30);
+    --memgar-shadow: 0 1px 2px rgba(0, 0, 0, 0.3),
+                     0 8px 30px rgba(0, 0, 0, 0.35);
 }
 
-/* ─── Material variable overrides ─────────────────────────────────────── */
+/* ─── Fonts ───────────────────────────────────────────────────────────── */
 
+:root {
+    --md-text-font: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    --md-code-font: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ─── Material variable overrides (both schemes) ──────────────────────── */
+
+[data-md-color-scheme="default"],
 [data-md-color-scheme="slate"] {
     --md-default-bg-color: var(--memgar-bg);
     --md-default-fg-color: var(--memgar-fg);
     --md-default-fg-color--light: var(--memgar-fg-muted);
     --md-default-fg-color--lighter: var(--memgar-fg-dim);
-    --md-code-bg-color: #15131c;
-    --md-code-fg-color: #f3f1f7;
     --md-typeset-a-color: var(--memgar-accent);
+    --md-accent-fg-color: var(--memgar-accent-hover);
+    /* Keep the top header neutral (matches canvas) in both schemes */
     --md-primary-fg-color: var(--memgar-bg);
     --md-primary-fg-color--dark: var(--memgar-bg);
     --md-primary-bg-color: var(--memgar-fg);
-    --md-accent-fg-color: var(--memgar-accent);
     --md-footer-bg-color: var(--memgar-bg);
     --md-footer-bg-color--dark: var(--memgar-bg);
     --md-footer-fg-color: var(--memgar-fg-muted);
 }
 
-[data-md-color-scheme="slate"] body {
+[data-md-color-scheme="slate"] {
+    --md-code-bg-color: #121216;
+    --md-code-fg-color: #e8e8ea;
+}
+
+body {
     background: var(--memgar-bg);
     color: var(--memgar-fg);
 }
 
-/* Global violet glow on the body (subtle radial — Obsidian signature) */
-[data-md-color-scheme="slate"] .md-main {
-    position: relative;
-}
+/* ─── Typography ──────────────────────────────────────────────────────── */
 
-[data-md-color-scheme="slate"] .md-main::before {
-    content: "";
-    position: fixed;
-    top: -300px;
-    right: -300px;
-    width: 800px;
-    height: 800px;
-    background: radial-gradient(
-        circle,
-        rgba(168, 85, 247, 0.08) 0%,
-        transparent 60%
-    );
-    pointer-events: none;
-    z-index: 0;
-}
-
-[data-md-color-scheme="slate"] .md-content,
-[data-md-color-scheme="slate"] .md-sidebar,
-[data-md-color-scheme="slate"] .md-header {
-    position: relative;
-    z-index: 1;
-}
-
-/* Typography */
-:root {
-    --md-text-font: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", sans-serif;
-    --md-code-font: "JetBrains Mono", "Geist Mono", ui-monospace, monospace;
-}
-
-[data-md-color-scheme="slate"] .md-typeset {
-    letter-spacing: -0.005em;
+.md-typeset {
+    letter-spacing: -0.006em;
     font-size: 0.95rem;
-    line-height: 1.7;
+    line-height: 1.72;
 }
 
-[data-md-color-scheme="slate"] .md-typeset h1,
-[data-md-color-scheme="slate"] .md-typeset h2,
-[data-md-color-scheme="slate"] .md-typeset h3,
-[data-md-color-scheme="slate"] .md-typeset h4 {
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
     letter-spacing: -0.025em;
     font-weight: 700;
     color: var(--memgar-fg);
 }
 
-[data-md-color-scheme="slate"] .md-typeset h1 {
-    font-size: 2.5rem;
+.md-typeset h1 {
+    font-size: 2.4rem;
     line-height: 1.1;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
 }
 
-[data-md-color-scheme="slate"] .md-typeset h2 {
-    font-size: 1.625rem;
+.md-typeset h2 {
+    font-size: 1.6rem;
     margin-top: 3rem;
     padding-top: 2rem;
     border-top: 1px solid var(--memgar-border);
 }
 
-[data-md-color-scheme="slate"] .md-typeset h3 {
-    font-size: 1.25rem;
+.md-typeset h3 {
+    font-size: 1.2rem;
     margin-top: 2rem;
 }
 
-/* Header — flat, glass */
-[data-md-color-scheme="slate"] .md-header {
-    background: rgba(13, 12, 16, 0.75);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
+/* ─── Header — flat glass, neutral ────────────────────────────────────── */
+
+.md-header {
+    background: color-mix(in srgb, var(--memgar-bg) 80%, transparent);
+    backdrop-filter: saturate(160%) blur(16px);
+    -webkit-backdrop-filter: saturate(160%) blur(16px);
     border-bottom: 1px solid var(--memgar-border);
     box-shadow: none;
-}
-
-[data-md-color-scheme="slate"] .md-header__title {
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    font-size: 1.1rem;
-}
-
-[data-md-color-scheme="slate"] .md-tabs {
-    background: transparent;
-    border-bottom: 1px solid var(--memgar-border);
-}
-
-[data-md-color-scheme="slate"] .md-tabs__link {
-    color: var(--memgar-fg-muted);
-    opacity: 1;
-    font-weight: 500;
-    font-size: 0.875rem;
-}
-
-[data-md-color-scheme="slate"] .md-tabs__link--active,
-[data-md-color-scheme="slate"] .md-tabs__link:hover {
-    color: var(--memgar-accent-hover);
-}
-
-[data-md-color-scheme="slate"] .md-nav__link {
-    color: var(--memgar-fg-muted);
-}
-
-[data-md-color-scheme="slate"] .md-nav__link--active,
-[data-md-color-scheme="slate"] .md-nav__link:focus,
-[data-md-color-scheme="slate"] .md-nav__link:hover {
     color: var(--memgar-fg);
 }
 
-[data-md-color-scheme="slate"] .md-footer,
-[data-md-color-scheme="slate"] .md-footer-meta {
+.md-header__title {
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    font-size: 1.05rem;
+}
+
+.md-tabs {
+    background: transparent;
+    border-bottom: 1px solid var(--memgar-border);
+    color: var(--memgar-fg);
+}
+
+.md-tabs__link {
+    color: var(--memgar-fg-muted);
+    opacity: 1;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+    color: var(--memgar-fg);
+}
+
+.md-nav__link {
+    color: var(--memgar-fg-muted);
+}
+
+.md-nav__link--active,
+.md-nav__link:focus,
+.md-nav__link:hover {
+    color: var(--memgar-accent);
+}
+
+.md-nav__item .md-nav__link--active {
+    font-weight: 600;
+}
+
+.md-footer,
+.md-footer-meta {
     background: var(--memgar-bg);
     border-top: 1px solid var(--memgar-border);
 }
 
-/* Search */
-[data-md-color-scheme="slate"] .md-search__form {
+/* ─── Search ──────────────────────────────────────────────────────────── */
+
+.md-search__form {
     background: var(--memgar-bg-elevated);
     border: 1px solid var(--memgar-border);
     border-radius: 8px;
+    box-shadow: none;
 }
 
-[data-md-color-scheme="slate"] .md-search__form:hover,
-[data-md-color-scheme="slate"] .md-search__form:focus-within {
+.md-search__form:hover,
+.md-search__form:focus-within {
     border-color: var(--memgar-accent);
     background: var(--memgar-bg-card);
 }
@@ -197,77 +191,37 @@
 /* ─── Hero ────────────────────────────────────────────────────────────── */
 
 .memgar-hero {
-    padding: 7rem 0 4rem;
+    padding: 6.5rem 0 3.5rem;
     text-align: center;
     position: relative;
-    overflow: hidden;
-}
-
-.memgar-hero::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 1000px;
-    height: 600px;
-    background: radial-gradient(
-        ellipse,
-        rgba(168, 85, 247, 0.15) 0%,
-        transparent 50%
-    );
-    pointer-events: none;
-    z-index: 0;
-}
-
-[data-md-color-scheme="default"] .memgar-hero::before {
-    background: radial-gradient(
-        ellipse,
-        rgba(124, 58, 237, 0.08) 0%,
-        transparent 50%
-    );
-}
-
-.memgar-hero > * {
-    position: relative;
-    z-index: 1;
 }
 
 .memgar-hero h1 {
-    font-size: clamp(2.75rem, 6vw, 4.5rem) !important;
-    line-height: 1.02 !important;
-    font-weight: 800 !important;
+    font-size: clamp(2.5rem, 5.5vw, 4rem) !important;
+    line-height: 1.04 !important;
+    font-weight: 760 !important;
     letter-spacing: -0.035em !important;
-    margin-top: 0 !important;
-    margin-bottom: 1.5rem !important;
-    max-width: 900px;
-    margin-left: auto !important;
-    margin-right: auto !important;
+    margin: 0 auto 1.5rem !important;
+    max-width: 18ch;
 }
 
 .memgar-hero h1::after {
     content: none;
 }
 
-/* Gradient text accent on a span inside the H1 (use <em> in markdown) */
+/* Emphasised word: solid accent (no gradient — clean-technical) */
 .memgar-hero h1 em,
 .memgar-gradient {
-    background: var(--memgar-accent-text);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
+    color: var(--memgar-accent);
     font-style: normal;
 }
 
 .memgar-hero p {
-    font-size: 1.1875rem;
+    font-size: 1.15rem;
     color: var(--memgar-fg-muted);
-    max-width: 680px;
-    line-height: 1.55;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    margin-bottom: 2.5rem;
+    max-width: 620px;
+    line-height: 1.6;
+    margin: 0 auto 2rem !important;
 }
 
 .memgar-hero strong {
@@ -275,57 +229,54 @@
     font-weight: 600;
 }
 
-/* Pill row above headline */
+/* Eyebrow — small build badge */
 .memgar-eyebrow {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.375rem 0.875rem;
+    padding: 0.35rem 0.8rem;
     border: 1px solid var(--memgar-border-strong);
     border-radius: 100px;
-    font-size: 0.8125rem;
+    font-family: var(--md-code-font);
+    font-size: 0.76rem;
     font-weight: 500;
     color: var(--memgar-fg-muted);
-    margin-bottom: 2rem;
+    margin-bottom: 1.75rem;
     background: var(--memgar-bg-elevated);
 }
 
 .memgar-eyebrow .dot {
-    display: inline-block;
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: var(--memgar-accent);
-    box-shadow: 0 0 12px var(--memgar-accent);
-    animation: memgar-pulse 2s ease-in-out infinite;
 }
 
-@keyframes memgar-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
+/* ─── Buttons ─────────────────────────────────────────────────────────── */
 
-/* Buttons — solid filled violet (primary) + ghost (secondary) */
 .memgar-hero .md-button,
 .memgar-cta .md-button {
     border: 1px solid var(--memgar-border-strong);
-    background: transparent;
+    background: var(--memgar-bg);
     color: var(--memgar-fg) !important;
-    font-weight: 600;
-    padding: 0.75rem 1.5rem;
+    font-weight: 560;
+    padding: 0.62rem 1.25rem;
     border-radius: 8px;
-    transition: all 0.2s ease;
+    transition: border-color 0.15s ease, background 0.15s ease,
+                transform 0.15s ease, color 0.15s ease;
     box-shadow: none;
     text-transform: none;
     letter-spacing: 0;
-    font-size: 0.9375rem;
+    font-size: 0.9rem;
+    margin: 0.35rem;
 }
 
 .memgar-hero .md-button:hover,
 .memgar-cta .md-button:hover {
     background: var(--memgar-bg-elevated);
-    border-color: var(--memgar-accent);
-    color: var(--memgar-accent-hover) !important;
+    border-color: var(--memgar-fg-dim);
+    color: var(--memgar-fg) !important;
+    transform: translateY(-1px);
 }
 
 .memgar-hero .md-button--primary,
@@ -333,37 +284,41 @@
     background: var(--memgar-accent);
     color: #ffffff !important;
     border-color: var(--memgar-accent);
-    box-shadow: 0 4px 24px var(--memgar-accent-glow);
 }
 
 .memgar-hero .md-button--primary:hover,
 .memgar-cta .md-button--primary:hover {
     background: var(--memgar-accent-hover);
-    color: #ffffff !important;
     border-color: var(--memgar-accent-hover);
-    box-shadow: 0 6px 32px var(--memgar-accent-glow);
+    color: #ffffff !important;
     transform: translateY(-1px);
+}
+
+[data-md-color-scheme="slate"] .memgar-hero .md-button--primary,
+[data-md-color-scheme="slate"] .memgar-cta .md-button--primary {
+    color: #0b0b0f !important;
 }
 
 /* ─── Stats strip ─────────────────────────────────────────────────────── */
 
 .memgar-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 0;
-    margin: 4rem auto;
+    margin: 3.5rem auto;
     border: 1px solid var(--memgar-border);
-    border-radius: 12px;
+    border-radius: 14px;
     background: var(--memgar-bg-card);
     overflow: hidden;
-    max-width: 900px;
+    max-width: 860px;
+    box-shadow: var(--memgar-shadow);
 }
 
 .memgar-stat {
-    padding: 2rem 1.5rem;
+    padding: 1.75rem 1.25rem;
     border-right: 1px solid var(--memgar-border);
     text-align: center;
-    transition: background 0.2s ease;
+    transition: background 0.15s ease;
 }
 
 .memgar-stat:hover {
@@ -380,26 +335,21 @@
 
 .memgar-stat strong {
     display: block;
-    font-size: 2.25rem;
+    font-size: 2.1rem;
     font-weight: 700;
     letter-spacing: -0.03em;
     line-height: 1;
-    background: var(--memgar-accent-text);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-    font-feature-settings: "tnum", "lnum";
+    color: var(--memgar-fg);
+    font-variant-numeric: tabular-nums;
 }
 
 .memgar-stat-label {
     display: block;
-    font-size: 0.8125rem;
+    font-size: 0.76rem;
     color: var(--memgar-fg-muted);
-    margin-top: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 600;
+    margin-top: 0.6rem;
+    letter-spacing: 0.01em;
+    font-weight: 500;
 }
 
 /* ─── Feature cards ───────────────────────────────────────────────────── */
@@ -407,82 +357,62 @@
 .grid.cards > ul {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.25rem;
+    gap: 1rem;
     padding: 0;
     list-style: none;
     margin: 2rem 0;
 }
 
 .grid.cards > ul > li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
     border: 1px solid var(--memgar-border) !important;
     background: var(--memgar-bg-card) !important;
     border-radius: 12px !important;
-    padding: 1.5rem !important;
-    transition: all 0.2s ease !important;
+    padding: 1.4rem !important;
+    transition: border-color 0.15s ease, transform 0.15s ease,
+                box-shadow 0.15s ease !important;
     box-shadow: none !important;
-    position: relative;
-    overflow: hidden;
-}
-
-.grid.cards > ul > li::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        var(--memgar-accent),
-        transparent
-    );
-    opacity: 0;
-    transition: opacity 0.2s ease;
 }
 
 .grid.cards > ul > li:hover {
-    border-color: var(--memgar-accent) !important;
-    background: var(--memgar-bg-elevated) !important;
+    border-color: var(--memgar-accent-border) !important;
     transform: translateY(-2px) !important;
-    box-shadow: 0 8px 32px var(--memgar-accent-glow) !important;
-}
-
-.grid.cards > ul > li:hover::before {
-    opacity: 1;
+    box-shadow: var(--memgar-shadow) !important;
 }
 
 .grid.cards > ul > li > h2,
 .grid.cards > ul > li > h3,
 .grid.cards strong {
     color: var(--memgar-fg) !important;
-    font-size: 1.0625rem !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.015em !important;
-    margin-top: 0 !important;
-    margin-bottom: 0.625rem !important;
+    font-size: 1.02rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.012em !important;
+    margin: 0 0 0.25rem !important;
     border: none !important;
     padding: 0 !important;
 }
 
 .grid.cards p {
     color: var(--memgar-fg-muted);
-    font-size: 0.9375rem;
+    font-size: 0.92rem;
     line-height: 1.55;
     margin: 0;
 }
 
 /* ─── Tables ──────────────────────────────────────────────────────────── */
 
-[data-md-color-scheme="slate"] .md-typeset table:not([class]) {
+.md-typeset table:not([class]) {
     border: 1px solid var(--memgar-border);
     background: var(--memgar-bg-card);
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
     font-size: 0.9rem;
+    box-shadow: none;
 }
 
-[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+.md-typeset table:not([class]) th {
     background: var(--memgar-bg-elevated);
     color: var(--memgar-fg);
     border-bottom: 1px solid var(--memgar-border);
@@ -491,160 +421,201 @@
     letter-spacing: 0;
 }
 
-[data-md-color-scheme="slate"] .md-typeset table:not([class]) td {
+.md-typeset table:not([class]) td {
     border-top: 1px solid var(--memgar-border);
+}
+
+.md-typeset table:not([class]) tr:hover td {
+    background: var(--memgar-bg-elevated);
 }
 
 /* ─── Code ────────────────────────────────────────────────────────────── */
 
-[data-md-color-scheme="slate"] .md-typeset code {
-    background: rgba(168, 85, 247, 0.1);
-    color: #e9d5ff;
-    padding: 0.125rem 0.4rem;
-    border-radius: 4px;
-    font-size: 0.875em;
-    border: 1px solid rgba(168, 85, 247, 0.15);
+.md-typeset code {
+    background: var(--memgar-accent-soft);
+    color: var(--memgar-accent);
+    padding: 0.12rem 0.38rem;
+    border-radius: 5px;
+    font-size: 0.85em;
+    border: 1px solid var(--memgar-accent-border);
 }
 
-[data-md-color-scheme="slate"] .md-typeset pre > code {
+[data-md-color-scheme="slate"] .md-typeset code {
+    color: #c7d2fe;
+}
+
+.md-typeset pre > code {
     background: transparent;
     border: none;
     padding: 0;
-    color: #f3f1f7;
+    color: var(--md-code-fg-color);
+}
+
+.md-typeset .highlight,
+.md-typeset pre {
+    background: var(--memgar-bg-elevated);
+    border: 1px solid var(--memgar-border);
+    border-radius: 12px;
 }
 
 [data-md-color-scheme="slate"] .md-typeset .highlight,
 [data-md-color-scheme="slate"] .md-typeset pre {
-    background: #15131c;
-    border: 1px solid var(--memgar-border);
-    border-radius: 10px;
+    background: #0d0d10;
 }
 
-[data-md-color-scheme="slate"] .highlight .filename {
+.highlight .filename {
     background: var(--memgar-bg-elevated);
     color: var(--memgar-fg-muted);
     border-bottom: 1px solid var(--memgar-border);
     font-family: var(--md-code-font);
-    font-size: 0.8125rem;
+    font-size: 0.8rem;
 }
 
 /* ─── Admonitions ─────────────────────────────────────────────────────── */
 
-[data-md-color-scheme="slate"] .md-typeset .admonition,
-[data-md-color-scheme="slate"] .md-typeset details {
+.md-typeset .admonition,
+.md-typeset details {
     border: 1px solid var(--memgar-border);
     border-radius: 10px;
     background: var(--memgar-bg-card);
     box-shadow: none;
+    font-size: 0.9rem;
 }
 
-[data-md-color-scheme="slate"] .md-typeset .admonition-title {
-    background: transparent;
+.md-typeset .admonition-title {
+    background: var(--memgar-bg-elevated);
     border-bottom: 1px solid var(--memgar-border);
     color: var(--memgar-fg);
     font-weight: 600;
 }
 
 /* Tag chips */
-[data-md-color-scheme="slate"] .md-tag {
-    background: rgba(168, 85, 247, 0.1);
-    border: 1px solid rgba(168, 85, 247, 0.2);
-    color: #d8b4fe;
+.md-tag {
+    background: var(--memgar-accent-soft);
+    border: 1px solid var(--memgar-accent-border);
+    color: var(--memgar-accent);
     border-radius: 100px;
-    font-size: 0.8125rem;
+    font-size: 0.8rem;
     font-weight: 500;
 }
 
-/* ─── Section eyebrow text ────────────────────────────────────────────── */
+/* ─── Section eyebrow ─────────────────────────────────────────────────── */
 
 .memgar-section-eyebrow {
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     color: var(--memgar-accent);
-    margin-bottom: 0.75rem;
-    text-align: center;
+    margin-bottom: 0.5rem;
+    text-align: left;
 }
 
-/* CTA strip at bottom — gradient surface */
+.memgar-section-eyebrow + h2 {
+    border-top: none !important;
+    margin-top: 0.25rem !important;
+    padding-top: 0 !important;
+}
+
+/* ─── Honest-baseline box ─────────────────────────────────────────────── */
+
+.memgar-honest {
+    margin: 2rem auto;
+    padding: 1.4rem 1.6rem;
+    font-size: 0.88rem;
+    color: var(--memgar-fg-muted);
+    border: 1px solid var(--memgar-border);
+    border-left: 3px solid var(--memgar-accent);
+    background: var(--memgar-bg-card);
+    border-radius: 10px;
+    max-width: 780px;
+    text-align: left;
+    line-height: 1.6;
+    box-shadow: var(--memgar-shadow);
+}
+
+.memgar-honest > p:first-child {
+    color: var(--memgar-fg);
+    font-size: 0.95rem;
+    margin-top: 0;
+}
+
+.memgar-honest table:not([class]) {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    margin: 1rem 0;
+    box-shadow: none;
+}
+
+.memgar-honest table:not([class]) th {
+    background: transparent !important;
+    border-bottom: 1px solid var(--memgar-border-strong) !important;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--memgar-fg-dim) !important;
+}
+
+.memgar-honest table:not([class]) td {
+    border-top: 1px solid var(--memgar-border) !important;
+}
+
+.memgar-honest table:not([class]) tr:hover td {
+    background: transparent;
+}
+
+/* ─── CTA strip ───────────────────────────────────────────────────────── */
+
 .memgar-cta {
     margin: 5rem 0 2rem;
-    padding: 4rem 3rem;
+    padding: 3.5rem 2.5rem;
     border: 1px solid var(--memgar-border);
     border-radius: 16px;
     text-align: center;
-    background:
-        radial-gradient(circle at 30% 30%, rgba(168, 85, 247, 0.12), transparent 50%),
-        radial-gradient(circle at 70% 70%, rgba(124, 58, 237, 0.08), transparent 50%),
-        var(--memgar-bg-card);
-    position: relative;
-    overflow: hidden;
-}
-
-[data-md-color-scheme="default"] .memgar-cta {
-    background:
-        radial-gradient(circle at 30% 30%, rgba(124, 58, 237, 0.06), transparent 50%),
-        radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.04), transparent 50%),
-        var(--memgar-bg-card);
+    background: var(--memgar-bg-elevated);
+    box-shadow: var(--memgar-shadow);
 }
 
 .memgar-cta h2 {
     border: none !important;
     margin-top: 0 !important;
     padding-top: 0 !important;
-    font-size: 2rem !important;
-    font-weight: 800 !important;
+    font-size: 1.9rem !important;
+    font-weight: 740 !important;
     letter-spacing: -0.025em !important;
 }
 
 .memgar-cta p {
     color: var(--memgar-fg-muted);
-    font-size: 1.0625rem;
-    max-width: 560px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 2rem;
+    font-size: 1.02rem;
+    max-width: 540px;
+    margin: 0 auto 1.75rem;
 }
 
-/* Honest-pitch micro-text */
-.memgar-honest {
-    margin: 2rem auto;
-    padding: 1.25rem 1.5rem;
-    font-size: 0.875rem;
-    color: var(--memgar-fg-muted);
-    border: 1px solid var(--memgar-border);
-    background: var(--memgar-bg-card);
-    border-radius: 10px;
-    max-width: 720px;
-    text-align: left;
-    line-height: 1.6;
+/* ─── Reduced motion ──────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+        animation: none !important;
+    }
 }
 
-.memgar-honest strong {
-    color: var(--memgar-fg);
-}
+/* ─── Responsive ──────────────────────────────────────────────────────── */
 
-/* ─── Mobile ──────────────────────────────────────────────────────────── */
-
-/*
- * On phones (CSS viewport ≤ 959px) Material theme should collapse both
- * sidebars into drawers, leaving the content at full width.
- * However, at intermediate widths (~600–960px CSS) the secondary TOC
- * sidebar can remain inline, squeezing content to ~230px on 720px screens.
- *
- * Fix: explicitly hide both sidebars below 960px and give content full
- * width. The hamburger drawer handles navigation at these sizes.
- */
+/* Hide the secondary TOC below Material's 60em inline threshold so content
+   never gets squeezed at intermediate widths. */
 @media screen and (max-width: 59.9375em) {
-    /* Hide TOC sidebar below 960px (Material shows it at ≥60em) */
     .md-sidebar--secondary {
         display: none !important;
     }
 }
 
+/* Full-width content + full-bleed hero below the sidebar grid threshold. */
 @media screen and (max-width: 76.1875em) {
-    /* Cancel any residual left-margin from sidebar grid on all pages */
     .md-main__inner {
         margin-left: 0 !important;
         margin-right: 0 !important;
@@ -654,7 +625,6 @@
         max-width: 100% !important;
     }
 
-    /* Hero: full viewport width, proper horizontal padding */
     .memgar-hero {
         width: 100vw;
         position: relative;
@@ -668,143 +638,109 @@
     }
 }
 
+/* Tablet: stats to 2 columns. */
 @media (max-width: 768px) {
     .memgar-hero {
         padding-top: 4rem;
-        padding-bottom: 2rem;
+        padding-bottom: 2.5rem;
     }
+
     .memgar-hero h1 {
-        /* Prevent mid-word line breaks on narrow screens */
-        font-size: clamp(1.75rem, 7.5vw, 2.25rem) !important;
+        font-size: clamp(2rem, 8vw, 2.6rem) !important;
+        max-width: 16ch;
         word-break: keep-all;
         overflow-wrap: break-word;
         hyphens: none;
     }
-    .memgar-eyebrow {
-        font-size: 0.75rem;
+
+    .memgar-hero p {
+        font-size: 1.02rem;
+        padding: 0 0.25rem;
     }
+
     .memgar-stats {
         grid-template-columns: repeat(2, 1fr);
+        margin: 2.5rem auto;
     }
+
     .memgar-stat {
+        padding: 1.4rem 1rem;
+    }
+
+    /* Inner borders for a clean 2×2 grid */
+    .memgar-stat:nth-child(odd) {
+        border-right: 1px solid var(--memgar-border);
+    }
+
+    .memgar-stat:nth-child(even) {
         border-right: none;
+    }
+
+    .memgar-stat:nth-child(-n + 2) {
         border-bottom: 1px solid var(--memgar-border);
     }
-    .memgar-stat:nth-child(2n) {
-        border-right: none;
+
+    .memgar-stat strong {
+        font-size: 1.85rem;
     }
-    .memgar-stat:nth-last-child(-n+2) {
-        border-bottom: none;
+
+    .grid.cards > ul {
+        grid-template-columns: 1fr;
+        gap: 0.875rem;
     }
+
+    .memgar-honest {
+        padding: 1.15rem 1.1rem;
+        font-size: 0.85rem;
+    }
+
+    /* Tables scroll horizontally instead of overflowing the viewport */
+    .md-typeset table:not([class]) {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .memgar-cta {
+        margin-top: 3.5rem;
         padding: 2.5rem 1.25rem;
     }
+
     .memgar-cta h2 {
         font-size: 1.5rem !important;
     }
+
+    .md-typeset h1 {
+        font-size: 1.9rem;
+    }
+
+    .md-typeset h2 {
+        font-size: 1.4rem;
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+    }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Design polish v2 — tighter rhythm, cleaner hero, refined honest box
-   (appended last so these rules win over the base styles above)
-   ───────────────────────────────────────────────────────────────────────── */
+/* Small phones: stats to a single column, full-width tap targets. */
+@media (max-width: 480px) {
+    .memgar-stats {
+        grid-template-columns: 1fr;
+    }
 
-/* Hero: balanced button row, a touch more breathing room */
-.memgar-hero {
-    padding-top: 6rem;
-}
+    .memgar-stat {
+        border-right: none !important;
+        border-bottom: 1px solid var(--memgar-border);
+    }
 
-.memgar-hero p:last-of-type {
-    margin-bottom: 2.25rem;
-}
+    .memgar-stat:last-child {
+        border-bottom: none;
+    }
 
-/* The 3 hero buttons: wrap cleanly and share even spacing */
-.memgar-hero .md-button {
-    margin: 0.375rem;
-}
-
-/* Eyebrow pill: monospace version tag reads as a build badge */
-.memgar-eyebrow {
-    font-family: var(--md-code-font);
-    font-size: 0.78rem;
-    letter-spacing: 0.01em;
-    padding: 0.4rem 0.9rem;
-}
-
-/* Stat numbers: tabular figures, slightly tighter */
-.memgar-stat strong {
-    font-size: 2.4rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.memgar-stat:hover strong {
-    filter: brightness(1.08);
-}
-
-/* Honest-baseline box: accent edge + flatten the nested table so it doesn't
-   read as a card-inside-a-card */
-.memgar-honest {
-    border-left: 3px solid var(--memgar-accent);
-    padding: 1.5rem 1.75rem;
-    max-width: 780px;
-}
-
-.memgar-honest > p:first-child {
-    font-size: 0.95rem;
-    color: var(--memgar-fg);
-    margin-top: 0;
-}
-
-[data-md-color-scheme="slate"] .memgar-honest table:not([class]),
-[data-md-color-scheme="default"] .memgar-honest table:not([class]) {
-    border: none;
-    background: transparent;
-    border-radius: 0;
-    margin: 1rem 0;
-}
-
-.memgar-honest table:not([class]) th {
-    background: transparent !important;
-    border-bottom: 1px solid var(--memgar-border-strong) !important;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--memgar-fg-dim) !important;
-}
-
-.memgar-honest table:not([class]) td {
-    border-top: 1px solid var(--memgar-border) !important;
-}
-
-/* Section eyebrows: left-aligned for body sections reads cleaner than centered
-   (the hero stays centered via its own rules) */
-.md-content .memgar-section-eyebrow {
-    text-align: left;
-}
-
-/* Give the H2 that follows an eyebrow no top border/padding — the eyebrow is
-   already the visual separator, so the double rule looks busy */
-.memgar-section-eyebrow + h2 {
-    border-top: none !important;
-    margin-top: 0.25rem !important;
-    padding-top: 0 !important;
-}
-
-/* Feature cards: equal-height, title baseline aligned */
-.grid.cards > ul > li {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-/* Light mode: give the hero the same soft glow the dark theme has */
-[data-md-color-scheme="default"] .memgar-stat strong,
-[data-md-color-scheme="default"] .memgar-honest {
-    /* keep gradient text crisp on white */
-    -webkit-font-smoothing: antialiased;
-}
-
-/* CTA: a hair more compact, links sit on one row */
-.memgar-cta .md-button {
-    margin: 0.375rem;
+    .memgar-hero .md-button,
+    .memgar-cta .md-button {
+        display: block;
+        width: 100%;
+        margin: 0.4rem 0;
+        box-sizing: border-box;
+    }
 }
