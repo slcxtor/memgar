@@ -356,6 +356,11 @@ jobs:
       - name: Assert gold-corpus minimum quality gates
         run: python scripts/check_calibration_gate.py
 
+      # The expanded corpus is the harder mined/augmented/untrusted-source set —
+      # exactly what the opt-in Layer 2-ML transformer was bundled for. The gold
+      # gate above stays transformer-off (it over-fires on prosaic benigns); the
+      # expanded gate runs it on to measure the full detection stack on hard
+      # attacks. The expanded gate has recall floors only (no FPR ceiling).
       - name: Run expanded calibration (gold + mined + memory-context)
         run: |
           python scripts/calibrate_fpfn.py \
@@ -363,7 +368,7 @@ jobs:
             --corpus ml/data/mined_hard_subset.json \
             --corpus ml/data/augmented_memory_context.json \
             --output ml/artifacts/fpfn_calibration_expanded.json \
-            --no-llm
+            --no-llm --use-transformer
 
       - name: Assert expanded-corpus regression gates
         run: python scripts/check_expanded_gate.py

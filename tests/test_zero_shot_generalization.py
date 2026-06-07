@@ -201,8 +201,18 @@ class TestUnicodeHomoglyph:
         assert blocked
 
 
+@pytest.mark.skip(
+    reason="EN-only scope since PR #101 (focus/english-only): TR/JA/ZH/MULTILANG "
+    "patterns were intentionally dropped (patterns 840->782, corpus 290->175). "
+    "Non-English detection is no longer a supported guarantee — these probes "
+    "assert a capability the project deliberately removed. Companion to that PR's "
+    "deletion of test_multilingual.py, which missed this class."
+)
 class TestMultilingualAttacks:
-    """Attacks phrased in non-English languages."""
+    """Attacks phrased in non-English languages.
+
+    Skipped: memgar is English-only as of the focus/english-only change.
+    """
 
     def test_recall_at_least_40_percent(self, analyzer):
         recall = recall_for_category(analyzer, "multilingual_attacks")
