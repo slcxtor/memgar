@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "memgar"
 version = "1.3.0"
-description = "AI Agent Memory Security — Detect and prevent memory poisoning, DoW attacks, and forensic analysis for AI agents"
+description = "AI agent memory security — detect, quarantine, and block memory-poisoning attacks (OWASP ASI06) before they reach an LLM agent"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
@@ -14,9 +14,9 @@ authors = [
 ]
 keywords = [
     "ai-security", "llm-security", "agent-security", "memory-poisoning",
-    "prompt-injection", "denial-of-wallet", "dow", "forensics",
+    "prompt-injection", "forensics", "rag-security",
     "langchain", "llamaindex", "crewai", "autogen", "mcp",
-    "rag-security", "owasp", "asi06", "memory-guard",
+    "owasp", "asi06", "memory-guard",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
