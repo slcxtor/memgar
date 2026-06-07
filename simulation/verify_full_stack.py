@@ -36,11 +36,6 @@ def main() -> int:
     results.append(("Layer 1  Pattern matching", h["layer1_patterns"]["status"],
                     fired, f"BLOCK risk={r.risk_score} via {r.threats[0].threat.id if r.threats else '-'}"))
 
-    # ---- Layer 1.5: semantic guard ----
-    s15 = h["layer1_5_semantic_guard"]
-    results.append(("Layer 1.5 SemanticGuard", s15["status"], False,
-                    s15.get("reason", "") + " (centroids fail F1>=0.70 gate / ST)"))
-
     # ---- Layer 2: LLM semantic ----
     l2 = h["layer2_llm"]
     results.append(("Layer 2  LLM analysis", l2["status"], False,

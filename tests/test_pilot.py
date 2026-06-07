@@ -138,7 +138,7 @@ def test_enable_pilot_collection_wraps_analyzer(tmp_path, monkeypatch):
     PilotConsent(out).acknowledge(operator="ops", purpose="qa")
     monkeypatch.setenv(ENV_FLAG, "1")
     from memgar import Analyzer, MemoryEntry
-    a = Analyzer(use_llm=False, semantic_guard=False, use_transformer_ml=False)
+    a = Analyzer(use_llm=False, use_transformer_ml=False)
     collector = enable_pilot_collection(a, output_dir=out,
                                          state_dir=tmp_path / "state")
     # benign + attack -> both mirrored

@@ -339,9 +339,13 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
+        # ml = transformers + onnxruntime (Layer 2-ML), semantic = sentence-
+        # transformers (Layer 2.5). The expanded-gate step below runs the
+        # transformer on; without these it loads degraded and the expanded
+        # recall floors can't be met.
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]" numpy scikit-learn
+          python -m pip install -e ".[dev,ml,semantic]" numpy scikit-learn
 
       - name: Rebuild model artifact
         run: python rebuild_model.py
@@ -356,6 +360,11 @@ jobs:
       - name: Assert gold-corpus minimum quality gates
         run: python scripts/check_calibration_gate.py
 
+      # The expanded corpus is the harder mined/augmented/untrusted-source set —
+      # exactly what the opt-in Layer 2-ML transformer was bundled for. The gold
+      # gate above stays transformer-off (it over-fires on prosaic benigns); the
+      # expanded gate runs it on to measure the full detection stack on hard
+      # attacks. The expanded gate has recall floors only (no FPR ceiling).
       - name: Run expanded calibration (gold + mined + memory-context)
         run: |
           python scripts/calibrate_fpfn.py \
@@ -363,7 +372,7 @@ jobs:
             --corpus ml/data/mined_hard_subset.json \
             --corpus ml/data/augmented_memory_context.json \
             --output ml/artifacts/fpfn_calibration_expanded.json \
-            --no-llm
+            --no-llm --use-transformer
 
       - name: Assert expanded-corpus regression gates
         run: python scripts/check_expanded_gate.py

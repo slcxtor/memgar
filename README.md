@@ -47,6 +47,16 @@ See [CHANGELOG](CHANGELOG.md) for the full diff.
 
 > **Language scope — English only, by design.** Memgar's 782 patterns, gold-gate calibration corpus, and ML training data are all English. This matches the scope of the OWASP `agent-memory-guard` reference and avoids the common "we support N languages" trap where pattern flags exceed real validation depth. If your deployment needs JA / ZH / DE / ES / AR coverage, author deployment-specific patterns and corpora using the toolchain that ships with the package (`memgar.patterns.register_threat()`, `scripts/build_threat_model_corpus.py`) and measure them on your own traffic before relying on them.
 
+> **Latency, measured on the analyzer hot path.** Numbers below are local CPU, no GPU, sentence-transformers `all-MiniLM-L6-v2` warm:
+>
+> | Path | p50 | p95 | Behaviour |
+> |---|---|---|---|
+> | Benign user input (Layer 1 ≥ 0 hits, source_type ∈ {user, system}, ≤200 chars) | **14 ms** | 15 ms | Semantic encode skipped — gate path |
+> | External / RAG input, repeated text (cache hit) | **24 ms** | 26 ms | Encoding LRU returns cached vector |
+> | External / RAG input, new text (cache miss) | 39 ms | 192 ms | Single sentence-transformer encode |
+>
+> Same operations were ~514 ms on every call before the v0.6 cleanup; the gate + cache deliver a 37× and 18× speedup respectively without any change in gold-gate recall or FPR. See `memgar/analyzer.py` (Layer 1.5 gate) and `memgar/similarity_layer.py` (SHA256-keyed bounded LRU) for the implementation.
+
 ## What Memgar protects
 
 - Memory writes from chats, tools, documents, summaries, and external sources.

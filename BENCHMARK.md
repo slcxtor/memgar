@@ -139,14 +139,17 @@ without the model artifact.
 > (`Analyzer(use_transformer_ml=True)`) for paraphrased/novel attacker text
 > outside the pattern set; retrain on a domain-representative corpus first.
 
-The SimilarityLayer (Layer 1.5) added no new catches: its centroid model,
-trained on the available academic corpus, validates at F1 = 0.46
-(precision 1.00 / recall 0.30) — below the 0.70 quality gate, so
-`scripts/compute_semantic_centroids.py` correctly refuses to ship it. Same
-root cause as the transformer: training-data mismatch. The ensemble voter
-and correlation detector also add no new BLOCK verdicts at this corpus size;
-their job is to fuse layer outputs for borderline cases, and Layer 1 already
-returns non-borderline verdicts on every row.
+The centroid-based SemanticGuard (formerly Layer 1.5) was **removed in
+2026-06**: an ablation across the clean threat-model, advbench OOD, and
+obfuscated homoglyph/leetspeak corpora showed it added **+0 recall** over the
+Layer 2.5 cosine SimilarityLayer while costing ~28 ms/encode, and its centroid
+model validated at F1 = 0.46 (precision 1.00 / recall 0.30) — below the 0.70
+gate. Semantic detection is now Layer 2.5 (`similarity_layer`) alone, which
+likewise adds no new catches on this corpus (the attacks are written like
+documented in-the-wild incidents the patterns already cover). The ensemble
+voter and correlation detector also add no new BLOCK verdicts at this corpus
+size; their job is to fuse layer outputs for borderline cases, and Layer 1
+already returns non-borderline verdicts on every row.
 
 ---
 

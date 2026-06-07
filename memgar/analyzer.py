@@ -1208,7 +1208,6 @@ class Analyzer:
         window_size: int = 1000,
         window_overlap: int = 200,
         memory_store: Any = None,
-        semantic_guard: bool = True,
         context_buffer: bool = True,
         use_transformer_ml: bool = False,
         integrity_store: Any = None,
@@ -1233,7 +1232,6 @@ class Analyzer:
             window_size: Size of each analysis window (chars)
             window_overlap: Overlap between windows to catch split payloads
             memory_store: Optional MemoryStore for hunter retroactive scanning
-            semantic_guard: Enable Layer 1.5 SemanticGuard (embedding similarity)
             context_buffer: Enable stateful context-split detection per session
             use_transformer_ml: Enable Layer 2-ML (fine-tuned ONNX transformer).
                 Defaults to **False**. The bundled artifact is trained against
@@ -1281,25 +1279,12 @@ class Analyzer:
         # Optional MemoryStore for hunter retroactive scanning
         self._memory_store: Any = memory_store
 
-        # Layer 1.5: SemanticGuard (optional, requires sentence-transformers).
-        # When the guard ends up in degraded mode (missing centroids file or
-        # sentence-transformers not installed), we drop it from the pipeline
-        # so analyze() doesn't pay for a call that always returns 0.0.
-        # The guard itself emits a one-time WARNING log in that case so the
-        # operator knows Layer 1.5 is disabled.
-        self._semantic_guard = None
-        self._semantic_guard_threshold = 0.75
-        if semantic_guard:
-            try:
-                from memgar.semantic_guard import SemanticGuard
-                guard = SemanticGuard()
-                if guard.is_fitted:
-                    self._semantic_guard = guard
-                else:
-                    # Keep a reference for health_check() but don't run it.
-                    self._semantic_guard_degraded = guard.health()
-            except Exception:
-                pass
+        # (Layer 1.5 SemanticGuard removed 2026-06: a centroid-based embedding
+        # classifier that provably added +0 recall over Layer 2.5 — the cosine
+        # similarity layer below already covers the entire semantic surface,
+        # including obfuscated/homoglyph/leetspeak variants — while costing an
+        # extra ~28ms encode per analysis. The semantic detection slot is now
+        # Layer 2.5 (`similarity_layer`) alone.)
 
         # Improvement 4: ContextBuffer for context-split detection
         self._context_buffer: ContextBuffer | None = ContextBuffer() if context_buffer else None
@@ -1308,9 +1293,9 @@ class Analyzer:
         self._integrity_store: Any = integrity_store
 
         # Layer 2-ML: fine-tuned transformer (ONNX, ~5ms, replaces LLM for
-        # high-confidence cases). Mirror the SemanticGuard pattern: keep a
-        # health snapshot when the detector is unavailable so health_check()
-        # can flag it instead of pretending the layer is silently disabled.
+        # high-confidence cases). Keep a health snapshot when the detector is
+        # unavailable so health_check() can flag it instead of pretending the
+        # layer is silently disabled.
         self._transformer: Any = None
         self._transformer_degraded: dict[str, Any] | None = None
         self._transformer_threshold: float = float(
@@ -2161,38 +2146,7 @@ class Analyzer:
             threats.append(fuzzy_threat)
             layers_used.append("fuzzy_matching")
 
-        # Layer 1.5: SemanticGuard is degraded/dead in default installs (no
-        # centroids artifact) and historically just paid for an encode that
-        # always returned 0.0. The single semantic layer below (similarity
-        # against THREAT_EXAMPLES) is the one that actually catches things;
-        # the SemanticGuard slot stays here only so health_check() can keep
-        # surfacing degraded state to operators who explicitly fitted it.
-        if self._semantic_guard is not None and self._semantic_guard.is_fitted:
-            sg_score = self._semantic_guard.score(check_content)
-            if sg_score >= self._semantic_guard_threshold:
-                from memgar.models import ThreatCategory
-                sem_threat = ThreatMatch(
-                    threat=Threat(
-                        id="SEM-001",
-                        name="Semantic Similarity to Known Attacks",
-                        description="Content semantically similar to known attack patterns",
-                        category=ThreatCategory.BEHAVIOR,
-                        severity=Severity.HIGH,
-                        patterns=[],
-                        keywords=[],
-                        examples=[],
-                    ),
-                    matched_text=check_content[:100],
-                    match_type="semantic",
-                    confidence=round(sg_score, 3),
-                    position=(0, min(len(check_content), 100)),
-                )
-                existing_ids = {t.threat.id for t in threats}
-                if "SEM-001" not in existing_ids:
-                    threats.append(sem_threat)
-                layers_used.append("semantic_guard")
-
-        # Layer 1.5/2.5: Semantic Similarity (sentence-transformers cosine).
+        # Layer 2.5: Semantic Similarity (sentence-transformers cosine).
         # Gated to skip the ~250ms encode on the obvious benign hot path —
         # short trusted-user input with zero Layer 1 hits. External / RAG /
         # tool-output sources, anything longer than 200 chars, anything that
@@ -2800,10 +2754,6 @@ class Analyzer:
     def _degraded_layers(self) -> list[str]:
         """Return names of ML layers that are currently degraded."""
         degraded: list[str] = []
-        sg = getattr(self, "_semantic_guard", None)
-        sg_deg = getattr(self, "_semantic_guard_degraded", None)
-        if sg is None and sg_deg is not None:
-            degraded.append("layer1.5_semantic_guard")
         tx_deg = getattr(self, "_transformer_degraded", None)
         if self._transformer is None and tx_deg is not None:
             degraded.append("layer2_ml_transformer")
@@ -2858,22 +2808,6 @@ class Analyzer:
                 len(p) for p in self._compiled_patterns.values()
             ),
         }
-
-        # Layer 1.5 — SemanticGuard
-        if self._semantic_guard is not None:
-            layers["layer1_5_semantic_guard"] = {
-                "status": "ok",
-                **self._semantic_guard.health(),
-            }
-        else:
-            degraded = getattr(self, "_semantic_guard_degraded", None)
-            if degraded:
-                layers["layer1_5_semantic_guard"] = {
-                    "status": "degraded",
-                    **degraded,
-                }
-            else:
-                layers["layer1_5_semantic_guard"] = {"status": "disabled"}
 
         # Layer 2 — LLM
         layers["layer2_llm"] = {

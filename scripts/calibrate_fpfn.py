@@ -193,6 +193,13 @@ def main() -> int:
         default=2,
         help="Threshold sweep step size (default: 2)",
     )
+    parser.add_argument(
+        "--use-transformer",
+        action="store_true",
+        help="Enable the opt-in Layer 2-ML transformer (off by default). Intended "
+        "for the harder expanded/mined corpus — the transformer over-fires on "
+        "prosaic benigns, so leave it off for the gold-corpus gate.",
+    )
     args = parser.parse_args()
 
     use_llm = bool(args.use_llm) and not args.no_llm
@@ -221,12 +228,12 @@ def main() -> int:
     from memgar.analyzer import Analyzer
     from memgar.models import MemoryEntry
 
-    analyzer = Analyzer(use_llm=use_llm)
+    analyzer = Analyzer(use_llm=use_llm, use_transformer_ml=bool(args.use_transformer))
     health = analyzer.health_check()
     logger.info(
-        "Analyzer health: %s (layer1.5=%s)",
+        "Analyzer health: %s (transformer=%s)",
         health["status"],
-        health["layers"]["layer1_5_semantic_guard"].get("status"),
+        "on" if args.use_transformer else "off",
     )
 
     # Score every sample
@@ -389,7 +396,6 @@ def main() -> int:
           f"({report['n_attack']} attack, {report['n_benign']} benign)")
     print("=" * 72)
     print(f"Analyzer health   : {health['status']}")
-    print(f"Layer 1.5 status  : {health['layers']['layer1_5_semantic_guard'].get('status')}")
     print()
     print("At default Analyzer thresholds (Decision.block):")
     m = report["analyzer_default_metrics"]
