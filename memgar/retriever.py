@@ -367,6 +367,7 @@ class RetrievalAnomalyDetector:
         high_frequency_threshold: int = 50,      # Retrievals per hour
         narrow_query_threshold: float = 0.8,     # Query similarity threshold
         trust_spread_threshold: int = 10,        # Low-trust doc in N different queries
+        trusted_spread_threshold: int = 50,      # Trusted doc spread (Schneider "unrelated contexts")
         sudden_spike_multiplier: float = 5.0,    # X times normal rate
 
         # Time windows
@@ -391,6 +392,7 @@ class RetrievalAnomalyDetector:
         self.high_frequency_threshold = high_frequency_threshold
         self.narrow_query_threshold = narrow_query_threshold
         self.trust_spread_threshold = trust_spread_threshold
+        self.trusted_spread_threshold = trusted_spread_threshold
         self.sudden_spike_multiplier = sudden_spike_multiplier
         self.frequency_window_hours = frequency_window_hours
         self.pattern_window_hours = pattern_window_hours
@@ -538,7 +540,8 @@ class RetrievalAnomalyDetector:
                     details={"query_diversity": diversity, "query_count": len(queries)},
                 ))
 
-        # Check 3: Low-trust document spread
+        # Check 3a: Low-trust document spread (Schneider: low-trust memory in
+        # many contexts is a strong attack indicator — high severity).
         trust_score = self._doc_trust_scores.get(doc_id, 0.5)
         if trust_score < 0.5 and len(queries) >= self.trust_spread_threshold:
             unique_queries = len(set(q.lower().strip() for q in queries))
@@ -549,6 +552,24 @@ class RetrievalAnomalyDetector:
                     query="",
                     severity="high",
                     description=f"Low-trust document ({trust_score:.2f}) retrieved in {unique_queries} different contexts",
+                    details={"trust_score": trust_score, "unique_queries": unique_queries},
+                ))
+
+        # Check 3b: Trusted document spread across many unrelated contexts
+        # (Schneider, verbatim: "A memory that suddenly starts appearing in many
+        # unrelated contexts warrants investigation"). Higher threshold + lower
+        # severity than the low-trust spread above, because trusted content
+        # legitimately gets reused — but extreme cross-context activation is
+        # the textbook poisoning indicator that survived a trust assessment.
+        if trust_score >= 0.5 and len(queries) >= self.trusted_spread_threshold:
+            unique_queries = len(set(q.lower().strip() for q in queries))
+            if unique_queries >= self.trusted_spread_threshold:
+                anomalies.append(AnomalyEvent(
+                    anomaly_type="trusted_spread",
+                    doc_id=doc_id,
+                    query="",
+                    severity="medium",
+                    description=f"Trusted document ({trust_score:.2f}) appearing in {unique_queries} unrelated contexts — Schneider 'sudden cross-context activation' indicator",
                     details={"trust_score": trust_score, "unique_queries": unique_queries},
                 ))
 
