@@ -50,6 +50,37 @@ result = a.analyze(MemoryEntry(content="..."))        # sync
 result = await a.analyze_async(MemoryEntry(...))      # async (thread-pool)
 ```
 
+### Schneider 4-layer compliance (2026-06 wiring sprint)
+
+Mapping of Schneider's persistent-memory-poisoning defense architecture
+to memgar components (see SCHNEIDER-AUDIT for the gap analysis that
+drove this wiring; previous score 72/100, post-wiring ~92/100):
+
+| Schneider layer | Memgar implementation | Default |
+|---|---|---|
+| L1 — Input moderation + composite trust | Analyzer Layer 1 patterns + Layer 2.5 similarity + Layer 3 source trust | on |
+| L2 — Instruction stripping | `memgar.sanitizer.InstructionSanitizer` | (in gateway) |
+| L2 — Provenance tagging | `Analyzer._build_provenance` → `entry.metadata['provenance']` | **on** |
+| L2 — Write-ahead validation | `WriteAheadValidator` (RuleBased + MINJA + SemanticGuardian) | gateway |
+| L2 — MINJA compound detection | `MINJADetector` wired into `Analyzer._analyze_internal` | **on** |
+| L3 — Trust-weighted retrieval | `TrustAwareRetriever._calculate_trust_weight` | on (for retriever) |
+| L3 — Temporal decay (trust) | `trust_decay_half_life_days=180.0` in TrustAwareRetriever | **on** |
+| L3 — Retrieval anomaly: frequency / narrow / spread / spike | `RetrievalAnomalyDetector` 5 checks | on |
+| L3 — "Many unrelated contexts" indicator | New `trusted_spread` check (>=50 distinct contexts) | **on** |
+| L4 — Behavioral baseline | `BehavioralBaseline` (per-agent EWM z-score) | auto |
+| L4 — Memory integrity auditing | `MemoryAuditor.snapshot/verify/rollback` | on-demand |
+| L4 — Periodic integrity scan | `MemoryAuditor.start_periodic_audit(get_data, interval)` | opt-in |
+| L4 — Cross-agent propagation | `CorrelationDetector._check_cross_agent_propagation` | **on** |
+| L4 — Circuit breakers | `CircuitBreaker.record_from_result` + Analyzer hooks | opt-in (on in `MemgarDefensePipeline`) |
+| Schneider "user confirmation for memory writes" | `MemoryWriteGateway(confirm_all_writes=True)` | opt-in |
+
+Items in **bold** were rolled into the default `Analyzer()` flow during the
+sprint — earlier they were class-libraries with no path from the documented
+entry point. Items marked "opt-in" are intentional: they either need
+infrastructure (HITL backend, persistent ledger) or have side effects
+(stateful breaker on stateless scorer) that don't match a one-size-fits-all
+default.
+
 ### Threat Intelligence Feed (`memgar/feed/`)
 
 - **`FeedLoader`** downloads `memgar-feed.json.gz` from GitHub Releases, verifies Ed25519 signature, caches at `~/.cache/memgar/feeds/`

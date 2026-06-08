@@ -16,18 +16,24 @@ This is critical for memory poisoning defense because:
 - Root cause analysis requires knowing when compromise occurred
 - Recovery requires ability to rollback to pre-compromise state
 
-Usage:
+Usage — on-demand:
     from memgar.auditor import MemoryAuditor
 
     auditor = MemoryAuditor(storage_path="./memory_snapshots")
+    snapshot_id = auditor.snapshot(memory_store.export())
+    report = auditor.verify(memory_store.export(), snapshot_id)
+    if not report.is_valid:
+        memory_store.replace(auditor.rollback(snapshot_id))
 
-    # Take periodic snapshots
-    snapshot_id = auditor.snapshot(memory_store)
-
-    # Verify integrity
-    if not auditor.verify(memory_store, snapshot_id):
-        # Memory was modified!
-        auditor.rollback(memory_store, snapshot_id)
+Usage — background scheduler (Schneider L4 "periodically validates the
+memory store against known-good states"):
+    auditor.start_periodic_audit(
+        get_snapshot_data=lambda: memory_store.export(),
+        interval_seconds=300,
+        on_drift=lambda report: alert_ops(report),
+    )
+    # Daemon thread; auto-rolls baseline forward after each drift event.
+    # Stop with auditor.stop_periodic_audit().
 """
 
 from __future__ import annotations

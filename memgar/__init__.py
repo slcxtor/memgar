@@ -4,11 +4,28 @@ Memgar - AI Agent Memory Security
 
 Protect your AI agents from memory poisoning attacks.
 
-Memgar implements a 4-layer defense architecture:
-- Layer 1: Input Moderation (patterns, semantic analysis)
-- Layer 2: Memory Sanitization (instruction stripping, provenance)
-- Layer 3: Trust-Aware Retrieval (RAG security)
-- Layer 4: Behavioral Monitoring (watch, alerts)
+Memgar implements Christian Schneider's 4-layer defense architecture for
+persistent memory poisoning. Each layer below has concrete components
+wired into the default Analyzer (unless marked opt-in):
+
+- Layer 1: Input Moderation
+    * patterns.yaml regex + keyword matching (always on)
+    * Layer 2.5 sentence-transformers cosine similarity (default on)
+    * Layer 3 source-trust scoring (auto when registered)
+- Layer 2: Memory Sanitization
+    * Auto-provenance tagging on every analyzed entry (default on)
+    * MINJA compound detector — bridging + indication + density (default on)
+    * WriteAheadValidator + SemanticGuardian (opt-in via gateway)
+- Layer 3: Trust-Aware Retrieval (for RAG)
+    * TrustAwareRetriever with temporal trust decay (default 180-day half-life)
+    * RetrievalAnomalyDetector: high_frequency, narrow_query,
+      untrusted_spread, trusted_spread, sudden_spike
+- Layer 4: Behavioral Monitoring
+    * Per-agent BehavioralBaseline (EWM z-score, auto)
+    * Cross-agent propagation detection in CorrelationDetector (auto)
+    * MemoryAuditor.start_periodic_audit() for integrity drift (opt-in)
+    * CircuitBreaker hooks in MemgarDefensePipeline (default on there;
+      opt-in for raw Analyzer)
 
 Quick Start:
     >>> from memgar import Memgar

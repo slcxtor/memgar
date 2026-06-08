@@ -6,8 +6,16 @@ Layer 3 defense: Trust-weighted retrieval for RAG systems.
 
 Features:
 - Trust-weighted ranking: Adjusts retrieval scores based on provenance
-- Temporal decay: Reduces influence of older memories over time
-- Retrieval anomaly detection: Flags suspicious retrieval patterns
+- Temporal trust decay: Trust score itself decays with memory age
+  (180-day half-life by default — *not* just retrieval weight). Honors
+  Schneider's "Temporal decay should be combined with trust scoring"
+- Temporal weight decay: Independent relevance decay (5 decay functions)
+- Retrieval anomaly detection — 5 checks:
+    * high_frequency (retrievals/hour)
+    * narrow_query_pattern (low query diversity)
+    * untrusted_spread (low-trust doc → many contexts, severity=high)
+    * trusted_spread (trusted doc → 50+ contexts, severity=medium)
+    * sudden_spike (rate spike vs prior windows)
 
 Based on Christian Schneider's defense architecture (Layer 3).
 """
