@@ -689,6 +689,12 @@ class TrustAwareRetriever:
         min_trust_score: float = 0.2,
         trust_weight_factor: float = 0.3,    # How much trust affects ranking
         untrusted_penalty: float = 0.5,      # Penalty for untrusted docs
+        # Schneider: trust assigned at write time should decay over the
+        # memory's lifetime — a high-trust assignment from 6 months ago
+        # should not be treated identically to one made today, because the
+        # write-time assessment can't see attacks that emerged since.
+        # Half-life in days; None disables (preserves old behavior).
+        trust_decay_half_life_days: Optional[float] = 180.0,
 
         # Temporal decay
         enable_temporal_decay: bool = True,
@@ -740,6 +746,7 @@ class TrustAwareRetriever:
         self.min_trust_score = min_trust_score
         self.trust_weight_factor = trust_weight_factor
         self.untrusted_penalty = untrusted_penalty
+        self.trust_decay_half_life_days = trust_decay_half_life_days
 
         self.enable_temporal_decay = enable_temporal_decay
         self.temporal_weight_factor = temporal_weight_factor
@@ -835,7 +842,31 @@ class TrustAwareRetriever:
 
         trust = metadata.trust_score
 
-        # Apply penalty if below threshold
+        # Schneider: trust assigned at write time decays over the memory's
+        # lifetime. A high-trust assignment from N half-lives ago should be
+        # treated as 0.5^N of its original — re-verification is needed to
+        # maintain influence. Re-trust threshold check uses the DECAYED
+        # value so a stale high-trust memory can drop below min_trust_score
+        # and earn the untrusted penalty.
+        if (
+            self.trust_decay_half_life_days is not None
+            and self.trust_decay_half_life_days > 0
+            and metadata.created_at is not None
+        ):
+            try:
+                from datetime import datetime, timezone as _tz
+                _now = datetime.now(_tz.utc)
+                _created = metadata.created_at
+                # Normalise naive timestamps to UTC for safe subtraction
+                if _created.tzinfo is None:
+                    _created = _created.replace(tzinfo=_tz.utc)
+                age_days = max(0.0, (_now - _created).total_seconds() / 86400.0)
+                decay = 0.5 ** (age_days / self.trust_decay_half_life_days)
+                trust = trust * decay
+            except Exception:
+                pass
+
+        # Apply penalty if below threshold (post-decay)
         if trust < self.min_trust_score:
             return 1.0 - self.untrusted_penalty
 
