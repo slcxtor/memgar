@@ -1217,6 +1217,8 @@ class Analyzer:
         similarity_layer: bool = True,
         fail_close: bool | None = None,
         tenant_learning: Any = False,
+        circuit_breaker: Any = False,
+        minja_detection: bool = True,
     ) -> None:
         """
         Initialize the analyzer.
@@ -1348,6 +1350,39 @@ class Analyzer:
                 self._canary_manager = CanaryTokenManager()
             except Exception:
                 pass
+
+        # Schneider Layer 2 — MINJA Compound Detection (default ON). Goes
+        # beyond single-pattern matching: counts bridging steps, indication
+        # prompts, and progressive-shortening density signatures. Catches
+        # MINJA-style attacks where each individual segment looks innocent
+        # but the composition is malicious — exactly the gap Layer 1 regex
+        # cannot close. Stateless, ~0.5ms, no external deps.
+        self._minja_detector: Any = None
+        if minja_detection:
+            try:
+                from memgar.write_ahead_validator import MINJADetector
+                self._minja_detector = MINJADetector()
+            except Exception as exc:
+                logger.warning("Analyzer: minja_detector init failed (%s)", exc)
+
+        # Schneider Layer 4 — Circuit Breaker. Opt-in (default False) because
+        # Analyzer is a stateless content scorer reused across many requests;
+        # a global breaker on the scorer would trip under any sustained
+        # adversarial workload (load tests, busy SOCs). For Schneider-aligned
+        # halting at the operator level use MemgarDefensePipeline (orchestrator)
+        # — or pass `circuit_breaker=True` to wire it into this Analyzer with
+        # production-friendly defaults (threshold=100 weighted blocks / 60s).
+        # Accepts bool (auto-create with defaults) or a configured instance.
+        self._circuit_breaker: Any = None
+        if circuit_breaker:
+            try:
+                from memgar.circuit_breaker import CircuitBreaker as _CB
+                if isinstance(circuit_breaker, bool):
+                    self._circuit_breaker = _CB(threshold=100, window_seconds=60.0)
+                else:
+                    self._circuit_breaker = circuit_breaker
+            except Exception as exc:
+                logger.warning("Analyzer: circuit_breaker init failed (%s)", exc)
 
     @staticmethod
     def _detect_llm_provider(api_key: str | None) -> str:
@@ -1550,6 +1585,17 @@ class Analyzer:
         """
         from memgar.observability.tracing import get_tracer
         tracer = get_tracer()
+
+        # Schneider Layer 4 — Circuit breaker pre-check. If the breaker has
+        # tripped (too many threats in window), halt before any analysis to
+        # force operator intervention. Schneider: "automatically halt agent
+        # operations when anomalies are detected".
+        if self._circuit_breaker is not None and self._circuit_breaker.is_tripped:
+            from memgar.circuit_breaker import AgentHaltedException
+            raise AgentHaltedException(
+                "Memgar circuit breaker active — agent halted",
+                stats=self._circuit_breaker.get_stats(),
+            )
 
         with tracer.start_as_current_span("memgar.analyze") as root_span:
             root_span.set_attribute("memgar.content_length", len(entry.content or ""))
@@ -1942,6 +1988,21 @@ class Analyzer:
                 )
                 result.layers_used = list(result.layers_used) + ["fail_close"]
 
+        # Schneider Layer 4 — Record into circuit breaker on BLOCK only.
+        # Recording every detected threat (even on ALLOW) would trip the
+        # breaker on routine pattern matches against benign content; we only
+        # want it to fire on actual blocks (the operator-visible threat rate).
+        if self._circuit_breaker is not None and result.decision == Decision.BLOCK:
+            try:
+                self._circuit_breaker.record_from_result(
+                    result,
+                    content=entry.content or "",
+                    source=entry.source_id or entry.source_type or "unknown",
+                )
+            except Exception:
+                # Telemetry must never break the primary analysis path.
+                pass
+
         return result
 
     def verify_integrity(self, entry: MemoryEntry, entry_id: str | None = None):
@@ -2091,6 +2152,44 @@ class Analyzer:
             )
             threats.append(fuzzy_threat)
             layers_used.append("fuzzy_matching")
+
+        # Schneider Layer 2 — MINJA compound detection (bridging + indication
+        # + progressive-shortening density). Each pattern alone may look
+        # innocent; the COMBINATION reveals MINJA intent. Adds a single
+        # ThreatMatch when the compound score crosses ~30.
+        if self._minja_detector is not None:
+            try:
+                from memgar.write_ahead_validator import ValidationContext
+                _ctx = ValidationContext(
+                    source_type=entry.source_type or "unknown",
+                    agent_id=(entry.metadata or {}).get("agent_id"),
+                    session_id=entry.source_id,
+                )
+                _minja = self._minja_detector.check(check_content, _ctx)
+                if _minja.score >= 30.0 or _minja.critical:
+                    from memgar.models import ThreatCategory as _TC
+                    _sev = Severity.CRITICAL if _minja.critical else Severity.HIGH
+                    _conf = min(1.0, _minja.score / 100.0)
+                    threats.append(ThreatMatch(
+                        threat=Threat(
+                            id="MINJA-COMPOUND",
+                            name="MINJA Compound Pattern",
+                            description="Multiple MINJA bridging/indication signatures "
+                                        "or progressive-shortening density. "
+                                        + "; ".join(_minja.evidence[:3]),
+                            category=_TC.INJECTION,
+                            severity=_sev,
+                            patterns=[],
+                            keywords=[],
+                            examples=[],
+                        ),
+                        matched_text=check_content[:120],
+                        match_type="minja_compound",
+                        confidence=_conf,
+                    ))
+                    layers_used.append("minja_compound")
+            except Exception:
+                pass
 
         # Layer 2.5: Semantic Similarity (sentence-transformers cosine).
         # Gated to skip the ~250ms encode on the obvious benign hot path —
@@ -2728,6 +2827,26 @@ class Analyzer:
             "status": "ok" if self._baselines else "disabled",
             "n_agents": len(self._baselines),
         }
+
+        # Layer 2 (Schneider) — MINJA compound detector
+        layers["minja_detector"] = {
+            "status": "ok" if self._minja_detector is not None else "disabled",
+        }
+
+        # Layer 4 — Circuit breaker
+        if self._circuit_breaker is not None:
+            try:
+                cb_stats = self._circuit_breaker.get_stats()
+                layers["circuit_breaker"] = {
+                    "status": "tripped" if self._circuit_breaker.is_tripped else "ok",
+                    "state": cb_stats.state.value if hasattr(cb_stats.state, "value") else str(cb_stats.state),
+                    "threats_in_window": cb_stats.threats_in_window,
+                    "trips_count": cb_stats.trips_count,
+                }
+            except Exception as exc:
+                layers["circuit_breaker"] = {"status": "ok", "health_error": str(exc)}
+        else:
+            layers["circuit_breaker"] = {"status": "disabled"}
 
         # Threat-intelligence feed (not strictly a layer, but a major coverage
         # input; degraded feed silently falls back to bundled PATTERNS).
