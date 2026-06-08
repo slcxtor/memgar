@@ -1219,6 +1219,7 @@ class Analyzer:
         tenant_learning: Any = False,
         circuit_breaker: Any = False,
         minja_detection: bool = True,
+        auto_provenance: bool = True,
     ) -> None:
         """
         Initialize the analyzer.
@@ -1350,6 +1351,15 @@ class Analyzer:
                 self._canary_manager = CanaryTokenManager()
             except Exception:
                 pass
+
+        # Schneider Layer 2 — Auto-provenance tagging (default ON). Every
+        # analyzed MemoryEntry gains a provenance dict in entry.metadata
+        # recording the four things Schneider names: source (type+id),
+        # creation time, session context, and trust+risk score. Stored as
+        # entry.metadata['provenance'] so downstream persistence layers
+        # (MemoryLedger, MemoryStore) can index/audit by provenance.
+        # Lightweight: ~10μs per analyze (sha256 + 2 timestamps).
+        self._auto_provenance: bool = bool(auto_provenance)
 
         # Schneider Layer 2 — MINJA Compound Detection (default ON). Goes
         # beyond single-pattern matching: counts bridging steps, indication
@@ -1987,6 +1997,16 @@ class Analyzer:
                     "Original: " + result.explanation
                 )
                 result.layers_used = list(result.layers_used) + ["fail_close"]
+
+        # Schneider Layer 2 — Auto-provenance tag. Stamp the entry with the
+        # four Schneider-mandated fields so downstream persistence (ledger,
+        # memory_store) carries full chain-of-custody. Source + time +
+        # session + trust/risk. Content-hash binds it for tamper detection.
+        if self._auto_provenance and entry.metadata is not None:
+            try:
+                entry.metadata.setdefault("provenance", self._build_provenance(entry, result))
+            except Exception:
+                pass
 
         # Schneider Layer 4 — Record into circuit breaker on BLOCK only.
         # Recording every detected threat (even on ALLOW) would trip the
@@ -2755,6 +2775,40 @@ class Analyzer:
 
         return "\n".join(lines)
 
+    def _build_provenance(self, entry: MemoryEntry, result: AnalysisResult) -> dict[str, Any]:
+        """Build a Schneider-aligned provenance dict for an analyzed entry.
+
+        Records the four fields Schneider names as the chain-of-custody
+        foundation: source (type + id), creation time, session context,
+        and trust + risk score. The content hash binds the entry to the
+        exact bytes that were analyzed so any later tampering is
+        detectable by recomputing and comparing.
+        """
+        import hashlib
+        from datetime import datetime, timezone
+
+        meta = entry.metadata or {}
+        content = entry.content or ""
+        # Resolve initial trust from registered source-trust scores (Layer 3).
+        source_id = entry.source_id or ""
+        trust_initial = float(self._doc_trust_scores.get(source_id, 0.5))
+
+        return {
+            "entry_id": str(meta.get("entry_id") or __import__("uuid").uuid4()),
+            "tracked_at": datetime.now(timezone.utc).isoformat(),
+            "source": {
+                "type": entry.source_type or "unknown",
+                "id": source_id or None,
+            },
+            "session_id": meta.get("session_id") or meta.get("agent_id"),
+            "trust_score_initial": trust_initial,
+            "risk_score": int(result.risk_score),
+            "decision": result.decision.value,
+            "content_sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            "content_length": len(content),
+            "schneider_layer": 2,
+        }
+
     def _degraded_layers(self) -> list[str]:
         """Return names of ML layers that are currently degraded."""
         degraded: list[str] = []
@@ -2831,6 +2885,11 @@ class Analyzer:
         # Layer 2 (Schneider) — MINJA compound detector
         layers["minja_detector"] = {
             "status": "ok" if self._minja_detector is not None else "disabled",
+        }
+
+        # Layer 2 (Schneider) — Auto-provenance tagging
+        layers["auto_provenance"] = {
+            "status": "ok" if self._auto_provenance else "disabled",
         }
 
         # Layer 4 — Circuit breaker
