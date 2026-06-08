@@ -11,10 +11,9 @@ result = analyzer.analyze(MemoryEntry(content="..."))
 # 1. _layer1_pattern_matching     — regex/keyword
 # 2. _semantic_guard.score()      — embedding similarity
 # 3. _layer2_semantic_analysis    — optional LLM
-# 4. _transformer.predict()       — optional ONNX
-# 5. _analyze_internal            — combine + apply Layer 3 trust
-# 6. _behavioral_baseline.scan    — Layer 4 anomaly
-# 7. fail_close escalation        — final ALLOW → QUARANTINE if degraded
+# 4. _analyze_internal            — combine + apply Layer 3 trust
+# 5. _behavioral_baseline.scan    — Layer 4 anomaly
+# 6. fail_close escalation        — final ALLOW → QUARANTINE if degraded
 ```
 
 ## Risk score combination
@@ -28,7 +27,6 @@ risk_score = max(
     layer1_pattern_score,
     layer1_5_semantic_score * 0.8,
     layer2_llm_score,
-    layer2_ml_transformer_score * 0.85,  # only if prob >= 0.92
 )
 + layer3_trust_adjustment   (range -5 to +30)
 + layer4_baseline_deviation (0, +15, or +30)
@@ -52,24 +50,8 @@ missing, the layer:
 4. `Analyzer.health_check()` aggregates the disabled state into the per-layer
    report so operators can wire it into Prometheus / alerts.
 
-The same pattern is implemented for `TransformerDetector` and `FeedLoader` —
-no silent zero scoring anywhere in the pipeline.
-
-## Layer 2 vs Layer 2-ML
-
-Both run "semantic" analysis but at different cost / capability points:
-
-| | Layer 2 (LLM) | Layer 2-ML (ONNX) |
-|---|---|---|
-| Backend | Anthropic Claude | Local DistilBERT/BERT-mini |
-| Latency | ~200ms | ~7ms |
-| Cost | per-token API charge | free |
-| Quality | strongest | good once trained on your domain |
-| Failure mode | API outage, rate limit | model absent (graceful) |
-| Default | opt-in `use_llm=True` | opt-in via artifact presence |
-
-They are complementary: use Layer 2 for borderline cases that Layer 1 + ML
-flag at the threshold; use Layer 2-ML for every request to keep latency low.
+The same pattern is implemented for `FeedLoader` — no silent zero scoring
+anywhere in the pipeline.
 
 ## Trust-aware Layer 3
 

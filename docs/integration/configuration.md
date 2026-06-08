@@ -16,7 +16,6 @@ variables, or constructor args.
 | `MEMGAR_OBSERVABILITY_DRIFT_WINDOW` | `1000` | Window of scans for drift baseline |
 | `MEMGAR_CACHE_DIR` | `~/.cache/memgar` | Pattern cache + feed cache root |
 | `MEMGAR_FAIL_CLOSE` | `false` | Escalate ALLOW → QUARANTINE when ML/feed degraded |
-| `MEMGAR_TRANSFORMER_THRESHOLD` | `0.92` | Min ONNX prob to fire ML-DETECT signal |
 
 ## YAML config
 
@@ -26,7 +25,6 @@ analysis:
   fail_close: true                 # MEMGAR_FAIL_CLOSE equivalent
   use_llm: false
   semantic_guard: true
-  use_transformer_ml: true
 
 feed:
   enabled: true
@@ -58,7 +56,6 @@ a = Analyzer(
     use_llm=False,
     fail_close=True,             # overrides MEMGAR_FAIL_CLOSE
     semantic_guard=True,
-    use_transformer_ml=True,
     strict_mode=False,
     use_whitelist=True,
     use_sliding_window=True,

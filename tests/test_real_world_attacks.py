@@ -23,7 +23,7 @@ from memgar.memory_integrity import MemoryIntegrityStore, _entry_id
 
 @pytest.fixture(scope="module")
 def analyzer():
-    a = Analyzer(use_llm=False, use_transformer_ml=False)
+    a = Analyzer(use_llm=False)
     a.register_source_trust("moltbook-public-feed",          0.05)
     a.register_source_trust("external-email-untrusted",      0.10)
     a.register_source_trust("scraped-web-content",           0.20)

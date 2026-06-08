@@ -7,7 +7,7 @@
 [![OWASP ASI06](https://img.shields.io/badge/OWASP-ASI06%20Memory%20Poisoning-blue)](https://genai.owasp.org/llmrisk2025/asi06-memory-poisoning/)
 [![No API key required](https://img.shields.io/badge/API%20key-not%20required-brightgreen)](#no-api-key-required)
 
-**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer analyzer (782 patterns + sentence-transformer similarity + trust-aware scoring + behavioral baseline, plus an opt-in fine-tuned ONNX transformer) with 17 framework adapters and an EU AI Act compliance reporter included. Targets English-language attacks, the same scope as the OWASP ASI06 reference.
+**Production-grade defense against OWASP ASI06 (Memory Poisoning) — the threat memgar exists to solve.** Multi-layer analyzer (782 patterns + sentence-transformer similarity + trust-aware scoring + behavioral baseline) with 17 framework adapters and an EU AI Act compliance reporter included. Targets English-language attacks, the same scope as the OWASP ASI06 reference.
 
 Full documentation at **[memgar.com](https://memgar.com)**.
 
@@ -21,7 +21,6 @@ account, no API key, no outbound call to memgar:
 | Capability | Needs a key? |
 |---|---|
 | Default analyzer (Layer 1 patterns + trust scoring + behavioral baseline) | **No** |
-| Bundled Layer 2-ML ONNX transformer (opt-in) | **No** |
 | Signed threat-feed download + verification | **No** — the Ed25519 public key ships in the package; the feed is fetched from a public GitHub release |
 | All 17 framework / vector-DB adapters | **No** |
 | Observability, SIEM events, memory forensics, integrity vault | **No** |
@@ -32,7 +31,6 @@ LLM provider key *you* supply, *if* you opt into the optional LLM layer.
 
 ## What's new in v1.2.0
 
-- **Layer 2-ML transformer ships as opt-in** (DistilRoBERTa + LoRA, 78 MB INT8 ONNX). Test set F1 = 0.9966, ECE = 0.0048, and +5.4 pp recall on the memgar threat-model corpus of external-/RAG-sourced attacks (see [BENCHMARK.md](BENCHMARK.md)). But the bundled artifact is trained on template attacks + academic benigns, so it over-fires on prosaic memory-writes ("grant Sofia view access" scores 0.9999 — *higher* than genuine attacks) and adds no recall on the gold corpus while raising FPR ~8×. It is therefore **off by default** (`use_transformer_ml=False`); turn it on for untrusted-source-heavy traffic, or retrain on a domain-representative corpus with `scripts/train_transformer_v2.py` first. Default Analyzer is Layer 1 + 3 + 4: **100 % gold recall at 1.9 % FPR.**
 - **Public benchmark CLI**: `python scripts/public_benchmark.py --threat-model-only --ablate` produces a reproducible, seed-locked report against externally-authored corpora. Numbers anyone can re-run.
 - **Hot-path latency**: benign user input p50 = 9 ms (gated), RAG hit p50 = 24 ms (cached). Was ~514 ms before the v1.2 cleanup.
 - **Slimmer surface**: dropped DoW / WebSocket / brand-bias / confidence-bypass / pattern-evolution / advanced-scoring modules and their tests. `pip install memgar[compliance]` keeps the EU AI Act reporter accessible as a standalone extra.
@@ -48,20 +46,20 @@ See [CHANGELOG](CHANGELOG.md) for the full diff.
 > | Corpus | Size | Recall | FPR | Notes |
 > |---|---|---|---|---|
 > | **Threat model** (memory poisoning — the one to plan against) | 74 attacks + 50 benign | **94.6 %** | **6.0 %** | EchoLeak, SpAIware, Morris-II, MINJA, MemoryGraft, EHR + benign memory writes. Reproduce: `python scripts/public_benchmark.py --threat-model-only`. |
-> | **Gold** (hand-curated regression, EN-only) | 20 attacks + 155 benign | **100 %** | **1.9 %** | `Analyzer.analyze()` clean-workload reference (default config: Layer 1 + 3 + 4, transformer off); pinned by `scripts/check_calibration_gate.py`. Enabling the opt-in Layer 2-ML transformer raises FPR to ~15 % on this prosaic-benign set — see the What's-new note. |
+> | **Gold** (hand-curated regression, EN-only) | 20 attacks + 155 benign | **100 %** | **1.9 %** | `Analyzer.analyze()` clean-workload reference (default config: Layer 1 + 2.5 + 3 + 4); pinned by `scripts/check_calibration_gate.py`. |
 > | **Cross-domain stress test** (jailbreak corpora — different threat model) | AdvBench/JBB/HarmBench/Gandalf/TrustAIR (500 attacks + 300 benign) | 0.574 / 0.087 | — | Reported for transparency. Red-team-authored goals; deploy memgar with input-side prompt-injection defenses, not alone. |
 >
 > "Recall" and "FPR" count BLOCK *and* QUARANTINE decisions — both prevent the content from reaching agent memory in production. `SecureMemoryStore` refuses to commit a quarantined write to the backend until human review. Memgar is one layer of defense, **not a silver bullet** — pair it with input-side prompt-injection defenses and your existing observability stack.
 
-> **Latency, measured on the analyzer hot path.** Local CPU, no GPU, ONNX INT8 transformer warm. Re-runnable via `python scripts/bench_latency.py` (planned) or by inspecting `BENCHMARK.md`.
+> **Latency, measured on the analyzer hot path.** Local CPU, no GPU, sentence-transformer warm. Re-runnable via `python scripts/bench_latency.py` (planned) or by inspecting `BENCHMARK.md`.
 >
 > | Path | p50 | p95 | Behaviour |
 > |---|---|---|---|
-> | Benign user input (`source_type='user'`, ≤200 chars, no Layer-1 hits) | **9 ms** | 10 ms | Layer 2-ML + semantic encode skipped — gate path |
+> | Benign user input (`source_type='user'`, ≤200 chars, no Layer-1 hits) | **9 ms** | 10 ms | Semantic encode skipped — gate path |
 > | External / RAG input, repeated text (cache hit) | **24 ms** | 26 ms | SHA256-keyed bounded LRU returns cached encoding |
-> | External / RAG input, new text (cache miss, full stack) | 39–100 ms | 192–230 ms | One sentence-transformer encode + one ONNX INT8 forward |
+> | External / RAG input, new text (cache miss, full stack) | 39–100 ms | 192–230 ms | One sentence-transformer encode |
 >
-> Same operations were ~514 ms on every call before the v1.2 cleanup; the gate + cache + ML gate deliver a 37–55× speedup on the benign hot path with zero gold-gate recall or FPR regression. See `memgar/analyzer.py` (Layer 1.5 + 2-ML gates) and `memgar/similarity_layer.py` (LRU cache) for the implementation.
+> Same operations were ~514 ms on every call before the v1.2 cleanup; the gate + cache deliver a 37–55× speedup on the benign hot path with zero gold-gate recall or FPR regression. See `memgar/analyzer.py` and `memgar/similarity_layer.py` (LRU cache) for the implementation.
 
 > **Language scope.** Memgar's 782 patterns, gold-gate calibration corpus, and ML training data target English-language attacks — the same scope as the OWASP `agent-memory-guard` reference, and a deliberate choice to keep validation depth ahead of breadth (rather than ship pattern flags that exceed real coverage). For JA / ZH / DE / ES / AR deployments, author deployment-specific patterns and corpora using the toolchain that ships with the package (`memgar.patterns.register_threat()`, `scripts/build_threat_model_corpus.py`) and measure them on your own traffic before relying on them.
 
@@ -143,8 +141,6 @@ Core analysis runs locally and does not require an external model provider. Opti
 | `memgar[agents]` | Agent framework integrations for supported stacks. |
 | `memgar[feed]` | Signed threat feed and cryptographic helpers. |
 | `memgar[semantic]` | Sentence-transformer based semantic checks. |
-| `memgar[ml]` | Local ML detection gates when model artifacts are available. |
-| `memgar[ml-train]` | v2 transformer training pipeline (torch + LoRA via peft). |
 | `memgar[llm]` | Optional cloud LLM-assisted analysis. |
 | `memgar[all]` | Full local development installation. |
 

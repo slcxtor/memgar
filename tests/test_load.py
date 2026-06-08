@@ -87,7 +87,7 @@ def analyzer():
     throughput gate measures pattern-matching + scoring overhead, not GPU/CPU
     embedding time (the embedding layer has its own latency tests).
     """
-    return Analyzer(use_llm=False, use_transformer_ml=False, similarity_layer=False)
+    return Analyzer(use_llm=False, similarity_layer=False)
 
 
 def _make_entries(count: int) -> List[MemoryEntry]:

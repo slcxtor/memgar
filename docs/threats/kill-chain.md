@@ -296,7 +296,7 @@ as a checklist for your stack:
 |------------------|---------------------------------------------------|
 | 1. Reconnaissance | Layer 1 (DISCOVER-* patterns), session risk-elevation |
 | 2. Preparation    | Layer 1 (obfuscation/EVADE-*), Layer 1.5 (SemanticGuard embedding), Layer 2 (LLM) |
-| 3. Injection      | Layer 1 (INJ/CONTEXT/MULTI/SCHNDR-*), Layer 2 (LLM semantic), Layer 2-ML (transformer) |
+| 3. Injection      | Layer 1 (INJ/CONTEXT/MULTI/SCHNDR-*), Layer 2 (LLM semantic) |
 | 4. Persistence    | Layer 1 (XSESS-*), `MemoryVault` signed snapshots, `MemoryIntegrityStore` content-hash baselines, `SecureMemoryStore` write enforcement |
 | 5. Lateral Movement | Layer 1 (MAGENT-*), `TrustAwareRetriever` per-source trust, `MCPProxy` strict allowlist |
 | 6. Activation     | Layer 1 (XSESS-006/007, TEMPORAL_*), Layer 4 `BehavioralBaseline` |

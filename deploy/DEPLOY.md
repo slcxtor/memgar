@@ -82,26 +82,6 @@ Caddy provisions an SSL cert on the first request (~10 seconds).
 | `https://api.memgar.com/docs`  | OpenAPI / Swagger UI | none                |
 | `https://metrics.memgar.com/`  | Grafana dashboards   | Caddy basic-auth + Grafana login |
 
-## ML model (optional)
-
-The transformer Layer 2-ML is **off by default in production** if no model
-file is bundled. To enable it:
-
-```bash
-# Train on a GPU box (≈30 min on an A10):
-pip install -e ".[ml-train]"
-python -m ml.training.transformer_trainer --epochs 3
-
-# Copy the artifact onto the server:
-scp -r ml/artifacts/transformer_model root@<server>:/opt/memgar/ml/artifacts/
-
-# Rebuild — Dockerfile bakes the model into the image:
-./deploy/deploy.sh update
-```
-
-Without it, the system falls back to the existing 4-layer pipeline
-(pattern matching + LLM + trust + behavioral).
-
 ## Hardening checklist
 
 - [ ] Rotate `MEMGAR_API_KEYS` every 90 days
@@ -119,9 +99,6 @@ server (`dig api.memgar.com`) before starting. Caddy keeps retrying; tail
 
 **API returns 401** — `X-API-Key` header missing or doesn't match
 `MEMGAR_API_KEYS` in `.env`. If `MEMGAR_API_KEYS` is unset, auth is disabled.
-
-**Out of memory on small VPS** — drop `MEMGAR_TRANSFORMER_THRESHOLD` set to
-`1.1` to disable transformer layer; tighten `deploy.resources.limits.memory`.
 
 **Drift alerts firing constantly** — bump `MEMGAR_OBSERVABILITY_DRIFT_THRESHOLD`
 from 0.20 to 0.30 in compose; check `metrics.memgar.com` for the PSI trend.

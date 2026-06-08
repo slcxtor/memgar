@@ -38,7 +38,6 @@ COPY ml/       ./ml/
 COPY feeds/    ./feeds/
 
 # Model artifacts (baked in; override at runtime via MEMGAR_MODEL_PATH)
-# If ml/artifacts/transformer_model/ exists it is bundled here for zero-startup latency
 COPY ml/artifacts/ ./ml/artifacts/
 
 # Cache dir lives outside image — mount a volume in production
@@ -52,7 +51,6 @@ ENV MEMGAR_CACHE_DIR=/data/cache \
     MEMGAR_OBSERVABILITY_ENABLED=true \
     MEMGAR_OBSERVABILITY_PORT=9090 \
     MEMGAR_ORT_THREADS=2 \
-    MEMGAR_TRANSFORMER_THRESHOLD=0.75 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 

@@ -18,7 +18,6 @@ services:
       MEMGAR_FEED_MAX_AGE_DAYS: "7"
       MEMGAR_FEED_GITHUB_REPO: "slcxtor/memgar"
       # --- ML ---
-      MEMGAR_TRANSFORMER_THRESHOLD: "0.75"
       MEMGAR_ORT_THREADS: "2"
       # --- Observability ---
       MEMGAR_OBSERVABILITY_ENABLED: "true"

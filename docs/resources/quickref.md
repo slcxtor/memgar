@@ -20,7 +20,7 @@ result = a.analyze(MemoryEntry(content="..."))
 
 result.decision         # Decision.ALLOW / QUARANTINE / BLOCK
 result.risk_score       # 0-100
-result.layers_used      # ['pattern_matching', 'transformer_ml', ...]
+result.layers_used      # ['pattern_matching', 'similarity_layer', ...]
 result.explanation      # human-readable
 result.threats          # list[ThreatMatch]
 ```
@@ -47,7 +47,7 @@ a.register_source_trust("untrusted-wiki",  0.10)
 ```python
 a.health_check()
 # {'patterns': {...}, 'layer1_5_semantic_guard': {...},
-#  'layer2_ml_transformer': {...}, 'threat_feed': {...}}
+#  'threat_feed': {...}}
 ```
 
 ## Calibration (offline)
@@ -77,7 +77,6 @@ python scripts/check_expanded_gate.py
 | `MEMGAR_OBSERVABILITY_ENABLED` | false | Prometheus + drift |
 | `MEMGAR_OBSERVABILITY_PORT` | 9090 | Scrape port |
 | `MEMGAR_FAIL_CLOSE` | false | Escalate on degraded |
-| `MEMGAR_TRANSFORMER_THRESHOLD` | 0.92 | ML signal cutoff |
 | `MEMGAR_CACHE_DIR` | `~/.cache/memgar` | Pattern + feed cache |
 
 ## CLI

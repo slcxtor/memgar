@@ -465,7 +465,7 @@ def run_integrity_scenario(analyzer: Analyzer, store: MemoryIntegrityStore) -> d
 # ---------------------------------------------------------------------------
 
 async def run_all_scenarios() -> List[ScenarioReport]:
-    analyzer = Analyzer(use_llm=False, use_transformer_ml=False)
+    analyzer = Analyzer(use_llm=False)
 
     # Untrusted external sources
     analyzer.register_source_trust("moltbook-public-feed",     0.05)

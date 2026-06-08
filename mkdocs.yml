@@ -162,7 +162,6 @@ nav:
       - Development:
           - Contributing: development/contributing.md
           - Calibration: development/calibration.md
-          - Training Transformer: development/training.md
   - Threats:
       - Catalog: threats/catalog.md
       - Kill Chain: threats/kill-chain.md

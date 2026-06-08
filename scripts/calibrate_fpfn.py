@@ -193,13 +193,6 @@ def main() -> int:
         default=2,
         help="Threshold sweep step size (default: 2)",
     )
-    parser.add_argument(
-        "--use-transformer",
-        action="store_true",
-        help="Enable the opt-in Layer 2-ML transformer (off by default). Intended "
-        "for the harder expanded/mined corpus — the transformer over-fires on "
-        "prosaic benigns, so leave it off for the gold-corpus gate.",
-    )
     args = parser.parse_args()
 
     use_llm = bool(args.use_llm) and not args.no_llm
@@ -228,13 +221,9 @@ def main() -> int:
     from memgar.analyzer import Analyzer
     from memgar.models import MemoryEntry
 
-    analyzer = Analyzer(use_llm=use_llm, use_transformer_ml=bool(args.use_transformer))
+    analyzer = Analyzer(use_llm=use_llm)
     health = analyzer.health_check()
-    logger.info(
-        "Analyzer health: %s (transformer=%s)",
-        health["status"],
-        "on" if args.use_transformer else "off",
-    )
+    logger.info("Analyzer health: %s", health["status"])
 
     # Score every sample
     rows: list[dict[str, Any]] = []

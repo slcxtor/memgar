@@ -43,7 +43,6 @@ services:
       MEMGAR_TRUSTED_PROXIES:    "172.16.0.0/12,127.0.0.1"  # docker network + caddy
       MEMGAR_FEED_ENABLED:       "true"
       MEMGAR_FEED_GITHUB_REPO:   "slcxtor/memgar"
-      MEMGAR_TRANSFORMER_THRESHOLD: "0.92"
       MEMGAR_ORT_THREADS:        "2"
       MEMGAR_OBSERVABILITY_ENABLED: "true"
       MEMGAR_OBSERVABILITY_PORT: "9090"

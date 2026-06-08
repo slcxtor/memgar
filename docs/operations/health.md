@@ -35,15 +35,6 @@ Now every subsystem:
     "sentence_transformers_available": True,
     "fix_hint": "python scripts/compute_semantic_centroids.py",
   },
-  "layer2_ml_transformer": {
-    "status": "disabled",
-    "reason": "tokenizer_dir_missing: ml/artifacts/transformer_model/tokenizer",
-    "is_ready": False,
-    "backend": "none",
-    "onnx_path": "ml/artifacts/transformer_model/model.onnx",
-    "tokenizer_dir": "ml/artifacts/transformer_model/tokenizer",
-    "fix_hint": "python scripts/train_transformer_v2.py --data your_data.json",
-  },
   "threat_feed": {
     "status": "ok",
     "repo": "slcxtor/memgar",

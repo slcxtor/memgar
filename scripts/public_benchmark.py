@@ -357,17 +357,12 @@ def parse_args() -> argparse.Namespace:
 ABLATION_CONFIGS = [
     ("L1_patterns_only", dict(
         use_llm=False, similarity_layer=False,
-        use_transformer_ml=False, stego_detector=False,
+        stego_detector=False,
         correlation_detector=False, ensemble_voter=False,
     )),
     ("L1_plus_similarity", dict(
         use_llm=False, similarity_layer=True,
-        use_transformer_ml=False, stego_detector=False,
-        correlation_detector=False, ensemble_voter=False,
-    )),
-    ("L1_plus_ml", dict(
-        use_llm=False, similarity_layer=False,
-        use_transformer_ml=True, stego_detector=False,
+        stego_detector=False,
         correlation_detector=False, ensemble_voter=False,
     )),
     ("full_stack", dict(use_llm=False)),

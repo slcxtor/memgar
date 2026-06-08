@@ -9,9 +9,7 @@ flowchart LR
     A[MemoryEntry] --> L1[Layer 1\nPattern matching\n<1ms]
     L1 --> L15[Layer 1.5\nSemantic guard\n~5ms]
     L15 --> L2[Layer 2\nLLM semantic\n~200ms]
-    L15 --> L2M[Layer 2-ML\nONNX transformer\n~7ms]
     L2 --> L3[Layer 3\nTrust-aware\n<0.1ms]
-    L2M --> L3
     L3 --> L4[Layer 4\nBehavioral baseline\n<1ms]
     L4 --> D[AnalysisResult\nallow / quarantine / block]
 ```
@@ -23,7 +21,6 @@ flowchart LR
 | **1** Pattern matching | <1ms | always on | n/a |
 | **1.5** SemanticGuard (embeddings) | ~5ms | optional | yes (centroids missing) |
 | **2** LLM semantic (Claude) | ~200ms | opt-in `use_llm=True` | yes (no API key) |
-| **2-ML** Transformer (ONNX) | ~7ms | active if artifact present | yes (no artifact) |
 | **3** Trust-aware scoring | <0.1ms | auto when source registered | n/a |
 | **4** Behavioral baseline | <1ms | auto per-agent after warm-up | n/a |
 
@@ -42,12 +39,6 @@ call cost is zero.
 **Layer 2** (`_layer2_semantic_analysis`) — Optional Claude LLM call for
 sophisticated attacks (obfuscation, roleplay framing, multi-step persuasion).
 Runs independently of Layer 1, so attacks that beat regex still get caught.
-
-**Layer 2-ML** (`TransformerDetector`) — Fine-tuned BERT-mini (~11M params)
-exported to ONNX. ~7ms inference, ~45MB FP32 / ~12MB int8. Memgar ships
-without a pre-trained artifact (see [training](../development/training.md))
-because the default training data does not match production traffic. Bring
-your own dataset and train in ~2 minutes on CPU.
 
 **Layer 3** (`_analyze_internal`, after risk score) — Source trust
 adjustment. Call `analyzer.register_source_trust(source_id, 0.0-1.0)` before
@@ -81,7 +72,7 @@ pipeline is **defense in depth**:
 
 - Layer 1 catches the obvious cases (known prompts, exfil verbs).
 - Layer 1.5 catches semantic siblings ("disregard the directives above").
-- Layer 2/2-ML catches obfuscated attacks (homoglyph, leetspeak, base64).
+- Layer 2 (LLM) catches obfuscated attacks (homoglyph, leetspeak, base64).
 - Layer 3 weights by source provenance.
 - Layer 4 raises the bar on anomalous agents.
 
