@@ -34,7 +34,7 @@ future turn.
 The road to v1.0 hardened memgar in five areas:
 
 1. **Health visibility** — every subsystem (SemanticGuard,
-   TransformerDetector, FeedLoader) now reports a structured
+   FeedLoader) now reports a structured
    `{status, reason, fix_hint}`. No more silent zero-scoring layers.
 
 2. **Three new pattern families** surfaced by the Lakera Gandalf

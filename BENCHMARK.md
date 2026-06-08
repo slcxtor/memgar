@@ -34,7 +34,7 @@ against: persistent injection into agent memory. Sources:
 | **attack total** | **74** | |
 | benign memory writes (preferences, addresses, business notes, Q&A) | 50 | hand-written, prosaic |
 
-**Results (full stack, seed=42, ONNX-INT8 transformer warm):**
+**Results (full stack, seed=42):**
 
 | metric | value |
 |---|---|
@@ -55,14 +55,13 @@ memory-poisoning attempts at 6 % FPR on prosaic benigns.**
 | `pattern_matching` | 74 | 74 |
 | `correlation_detector` | 67 | 74 |
 | `ensemble_voter` | 58 | 74 |
-| `transformer_ml` | 53 | 74 |
 | `similarity_layer_elevated` | 16 | 74 |
 | `similarity_layer` | 7 | 74 |
 | `stego_detector` | 3 | 74 |
 
-Notice patterns fire on every row, ML fires on 71 %, and the ensemble
-voter folds them into a single verdict. Both the ML and the
-correlation detector keep adding signal past Layer 1.
+Notice patterns fire on every row, and the ensemble voter folds the
+layer outputs into a single verdict. The correlation detector keeps
+adding signal past Layer 1.
 
 ---
 
@@ -113,31 +112,19 @@ the Analyzer constructs.
 
 | config | recall | FPR | notes |
 |---|---|---|---|
-| `L1_patterns_only` | **1.000** | **0.060** | regex + keyword, no embedding model, no ML |
-| `L1_plus_similarity` | 1.000 | 0.060 | adds Layer 1.5 SimilarityLayer |
-| `L1_plus_ml` | 1.000 | 0.060 | adds the opt-in v2 transformer (INT8 ONNX) |
+| `L1_patterns_only` | **1.000** | **0.060** | regex + keyword, no embedding model |
+| `L1_plus_similarity` | 1.000 | 0.060 | adds Layer 2.5 SimilarityLayer |
 | `full_stack` | 1.000 | 0.060 | adds correlation, stego, ensemble |
 
 **Layer 1 alone now catches all 74 documented memory-poisoning attacks at
-6 % FPR.** Earlier, patterns reached 0.892 and the transformer added the
-last +5.4 pp (0.946) — but a per-attack audit found the 8 misses were
-subtle "policy injection" writes (identity/record remapping, financial-query
-redirection, persistent security-control bypass, templated-secret exfil
-URLs). Those were folded into 5 high-precision Layer 1 patterns (2 new
-groups: `MINJA-CTRL-BYPASS`, `EXFIL-URL-TPL`), validated to add **zero**
-false positives across 1749 benign texts. The result is better than the ML
-path: deterministic, <1 ms, explainable, and FP-free — so the default
-(transformer-off) `L1 + L3 + L4` Analyzer reaches full threat-model recall
-without the model artifact.
-
-> **Why the transformer is still off by default.** On this external-source
-> threat-model corpus the transformer added zero FPR — but on the gold corpus
-> of *prosaic user memory-writes* ("grant Sofia view access", "I prefer concise
-> summaries") it over-fires, scoring those 0.99+, higher than several genuine
-> attacks, and raising gold-gate FPR from ~0.02 to ~0.15 while adding no recall.
-> Since Layer 1 now reaches 1.000 here on its own, the transformer is opt-in
-> (`Analyzer(use_transformer_ml=True)`) for paraphrased/novel attacker text
-> outside the pattern set; retrain on a domain-representative corpus first.
+6 % FPR.** Earlier, patterns reached 0.892 — a per-attack audit found the
+remaining misses were subtle "policy injection" writes (identity/record
+remapping, financial-query redirection, persistent security-control bypass,
+templated-secret exfil URLs). Those were folded into 5 high-precision
+Layer 1 patterns (2 new groups: `MINJA-CTRL-BYPASS`, `EXFIL-URL-TPL`),
+validated to add **zero** false positives across 1749 benign texts. The
+result is deterministic, <1 ms, explainable, and FP-free — so the default
+`L1 + L3 + L4` Analyzer reaches full threat-model recall.
 
 The centroid-based SemanticGuard (formerly Layer 1.5) was **removed in
 2026-06**: an ablation across the clean threat-model, advbench OOD, and

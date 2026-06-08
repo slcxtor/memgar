@@ -278,7 +278,7 @@ class Attack:
     source: str
     payload: str
     target_agent_role: str
-    expected_min_layer: str  # the layer that SHOULD catch it ("pattern_matching", "transformer_ml", etc)
+    expected_min_layer: str  # the layer that SHOULD catch it ("pattern_matching", "similarity_layer", etc)
     multistage: bool = False
     multistage_context: List[str] = field(default_factory=list)
 
@@ -363,7 +363,7 @@ def build_attacks() -> List[Attack]:
                 source=f"{c.source} + {label} obfuscation",
                 payload=obfuscated,
                 target_agent_role="customer_service",
-                expected_min_layer="transformer_ml",
+                expected_min_layer="similarity_layer",
             ))
 
     # 3. Multi-stage drip-feed (3 innocent context turns + 1 payload)

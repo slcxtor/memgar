@@ -60,7 +60,7 @@ result.decision         # Decision.ALLOW / QUARANTINE / BLOCK
 result.risk_score       # 0-100
 result.is_attack        # decision != ALLOW
 result.is_blocked       # decision == BLOCK
-result.layers_used      # list[str], e.g. ['pattern_matching', 'transformer_ml']
+result.layers_used      # list[str], e.g. ['pattern_matching', 'similarity_layer']
 result.explanation      # human-readable reason
 result.threats          # list of matched ThreatMatch objects
 result.category         # primary ThreatCategory

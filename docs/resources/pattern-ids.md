@@ -16,7 +16,6 @@ back-link cleanly to the threat catalog.
 | `FIN-NNN` | Financial fraud / wire transfer redirect | CRITICAL |
 | `EVAS-NNN` | Encoding / obfuscation evasion | MEDIUM |
 | `BHV-NNN` | Behavioural / sleeper / conditional trigger | MEDIUM–HIGH |
-| `ML-DETECT-NNN` | Layer 2-ML transformer detection | severity from probability |
 
 ## ID lookup
 

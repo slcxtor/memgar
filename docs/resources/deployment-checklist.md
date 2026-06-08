@@ -106,46 +106,13 @@ Background thread emits `DRIFT_DETECTED` SIEM events when PSI crosses
 the threshold. Investigate: usually a new attack pattern or an upstream
 data-source change.
 
-## 9. Trained transformer (optional)
-
-By default Layer 2-ML is **disabled** — memgar doesn't ship a pre-trained
-ONNX artifact. To activate it:
-
-**Option A — install a published release artifact:**
-
-```bash
-python -m memgar.ml_release_loader
-```
-
-**Option B — train on your own domain data:**
-
-```bash
-pip install -e ".[ml-train]" peft
-python scripts/prepare_v2_dataset.py --primary path/to/your_data.json --out-dir ml/data/v2
-python scripts/train_transformer_v2.py --data ml/data/v2/train.json
-```
-
-Then verify:
-
-```bash
-python scripts/calibrate_fpfn.py \
-    --corpus ml/data/calibration_corpus.json --no-llm
-python scripts/check_calibration_gate.py
-```
-
-The gold gate must still PASS with the new model in the ensemble. If FPR
-rises, your training data is overfit — retrain with more benign samples or
-raise `MEMGAR_TRANSFORMER_THRESHOLD` (default `0.92`).
-
-See `docs/development/training.md` for the full v2 pipeline reference.
-
-## 10. Behavioral baseline warm-up
+## 9. Behavioral baseline warm-up
 
 Layer 4 establishes a per-agent baseline after 50 scans. For new agents
 in production, expect the first 50 calls to use only Layers 1–3. After
 that, anomaly detection kicks in.
 
-## 11. Backup the pattern cache
+## 10. Backup the pattern cache
 
 `~/.cache/memgar/patterns_v1.pkl` is auto-regenerated from `patterns.py`
 on every import where the file hash mismatches. No backup needed unless

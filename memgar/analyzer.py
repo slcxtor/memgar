@@ -1209,7 +1209,6 @@ class Analyzer:
         window_overlap: int = 200,
         memory_store: Any = None,
         context_buffer: bool = True,
-        use_transformer_ml: bool = False,
         integrity_store: Any = None,
         stego_detector: bool = True,
         correlation_detector: bool = True,
@@ -1233,14 +1232,6 @@ class Analyzer:
             window_overlap: Overlap between windows to catch split payloads
             memory_store: Optional MemoryStore for hunter retroactive scanning
             context_buffer: Enable stateful context-split detection per session
-            use_transformer_ml: Enable Layer 2-ML (fine-tuned ONNX transformer).
-                Defaults to **False**. The bundled artifact is trained against
-                template attacks + academic benigns and over-fires on prosaic
-                memory-writes ("grant Sofia view access" scores 0.9999, higher
-                than genuine attacks) — it adds no recall on the gold corpus
-                while raising FPR ~5x. Opt in for external-/RAG-source-heavy
-                deployments, or retrain on a domain-representative corpus with
-                scripts/train_transformer_v2.py before relying on it.
         """
         self.use_llm = use_llm
         self.api_key = api_key
@@ -1291,43 +1282,6 @@ class Analyzer:
 
         # Memory Integrity: snapshot + verify + rollback (OWASP Agent Memory Guard)
         self._integrity_store: Any = integrity_store
-
-        # Layer 2-ML: fine-tuned transformer (ONNX, ~5ms, replaces LLM for
-        # high-confidence cases). Keep a health snapshot when the detector is
-        # unavailable so health_check() can flag it instead of pretending the
-        # layer is silently disabled.
-        self._transformer: Any = None
-        self._transformer_degraded: dict[str, Any] | None = None
-        self._transformer_threshold: float = float(
-            os.environ.get("MEMGAR_TRANSFORMER_THRESHOLD", "0.92")
-        )
-        if use_transformer_ml:
-            try:
-                # Prefer v2 (multi-task, INT8, temperature-calibrated); fall back to v1.
-                try:
-                    _det_mod = __import__(
-                        "ml.inference.transformer_detector_v2",
-                        fromlist=["TransformerDetectorV2"],
-                    )
-                    _DetCls = _det_mod.TransformerDetectorV2
-                except ImportError:
-                    _det_mod = __import__(
-                        "ml.inference.transformer_detector",
-                        fromlist=["TransformerDetector"],
-                    )
-                    _DetCls = _det_mod.TransformerDetector
-                det = _DetCls.load()
-                if det.is_ready:
-                    self._transformer = det
-                    logger.info("Analyzer: transformer backend ready (%s)", det._backend)
-                else:
-                    self._transformer_degraded = det.health()
-            except Exception as exc:
-                self._transformer_degraded = {
-                    "status": "degraded",
-                    "reason": f"import_failed: {exc}",
-                    "fix_hint": "pip install onnxruntime transformers",
-                }
 
         # Layer 5: Steganography detector (Unicode covert channels)
         self._stego_detector: Any = None
@@ -1772,14 +1726,6 @@ class Analyzer:
                                 name="pattern", score=float(max_pat_conf), weight=1.0,
                                 reason=f"{len(result.threats)} pattern hit(s)"
                             ))
-                    # Transformer ML signal — re-derive from risk_score if we used it
-                    if "transformer_ml" in result.layers_used:
-                        layer_scores.append(LayerScore(
-                            name="transformer_ml",
-                            score=min(1.0, result.risk_score / 100.0),
-                            weight=1.2,
-                            reason="ML detector",
-                        ))
                     # Similarity signal (Layer 2.5)
                     if "similarity_layer" in result.layers_used:
                         sim_conf = max(
@@ -2199,47 +2145,6 @@ class Analyzer:
                     layers_used.append("similarity_layer_elevated")
             except Exception:
                 pass
-
-        # Layer 2-ML: Transformer inference (ONNX, ~80-100 ms on CPU INT8).
-        # Same gate as the semantic layer above — skip the ONNX forward on
-        # the obvious trusted-user benign path (source_type ∈ {user, system},
-        # ≤200 chars, zero Layer 1 hits). Anything from an external / RAG /
-        # tool-output source, anything long, and anything that already tripped
-        # Layer 1 still runs through the model, so the real attack surface
-        # is unchanged.
-        _ml_gate_skip = (
-            self._transformer is not None
-            and self._transformer.is_ready
-            and _trusted_src
-            and _short
-            and not threats
-        )
-        if _ml_gate_skip:
-            layers_used.append("transformer_ml_gated")
-        if self._transformer and self._transformer.is_ready and not _ml_gate_skip:
-            with tracer.start_as_current_span("memgar.layer2ml.transformer") as l2ml:
-                ml_prob, ml_latency = self._transformer.predict(content)
-                l2ml.set_attribute("memgar.l2ml.prob", ml_prob)
-                l2ml.set_attribute("memgar.l2ml.latency_ms", ml_latency)
-                if ml_prob >= self._transformer_threshold:
-                    layers_used.append("transformer_ml")
-                    from memgar.models import ThreatCategory as _TC
-                    ml_threat = Threat(
-                        id="ML-DETECT-001",
-                        name="ML Transformer Detection",
-                        description="Fine-tuned DistilBERT flagged this content as an attack",
-                        category=_TC.BEHAVIOR,
-                        severity=Severity.HIGH if ml_prob >= 0.90 else Severity.MEDIUM,
-                        patterns=[],
-                        keywords=[],
-                        examples=[],
-                    )
-                    threats.append(ThreatMatch(
-                        threat=ml_threat,
-                        matched_text=content[:120],
-                        match_type="ml_transformer",
-                        confidence=round(ml_prob, 4),
-                    ))
 
         # Layer 2: Semantic Analysis via LLM (optional, ~200ms — only for borderline)
         if self.use_llm:
@@ -2754,9 +2659,6 @@ class Analyzer:
     def _degraded_layers(self) -> list[str]:
         """Return names of ML layers that are currently degraded."""
         degraded: list[str] = []
-        tx_deg = getattr(self, "_transformer_degraded", None)
-        if self._transformer is None and tx_deg is not None:
-            degraded.append("layer2_ml_transformer")
         feed = _LAST_FEED_HEALTH
         if feed and feed.get("status") == "degraded":
             degraded.append("threat_feed")
@@ -2814,27 +2716,6 @@ class Analyzer:
             "status": "ok" if self.use_llm else "disabled",
             "use_llm": self.use_llm,
         }
-
-        # Layer 2-ML — fine-tuned transformer (ONNX)
-        if self._transformer is not None:
-            try:
-                layers["layer2_ml_transformer"] = {
-                    "status": "ok",
-                    **self._transformer.health(),
-                }
-            except Exception as exc:
-                layers["layer2_ml_transformer"] = {
-                    "status": "ok",
-                    "backend": getattr(self._transformer, "_backend", "unknown"),
-                    "health_error": str(exc),
-                }
-        elif self._transformer_degraded is not None:
-            layers["layer2_ml_transformer"] = {
-                "status": "degraded",
-                **self._transformer_degraded,
-            }
-        else:
-            layers["layer2_ml_transformer"] = {"status": "disabled"}
 
         # Layer 3 — Trust-aware scoring
         layers["layer3_trust"] = {

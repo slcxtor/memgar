@@ -37,9 +37,8 @@ GATES: dict[str, dict] = {
     },
     # Per-language — English (the only shipped language).
     # Corpus is EN-only by design (v1.3.0 cleanup), so per-language FPR equals
-    # overall FPR. Default Analyzer is Layer-1+3+4 (transformer off by default,
-    # see analyzer.py use_transformer_ml) — measured FPR is ~0.02. The 0.05 cap
-    # is a regression guard with headroom, not a ceiling to grow into.
+    # overall FPR. Default Analyzer is Layer-1+3+4 — measured FPR is ~0.02.
+    # The 0.05 cap is a regression guard with headroom, not a ceiling to grow into.
     "en_recall": {
         "path": ("per_language", "en", "recall"),
         "min": 0.80,
