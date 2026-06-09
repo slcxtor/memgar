@@ -6,8 +6,16 @@ Layer 3 defense: Trust-weighted retrieval for RAG systems.
 
 Features:
 - Trust-weighted ranking: Adjusts retrieval scores based on provenance
-- Temporal decay: Reduces influence of older memories over time
-- Retrieval anomaly detection: Flags suspicious retrieval patterns
+- Temporal trust decay: Trust score itself decays with memory age
+  (180-day half-life by default — *not* just retrieval weight). Honors
+  Schneider's "Temporal decay should be combined with trust scoring"
+- Temporal weight decay: Independent relevance decay (5 decay functions)
+- Retrieval anomaly detection — 5 checks:
+    * high_frequency (retrievals/hour)
+    * narrow_query_pattern (low query diversity)
+    * untrusted_spread (low-trust doc → many contexts, severity=high)
+    * trusted_spread (trusted doc → 50+ contexts, severity=medium)
+    * sudden_spike (rate spike vs prior windows)
 
 Based on Christian Schneider's defense architecture (Layer 3).
 """
@@ -367,6 +375,7 @@ class RetrievalAnomalyDetector:
         high_frequency_threshold: int = 50,      # Retrievals per hour
         narrow_query_threshold: float = 0.8,     # Query similarity threshold
         trust_spread_threshold: int = 10,        # Low-trust doc in N different queries
+        trusted_spread_threshold: int = 50,      # Trusted doc spread (Schneider "unrelated contexts")
         sudden_spike_multiplier: float = 5.0,    # X times normal rate
 
         # Time windows
@@ -391,6 +400,7 @@ class RetrievalAnomalyDetector:
         self.high_frequency_threshold = high_frequency_threshold
         self.narrow_query_threshold = narrow_query_threshold
         self.trust_spread_threshold = trust_spread_threshold
+        self.trusted_spread_threshold = trusted_spread_threshold
         self.sudden_spike_multiplier = sudden_spike_multiplier
         self.frequency_window_hours = frequency_window_hours
         self.pattern_window_hours = pattern_window_hours
@@ -538,7 +548,8 @@ class RetrievalAnomalyDetector:
                     details={"query_diversity": diversity, "query_count": len(queries)},
                 ))
 
-        # Check 3: Low-trust document spread
+        # Check 3a: Low-trust document spread (Schneider: low-trust memory in
+        # many contexts is a strong attack indicator — high severity).
         trust_score = self._doc_trust_scores.get(doc_id, 0.5)
         if trust_score < 0.5 and len(queries) >= self.trust_spread_threshold:
             unique_queries = len(set(q.lower().strip() for q in queries))
@@ -549,6 +560,24 @@ class RetrievalAnomalyDetector:
                     query="",
                     severity="high",
                     description=f"Low-trust document ({trust_score:.2f}) retrieved in {unique_queries} different contexts",
+                    details={"trust_score": trust_score, "unique_queries": unique_queries},
+                ))
+
+        # Check 3b: Trusted document spread across many unrelated contexts
+        # (Schneider, verbatim: "A memory that suddenly starts appearing in many
+        # unrelated contexts warrants investigation"). Higher threshold + lower
+        # severity than the low-trust spread above, because trusted content
+        # legitimately gets reused — but extreme cross-context activation is
+        # the textbook poisoning indicator that survived a trust assessment.
+        if trust_score >= 0.5 and len(queries) >= self.trusted_spread_threshold:
+            unique_queries = len(set(q.lower().strip() for q in queries))
+            if unique_queries >= self.trusted_spread_threshold:
+                anomalies.append(AnomalyEvent(
+                    anomaly_type="trusted_spread",
+                    doc_id=doc_id,
+                    query="",
+                    severity="medium",
+                    description=f"Trusted document ({trust_score:.2f}) appearing in {unique_queries} unrelated contexts — Schneider 'sudden cross-context activation' indicator",
                     details={"trust_score": trust_score, "unique_queries": unique_queries},
                 ))
 
@@ -668,6 +697,12 @@ class TrustAwareRetriever:
         min_trust_score: float = 0.2,
         trust_weight_factor: float = 0.3,    # How much trust affects ranking
         untrusted_penalty: float = 0.5,      # Penalty for untrusted docs
+        # Schneider: trust assigned at write time should decay over the
+        # memory's lifetime — a high-trust assignment from 6 months ago
+        # should not be treated identically to one made today, because the
+        # write-time assessment can't see attacks that emerged since.
+        # Half-life in days; None disables (preserves old behavior).
+        trust_decay_half_life_days: Optional[float] = 180.0,
 
         # Temporal decay
         enable_temporal_decay: bool = True,
@@ -719,6 +754,7 @@ class TrustAwareRetriever:
         self.min_trust_score = min_trust_score
         self.trust_weight_factor = trust_weight_factor
         self.untrusted_penalty = untrusted_penalty
+        self.trust_decay_half_life_days = trust_decay_half_life_days
 
         self.enable_temporal_decay = enable_temporal_decay
         self.temporal_weight_factor = temporal_weight_factor
@@ -814,7 +850,31 @@ class TrustAwareRetriever:
 
         trust = metadata.trust_score
 
-        # Apply penalty if below threshold
+        # Schneider: trust assigned at write time decays over the memory's
+        # lifetime. A high-trust assignment from N half-lives ago should be
+        # treated as 0.5^N of its original — re-verification is needed to
+        # maintain influence. Re-trust threshold check uses the DECAYED
+        # value so a stale high-trust memory can drop below min_trust_score
+        # and earn the untrusted penalty.
+        if (
+            self.trust_decay_half_life_days is not None
+            and self.trust_decay_half_life_days > 0
+            and metadata.created_at is not None
+        ):
+            try:
+                from datetime import datetime, timezone as _tz
+                _now = datetime.now(_tz.utc)
+                _created = metadata.created_at
+                # Normalise naive timestamps to UTC for safe subtraction
+                if _created.tzinfo is None:
+                    _created = _created.replace(tzinfo=_tz.utc)
+                age_days = max(0.0, (_now - _created).total_seconds() / 86400.0)
+                decay = 0.5 ** (age_days / self.trust_decay_half_life_days)
+                trust = trust * decay
+            except Exception:
+                pass
+
+        # Apply penalty if below threshold (post-decay)
         if trust < self.min_trust_score:
             return 1.0 - self.untrusted_penalty
 

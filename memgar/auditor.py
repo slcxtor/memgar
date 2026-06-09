@@ -16,18 +16,24 @@ This is critical for memory poisoning defense because:
 - Root cause analysis requires knowing when compromise occurred
 - Recovery requires ability to rollback to pre-compromise state
 
-Usage:
+Usage — on-demand:
     from memgar.auditor import MemoryAuditor
 
     auditor = MemoryAuditor(storage_path="./memory_snapshots")
+    snapshot_id = auditor.snapshot(memory_store.export())
+    report = auditor.verify(memory_store.export(), snapshot_id)
+    if not report.is_valid:
+        memory_store.replace(auditor.rollback(snapshot_id))
 
-    # Take periodic snapshots
-    snapshot_id = auditor.snapshot(memory_store)
-
-    # Verify integrity
-    if not auditor.verify(memory_store, snapshot_id):
-        # Memory was modified!
-        auditor.rollback(memory_store, snapshot_id)
+Usage — background scheduler (Schneider L4 "periodically validates the
+memory store against known-good states"):
+    auditor.start_periodic_audit(
+        get_snapshot_data=lambda: memory_store.export(),
+        interval_seconds=300,
+        on_drift=lambda report: alert_ops(report),
+    )
+    # Daemon thread; auto-rolls baseline forward after each drift event.
+    # Stop with auditor.stop_periodic_audit().
 """
 
 from __future__ import annotations
@@ -168,6 +174,13 @@ class MemoryAuditor:
         self._snapshots: Dict[str, Snapshot] = {}
         self._audit_log: List[AuditEvent] = []
         self._lock = threading.Lock()
+
+        # Background periodic auditor (Schneider Layer 4 — "periodically
+        # validates the memory store against known-good states"). State
+        # lives here so start/stop are idempotent across threads.
+        self._periodic_thread: Optional[threading.Thread] = None
+        self._periodic_stop: Optional[threading.Event] = None
+        self._periodic_snapshot_id: Optional[str] = None
 
         # Create storage directory
         self.storage_path.mkdir(parents=True, exist_ok=True)
@@ -471,6 +484,97 @@ class MemoryAuditor:
             )
 
             return data
+
+    def start_periodic_audit(
+        self,
+        get_snapshot_data: Callable[[], Any],
+        interval_seconds: float = 300.0,
+        description: str = "auto-audit",
+        on_drift: Optional[Callable[["IntegrityReport"], None]] = None,
+    ) -> None:
+        """
+        Start a background thread that snapshots and verifies the memory
+        store on a fixed cadence. Schneider Layer 4: *"periodically validates
+        the memory store against known-good states"*.
+
+        The auditor takes an initial baseline snapshot on first tick, then on
+        every subsequent tick it verifies the current state against the
+        previous baseline. On drift it invokes the on_drift callback (and
+        the constructor's on_integrity_failure callback) and rolls the
+        baseline forward to the current state — so subsequent ticks detect
+        the next round of changes, not the same one repeatedly.
+
+        Idempotent: calling start a second time without a stop is a no-op.
+
+        Args:
+            get_snapshot_data: Callable returning the current memory data
+                (must be JSON-serializable — typically a dict/list snapshot
+                of your memory store). Called from the audit thread, so it
+                must be thread-safe.
+            interval_seconds: Cadence in seconds. 300s = 5 min is a sane
+                default; lower for high-risk deployments.
+            description: Label attached to each periodic snapshot.
+            on_drift: Optional drift handler. Called with the IntegrityReport
+                that describes the detected change.
+        """
+        with self._lock:
+            if self._periodic_thread is not None and self._periodic_thread.is_alive():
+                return  # Already running — idempotent
+            self._periodic_stop = threading.Event()
+
+        def _loop() -> None:
+            stop_event = self._periodic_stop
+            assert stop_event is not None
+            while not stop_event.is_set():
+                try:
+                    data = get_snapshot_data()
+                    baseline_id = self._periodic_snapshot_id
+                    if baseline_id is None or baseline_id not in self._snapshots:
+                        # First tick — establish baseline.
+                        self._periodic_snapshot_id = self.snapshot(
+                            data, description=f"{description} (baseline)"
+                        )
+                    else:
+                        report = self.verify(data, baseline_id, detailed=True)
+                        if not report.is_valid:
+                            if on_drift is not None:
+                                try:
+                                    on_drift(report)
+                                except Exception:
+                                    pass
+                            # on_integrity_failure already fired by verify();
+                            # roll baseline forward so we detect future drift.
+                            self._periodic_snapshot_id = self.snapshot(
+                                data, description=f"{description} (post-drift)"
+                            )
+                except Exception:
+                    # Background telemetry must never crash the host process.
+                    pass
+                stop_event.wait(timeout=interval_seconds)
+
+        thread = threading.Thread(
+            target=_loop, name="memgar-periodic-auditor", daemon=True
+        )
+        with self._lock:
+            self._periodic_thread = thread
+        thread.start()
+
+    def stop_periodic_audit(self, timeout: float = 5.0) -> None:
+        """Signal the background auditor to exit and join it.
+
+        Idempotent: if no auditor is running, returns immediately.
+        """
+        with self._lock:
+            stop_event = self._periodic_stop
+            thread = self._periodic_thread
+        if stop_event is None or thread is None:
+            return
+        stop_event.set()
+        thread.join(timeout=timeout)
+        with self._lock:
+            self._periodic_thread = None
+            self._periodic_stop = None
+            self._periodic_snapshot_id = None
 
     def list_snapshots(
         self,

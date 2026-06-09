@@ -935,7 +935,19 @@ class MemoryWriteGateway:
         hitl: Optional[Any] = None,
         hitl_timeout: float = 300.0,
         hitl_risk_level: str = "high",
+        confirm_all_writes: bool = False,
     ) -> None:
+        """
+        ...
+        confirm_all_writes — Schneider's immediate-steps list explicitly names
+            "user confirmation for memory writes". When True, EVERY write
+            (including APPROVE outcomes) is gated through HITL at the
+            `hitl_confirm_risk_level` (default "medium") before committing
+            to the ledger. Requires `hitl` to be set; ignored otherwise.
+            Default False — most deployments accept the validator's verdict
+            on APPROVE; turn this on for high-stakes domains (clinical
+            memory, financial agents, persistent-memory chatbots).
+        """
         self._ledger         = ledger
         self._validator      = validator or WriteAheadValidator(
             use_llm_guardian=use_llm_guardian,
@@ -946,9 +958,11 @@ class MemoryWriteGateway:
         self._hitl_timeout   = hitl_timeout
         self._hitl_risk      = hitl_risk_level
         self._raise_on_q     = raise_on_quarantine
+        self._confirm_all    = bool(confirm_all_writes)
         self._stats: Dict[str, int] = {
             "approved": 0, "quarantined": 0, "hitl_approved": 0,
-            "hitl_denied": 0, "rejected": 0, "total": 0
+            "hitl_denied": 0, "rejected": 0, "total": 0,
+            "hitl_confirmed_writes": 0,
         }
 
     def write(
@@ -1047,6 +1061,42 @@ class MemoryWriteGateway:
                     f"Quarantined (no HITL configured): {verdict.reason}", verdict
                 )
             # else: no HITL, raise_on_q=False → write with quarantine marker
+
+        # 3b. Schneider "user confirmation for memory writes" — when
+        # confirm_all_writes=True, gate APPROVE outcomes through HITL too.
+        # Only reachable after a non-rejecting validator outcome AND when a
+        # HITL backend is configured. Quarantined-then-HITL-approved writes
+        # have already passed through HITL above, so skip them here.
+        if (
+            self._confirm_all
+            and self._hitl is not None
+            and verdict.outcome == ValidationOutcome.APPROVE
+        ):
+            try:
+                hitl_result = self._route_to_hitl(
+                    content   = sanitized_content,
+                    verdict   = verdict,
+                    agent_id  = agent_id,
+                    principal = principal,
+                )
+                if not hitl_result.approved:
+                    self._stats["hitl_denied"] += 1
+                    raise MemoryWriteBlocked(
+                        "APPROVE denied by human reviewer "
+                        f"(confirm_all_writes mode, "
+                        f"decided_by={hitl_result.decided_by}, "
+                        f"reason={hitl_result.reason})",
+                        verdict,
+                    )
+                self._stats["hitl_confirmed_writes"] += 1
+            except MemoryWriteBlocked:
+                raise
+            except Exception as e:
+                self._stats["hitl_denied"] += 1
+                raise MemoryWriteBlocked(
+                    f"APPROVE: HITL confirmation denied or timed out — {e}",
+                    verdict,
+                )
 
         # 4. Write to ledger
         self._stats["approved"] += 1

@@ -161,6 +161,14 @@ class CorrelationDetector:
         causal_chain_threshold: int = 2,
         low_trust_threshold: float = 0.3,
         low_trust_burst: int = 4,
+        # Schneider: "inter-agent communication represents a propagation path"
+        # — same/similar content surfacing on multiple agents within a short
+        # window is a strong indicator of a poisoned source feeding the
+        # multi-agent system. Defaults sized for production fan-out.
+        cross_agent_window_size: int = 200,
+        cross_agent_window_secs: float = 1800.0,
+        cross_agent_min_agents: int = 3,
+        cross_agent_similarity: float = 0.6,
     ) -> None:
         self.window_size = window_size
         self.window_secs = window_secs
@@ -168,9 +176,15 @@ class CorrelationDetector:
         self.causal_chain_threshold = causal_chain_threshold
         self.low_trust_threshold = low_trust_threshold
         self.low_trust_burst = low_trust_burst
+        self.cross_agent_window_secs = cross_agent_window_secs
+        self.cross_agent_min_agents = cross_agent_min_agents
+        self.cross_agent_similarity = cross_agent_similarity
         self._windows: Dict[str, Deque[_EntryRecord]] = defaultdict(
             lambda: deque(maxlen=self.window_size)
         )
+        # Shared cross-agent window — entries from every agent_id flow here
+        # so we can detect the same payload propagating across N agents.
+        self._global_window: Deque[tuple] = deque(maxlen=cross_agent_window_size)
 
     # -----------------------------------------------------------------
 
@@ -201,7 +215,16 @@ class CorrelationDetector:
         while window and window[0].timestamp < cutoff:
             window.popleft()
 
+        # Maintain shared cross-agent window
+        self._global_window.append((agent_id, record))
+
         report = CorrelationReport()
+
+        # Cross-agent propagation can fire even on the very first entry for
+        # a given agent_id, because the threat is the global fan-out — not
+        # the per-agent burst. Run it before the per-agent gate.
+        self._check_cross_agent_propagation(record, agent_id, report)
+
         if len(window) < 2:
             return report
 
@@ -220,6 +243,55 @@ class CorrelationDetector:
     # -----------------------------------------------------------------
     # Individual checks
     # -----------------------------------------------------------------
+
+    def _check_cross_agent_propagation(
+        self,
+        current: _EntryRecord,
+        current_agent: str,
+        report: CorrelationReport,
+    ) -> None:
+        """Detect the same/similar payload propagating across multiple agents.
+
+        Schneider, on multi-agent systems: *"a poisoned agent can propagate
+        corruption through inter-agent communication"*. We flag when the
+        current entry's token set has Jaccard similarity >= threshold with
+        recent entries from N or more *distinct* other agents.
+        """
+        if not current.tokens or len(self._global_window) < 2:
+            return
+        now = current.timestamp
+        cutoff = now - self.cross_agent_window_secs
+
+        matched_agents = set()
+        for past_agent, past in self._global_window:
+            if past.timestamp < cutoff:
+                continue
+            if past_agent == current_agent:
+                continue
+            if not past.tokens:
+                continue
+            inter = current.tokens & past.tokens
+            if not inter:
+                continue
+            union_size = len(current.tokens | past.tokens)
+            jaccard = len(inter) / union_size if union_size else 0.0
+            if jaccard >= self.cross_agent_similarity:
+                matched_agents.add(past_agent)
+
+        if len(matched_agents) >= self.cross_agent_min_agents - 1:
+            # -1 because the *current* agent is the Nth agent in fan-out.
+            finding = CorrelationFinding(
+                technique="cross_agent_propagation",
+                severity="high",
+                description=(
+                    f"Same/similar payload observed on {len(matched_agents) + 1} "
+                    f"distinct agents within {int(self.cross_agent_window_secs)}s "
+                    f"— possible poisoned-source fan-out"
+                ),
+                cluster="multi_agent",
+                matched_entries=len(matched_agents) + 1,
+            )
+            report.add(finding, boost=25)
 
     def _check_cluster_amplification(
         self, window: Deque[_EntryRecord], report: CorrelationReport
