@@ -246,6 +246,24 @@ class SimilarityLayer:
             cache.popitem(last=False)
         return vec
 
+    def encode(self, text: str):
+        """Public encode wrapper — returns a normalised vector (numpy array).
+
+        Calls into the cached encoder so downstream consumers
+        (`ConflictDetector`, custom retrievers) get the same LRU behaviour
+        without reaching into a name-mangled private API. Returns None when
+        the underlying model is unavailable (no sentence-transformers
+        installed or load failed); callers should fall back to a
+        token-overlap proxy.
+        """
+        if not self.available:
+            return None
+        try:
+            return self._cached_encode(text)
+        except Exception as exc:
+            logger.debug("SimilarityLayer.encode failed (%s)", exc)
+            return None
+
     def cache_stats(self) -> Dict[str, int]:
         """Return cache hit/miss counters (useful for ops dashboards)."""
         total = self._cache_hits + self._cache_misses
