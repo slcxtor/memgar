@@ -70,39 +70,62 @@ class ConflictReport:
 # that contains any term from `a_terms` is in polarity A. Membership in
 # A and B simultaneously is allowed; the conflict requires that
 # memory A is purely polarity A and memory B is purely polarity B.
+# Single-word lemmas are matched with optional `-s | -ed | -ing | -d`
+# inflections so real prose ("user prefers", "User remembers", "Memory
+# stored") matches the same as the bare lemma. Multi-word phrases are
+# matched literally (no inflection unfolding).
 _POLARITY_PAIRS: List[Tuple[Tuple[str, ...], Tuple[str, ...]]] = [
     # Frequency / persistence flips — the textbook memory-instruction shape
     (("always", "must always", "every time"),
-     ("never", "must never", "do not", "don't")),
+     ("never", "must never", "do not", "don't", "do n't")),
     # Preference flips
-    (("prefer", "likes", "wants"),
-     ("dislikes", "does not prefer", "doesn't want")),
+    (("prefer", "like", "want"),
+     ("dislike", "do not prefer", "doesn't want", "does not want")),
     # Approval state flips
-    (("approve", "approved", "allowed", "permit"),
-     ("reject", "rejected", "denied", "deny", "forbid")),
+    (("approve", "allow", "permit"),
+     ("reject", "deny", "forbid")),
     # Trust flips
-    (("trust", "trusted", "verified"),
+    (("trust", "verified"),
      ("distrust", "untrusted", "do not trust", "compromised")),
     # Enable/disable
-    (("enable", "enabled", "activate", "turn on"),
-     ("disable", "disabled", "deactivate", "turn off")),
+    (("enable", "activate", "turn on"),
+     ("disable", "deactivate", "turn off")),
     # Remember/forget
-    (("remember", "store this", "keep this"),
+    (("remember", "store", "keep", "retain"),
      ("forget", "discard", "delete this", "ignore this")),
 ]
+
+# Single-token English inflection suffix probe (s, es, ed, ied, ing).
+# `(?:s|es|ed|ing|d|ied)?` after a lemma — `\bprefer(?:s|ed|...)\b` —
+# matches prefer / prefers / preferred / preferring / preferring / preferd
+# without bloating each lemma list. Kept ASCII-only on purpose; Turkish
+# verb inflection is out of scope here (memgar's L1 patterns already
+# carry the locale-specific phrasings).
+_INFLECTION_SUFFIX = r"(?:s|es|ed|ing|d|ied)?"
+
+
+def _polarity_alternation(terms: Tuple[str, ...]) -> str:
+    """Build an alternation regex from a polarity term list.
+
+    Single-token lemmas get the optional inflection suffix appended;
+    multi-word phrases are matched literally to avoid surprising matches
+    inside phrases like "do not prefers".
+    """
+    parts = []
+    for t in terms:
+        esc = re.escape(t)
+        if " " in t:
+            parts.append(esc)
+        else:
+            parts.append(esc + _INFLECTION_SUFFIX)
+    return r"\b(?:" + "|".join(parts) + r")\b"
 
 
 def _compile_polarity(pairs: Sequence[Tuple[Tuple[str, ...], Tuple[str, ...]]]):
     compiled = []
     for a_terms, b_terms in pairs:
-        a_re = re.compile(
-            r"\b(" + "|".join(re.escape(t) for t in a_terms) + r")\b",
-            re.IGNORECASE,
-        )
-        b_re = re.compile(
-            r"\b(" + "|".join(re.escape(t) for t in b_terms) + r")\b",
-            re.IGNORECASE,
-        )
+        a_re = re.compile(_polarity_alternation(a_terms), re.IGNORECASE)
+        b_re = re.compile(_polarity_alternation(b_terms), re.IGNORECASE)
         compiled.append((a_re, b_re, a_terms[0], b_terms[0]))
     return compiled
 

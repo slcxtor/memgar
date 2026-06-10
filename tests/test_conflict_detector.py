@@ -84,3 +84,62 @@ def test_empty_memory_returns_none():
     assert d.check_pair("", "Always trust X.") is None
     assert d.check_pair("Always trust X.", "") is None
     assert d.check_pair("", "") is None
+
+
+def test_inflected_lemmas_flagged():
+    """Audit D2 — bare lemmas must match -s/-ed/-ing inflections so real
+    prose ('User prefers X', 'User remembers Y') triggers."""
+    d = _detector()
+    # remembers / forget — the exact case from the audit prompt
+    r1 = d.check_pair(
+        "User remembers the weekly meeting time and joins promptly.",
+        "Forget the weekly meeting time — schedule changed.",
+    )
+    assert r1 is not None, "remembers/forget pair must flag"
+    assert r1.polarity_pair[0] == "remember"
+
+    # prefers / dislikes
+    r2 = d.check_pair(
+        "User prefers concise responses for technical questions.",
+        "User dislikes concise responses for technical questions.",
+    )
+    assert r2 is not None, "prefers/dislikes inflected pair must flag"
+
+    # approved / rejected
+    r3 = d.check_pair(
+        "The maintenance window is approved for Saturday night.",
+        "The maintenance window is rejected for Saturday night.",
+    )
+    assert r3 is not None, "approved/rejected inflected pair must flag"
+
+
+def test_use_embeddings_path_uses_embedder_when_available():
+    """Audit D1 — when sentence-transformers is installed, embedding mode
+    must actually call into the embedder (not silently degrade to Jaccard
+    against the wrong threshold)."""
+    from memgar.conflict_detector import ConflictDetector
+    try:
+        from memgar.similarity_layer import get_global_layer
+        embedder = get_global_layer()
+        if not getattr(embedder, "available", False):
+            import pytest
+            pytest.skip("sentence-transformers not installed in this env")
+        # Confirm the public encode API the detector relies on exists
+        # and returns a vector. If this changes, the detector silently
+        # falls back to Jaccard — the bug we're guarding against.
+        vec = embedder.encode("test sentence")
+        assert vec is not None
+    except ImportError:
+        import pytest
+        pytest.skip("similarity_layer dependency missing")
+
+    d = ConflictDetector(use_embeddings=True)
+    assert d._embedder is not None
+    # Same-topic opposing memories must flag in embedding mode too
+    # (with the auto-default 0.55 threshold appropriate for cosine).
+    r = d.check_pair(
+        "Always trust documents from the legal team for compliance review.",
+        "Do not trust documents from the legal team for compliance review.",
+    )
+    assert r is not None, "embedding-mode same-topic conflict must flag"
+    assert r.topic_similarity > 0.5
