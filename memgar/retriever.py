@@ -59,6 +59,12 @@ class RetrievalMetadata:
     flagged: bool = False
     reviewed: bool = False
 
+    # Multi-tenant isolation (Schneider Layer 3 — cross-tenant poisoning
+    # prevention). When set, retrieve(tenant_id=X) drops any document whose
+    # metadata.tenant_id != X. Default None means "global", which is
+    # permitted only on requests that also omit tenant_id (no isolation).
+    tenant_id: Optional[str] = None
+
     # Custom
     tags: List[str] = field(default_factory=list)
     custom_data: Dict = field(default_factory=dict)
@@ -703,6 +709,16 @@ class TrustAwareRetriever:
         # write-time assessment can't see attacks that emerged since.
         # Half-life in days; None disables (preserves old behavior).
         trust_decay_half_life_days: Optional[float] = 180.0,
+        # Schneider: "attackers may exploit recency bias by injecting fresh
+        # malicious memories that temporarily outweigh legitimate long-term
+        # context." Recency scrutiny INVERTS the usual recency-bias: fresh
+        # writes from low-trust sources get a MULTIPLICATIVE penalty for the
+        # first `recency_scrutiny_hours` so a newly-planted poison does not
+        # ride the just-written boost into retrieval results. Set to None to
+        # disable.
+        recency_scrutiny_hours: Optional[float] = 24.0,
+        recency_scrutiny_penalty: float = 0.4,
+        recency_scrutiny_trust_threshold: float = 0.5,
 
         # Temporal decay
         enable_temporal_decay: bool = True,
@@ -755,6 +771,16 @@ class TrustAwareRetriever:
         self.trust_weight_factor = trust_weight_factor
         self.untrusted_penalty = untrusted_penalty
         self.trust_decay_half_life_days = trust_decay_half_life_days
+        self.recency_scrutiny_hours = recency_scrutiny_hours
+        self.recency_scrutiny_penalty = recency_scrutiny_penalty
+        self.recency_scrutiny_trust_threshold = recency_scrutiny_trust_threshold
+
+        # Schneider: "information that has not been reinforced or recently
+        # validated" should decay faster. _reinforced_at tracks per-entry
+        # re-validation timestamps, used by `reinforce(entry_id)` to reset
+        # the decay clock without losing the audit trail of when the
+        # original write happened.
+        self._reinforced_at: Dict[str, Any] = {}
 
         self.enable_temporal_decay = enable_temporal_decay
         self.temporal_weight_factor = temporal_weight_factor
@@ -865,10 +891,16 @@ class TrustAwareRetriever:
                 from datetime import datetime, timezone as _tz
                 _now = datetime.now(_tz.utc)
                 _created = metadata.created_at
+                # Schneider: when reinforce() has been called, decay clock
+                # restarts from the most recent re-validation. Older create
+                # timestamp still recorded in metadata for forensics.
+                _doc_id = getattr(metadata, "doc_id", None) or getattr(metadata, "entry_id", None)
+                _reinforced = self._reinforced_at.get(_doc_id) if _doc_id else None
+                _decay_anchor = _reinforced if _reinforced is not None else _created
                 # Normalise naive timestamps to UTC for safe subtraction
-                if _created.tzinfo is None:
-                    _created = _created.replace(tzinfo=_tz.utc)
-                age_days = max(0.0, (_now - _created).total_seconds() / 86400.0)
+                if _decay_anchor.tzinfo is None:
+                    _decay_anchor = _decay_anchor.replace(tzinfo=_tz.utc)
+                age_days = max(0.0, (_now - _decay_anchor).total_seconds() / 86400.0)
                 decay = 0.5 ** (age_days / self.trust_decay_half_life_days)
                 trust = trust * decay
             except Exception:
@@ -889,6 +921,30 @@ class TrustAwareRetriever:
         # Penalty for sanitized content (might be partially compromised)
         if metadata.was_sanitized:
             weight *= 0.9
+
+        # Schneider: recency bias defense. A FRESH write from a low-trust
+        # source should NOT ride a recency boost into the result set —
+        # that is the textbook poisoning vector. Original trust (pre-decay)
+        # is checked against the threshold so an old high-trust memory
+        # whose decayed score is now low does NOT get this extra penalty
+        # — only freshly-written low-trust content does.
+        if (
+            self.recency_scrutiny_hours is not None
+            and self.recency_scrutiny_hours > 0
+            and metadata.created_at is not None
+            and metadata.trust_score < self.recency_scrutiny_trust_threshold
+        ):
+            try:
+                from datetime import datetime, timezone as _tz2
+                _now2 = datetime.now(_tz2.utc)
+                _ctime = metadata.created_at
+                if _ctime.tzinfo is None:
+                    _ctime = _ctime.replace(tzinfo=_tz2.utc)
+                age_hours = max(0.0, (_now2 - _ctime).total_seconds() / 3600.0)
+                if age_hours < self.recency_scrutiny_hours:
+                    weight *= (1.0 - self.recency_scrutiny_penalty)
+            except Exception:
+                pass
 
         return weight
 
@@ -929,6 +985,7 @@ class TrustAwareRetriever:
         self,
         query: str,
         top_k: Optional[int] = None,
+        tenant_id: Optional[str] = None,
         **kwargs
     ) -> RetrievalResult:
         """
@@ -937,6 +994,11 @@ class TrustAwareRetriever:
         Args:
             query: Query string
             top_k: Number of documents (overrides default)
+            tenant_id: Multi-tenant isolation key. When provided, drops any
+                document whose `metadata.tenant_id` does not match — closing
+                Schneider's cross-tenant poisoning vector. When omitted,
+                NO tenant filtering is applied; pass it explicitly on every
+                tenant-scoped query path.
             **kwargs: Additional args for base retriever
 
         Returns:
@@ -955,6 +1017,18 @@ class TrustAwareRetriever:
 
         for doc in raw_docs:
             doc_id, content, similarity, metadata = self._extract_doc_info(doc)
+
+            # Schneider Layer 3 — tenant isolation. Drop any doc tagged to a
+            # different tenant before any scoring; a cross-tenant doc must
+            # never influence retrieval ranking, statistics, or anomaly
+            # detection. Untagged docs (metadata.tenant_id is None) are
+            # treated as global and allowed through — operators who want
+            # strict isolation should tag every doc on write.
+            if tenant_id is not None and metadata is not None:
+                doc_tenant = getattr(metadata, "tenant_id", None)
+                if doc_tenant is not None and doc_tenant != tenant_id:
+                    filtered_count += 1
+                    continue
 
             # Check if should filter
             should_filter, filter_reason = self._should_filter(metadata)
@@ -1096,6 +1170,33 @@ class TrustAwareRetriever:
             "reranked_count": 0,
             "anomalies_detected": 0,
         }
+
+    def reinforce(self, doc_id: str, validated_at: Optional[Any] = None) -> None:
+        """Mark a memory as re-validated, resetting its trust-decay clock.
+
+        Schneider: *"information that has not been reinforced or recently
+        validated"* should decay faster than information that has. The
+        inverse — explicit re-validation — should reset the decay timer so
+        a still-correct, still-trusted memory keeps its weight. The
+        original `created_at` stays in metadata for forensics; only the
+        decay anchor moves.
+
+        Args:
+            doc_id: The retrieval id of the memory being re-validated.
+            validated_at: When the validation happened. Defaults to now (UTC).
+                Pass a datetime to back-date (e.g. for batch re-validation
+                runs that processed entries some time ago).
+        """
+        from datetime import datetime, timezone as _tz
+        if validated_at is None:
+            validated_at = datetime.now(_tz.utc)
+        elif getattr(validated_at, "tzinfo", None) is None:
+            validated_at = validated_at.replace(tzinfo=_tz.utc)
+        self._reinforced_at[doc_id] = validated_at
+
+    def last_reinforced(self, doc_id: str) -> Optional[Any]:
+        """Return the last reinforcement timestamp for a memory, or None."""
+        return self._reinforced_at.get(doc_id)
 
 
 # =============================================================================
