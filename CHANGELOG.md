@@ -4,6 +4,126 @@ All notable changes to Memgar are documented here.
 
 ---
 
+## [1.4.0] — 2026-06-11
+
+Persistent memory poisoning defense, fully owned and honest about what's in
+the box. Closes the gap analysis the project had been carrying since 1.3.0
+shipped: real wiring for the layered defense, removal of code that was
+advertised but not earning its keep, and a landing page that matches the
+code instead of three sprints ago.
+
+### ⚠️ Breaking
+
+- **Removed `use_transformer_ml` kwarg and the entire Layer 2-ML transformer
+  surface.** The bundled v2.0.0 ONNX artifact over-fired on prosaic memory
+  writes ("grant Sofia view access" scored 0.9999 — higher than real attacks),
+  adding **+0 recall** on the gold corpus while raising FPR from ~0.02 to
+  ~0.15. Default was already off; pass-through deprecation would have kept
+  the footgun. Drop the argument from any `Analyzer(...)` call site.
+- **Removed `MEMGAR_TRANSFORMER_THRESHOLD` env var** and the `[ml]` install
+  extra. `pip install "memgar[ml,observability]"` should become
+  `pip install "memgar[semantic,observability]"`.
+- **Pattern ID renames** in `memgar/data/patterns.yaml`:
+  `SCHNEIDER-001` → `PERSIST-MEM-001`,
+  `SCHNEIDER-002` → `PERSIST-MEM-002`,
+  `SCH-BYPASS` → `DEF-BYPASS`. Internal IDs; only affects downstream
+  consumers pinning specific rule IDs.
+- **Runtime provenance field rename**: `entry.metadata["provenance"]["schneider_layer"]`
+  → `["defense_tier"]`.
+
+### Added
+
+- **Auto-provenance tagging** — every analyzed `MemoryEntry` now gets a
+  `provenance` dict on `entry.metadata`: source (type+id), creation time,
+  session, initial trust, content sha256, and decision. Default on; pass
+  `Analyzer(auto_provenance=False)` to disable.
+- **MINJA compound detection** wired into default `Analyzer.analyze()` —
+  counts bridging-step + indication-prompt regex hits and a
+  progressive-shortening density signature; surfaces as a
+  `MINJA-COMPOUND` threat at HIGH or CRITICAL severity. Catches the
+  composition attacks (Dong et al., NeurIPS 2025) that single-pattern
+  matching cannot.
+- **Cross-agent propagation detector** in `CorrelationDetector` — fires
+  when the same content shape lands on N distinct agents within a 30-min
+  window, closing the inter-agent fan-out vector.
+- **Trust temporal decay** in `TrustAwareRetriever` — 180-day half-life on
+  the trust score itself (was only the retrieval relevance weight). Old
+  high-trust memory drops below `min_trust_score` and earns the untrusted
+  penalty unless explicitly reinforced.
+- **`TrustAwareRetriever.reinforce(doc_id)`** — resets the trust-decay
+  clock for a re-validated memory. `metadata.created_at` preserved for
+  forensics; only the decay anchor moves.
+- **Recency-bias defense** in retrieval — fresh writes (<24h) from
+  low-trust sources (<0.5) get a multiplicative retrieval penalty
+  (default ×0.6) so a just-planted poison doesn't ride the recency
+  boost into the result set.
+- **Multi-tenant retrieval isolation** — `TrustAwareRetriever.retrieve(
+  ..., tenant_id=...)` hard-filters cross-tenant docs *before* scoring,
+  anomaly detection, and stats so nothing leaks across tenants.
+- **`memgar.conflict_detector.ConflictDetector`** — pairwise contradiction
+  scan over six polarity probes (always/never, prefer/dislike,
+  approve/reject, trust/distrust, enable/disable, remember/forget) gated
+  by a sentence-transformers topic check. Inflection-aware regexes catch
+  `prefers` / `remembers` / `disabled`.
+- **`MemoryAuditor.start_periodic_audit(get_data, interval_seconds=...)`**
+  — daemon thread that re-verifies the memory store against the last
+  known-good snapshot, rolls baseline forward after each drift event.
+- **`trusted_spread` retrieval anomaly check** — fires when a high-trust
+  document suddenly appears in many unrelated query contexts; was
+  previously gated to `trust_score < 0.5` and missed the textbook
+  poisoned-trusted-doc vector.
+- **`MemoryWriteGateway(confirm_all_writes=True)`** — routes every
+  approved write through HITL, not just quarantined ones. Opt-in;
+  requires a HITL backend.
+- **`Analyzer(circuit_breaker=True)`** — wires a `CircuitBreaker` into
+  the analyze loop; raises `AgentHaltedException` on burst threshold.
+  Opt-in because the stateless scorer doesn't have a natural agent
+  identity for the breaker to scope on; the orchestrator-level
+  `MemgarDefensePipeline` still has it default-on.
+
+### Fixed
+
+- `ConflictDetector` with `use_embeddings=True` was silently degrading to
+  Jaccard against the embedding-mode threshold — `SimilarityLayer` only
+  exposed `_cached_encode`, so calling `.encode()` raised AttributeError
+  swallowed by a bare except. Added public `SimilarityLayer.encode()`;
+  detector now actually uses cosine.
+- Polarity probes in `ConflictDetector` were missing English `-s|-ed|-ing`
+  inflections (`User prefers ...` didn't match `prefer`). Added inflection
+  suffix probe; single-token lemmas now match real prose.
+
+### Changed
+
+- Default `Analyzer.health_check()` reports three new layer rows:
+  `minja_detector`, `auto_provenance`, `circuit_breaker`.
+- `memgar/__init__.py` module docstring rewritten to honestly enumerate
+  which architecture components are default-on, which are opt-in, and
+  where the academic attribution goes — one line, one place.
+- `memgar.com` landing copy now matches the code: 801 patterns (was 736),
+  no fine-tuned-transformer claims (Layer 2-ML is gone), no
+  "denial-of-wallet" marketing (no DoW defender exists), v1.3.0 in the
+  footer (was v0.5.6), and a new "Honest numbers" section linking to the
+  raw `benchmarks/*.json` rather than summarizing.
+- Cleared 70 of 71 attribution mentions from the codebase. Module
+  docstrings now describe what each module does instead of whose
+  architecture it implements. One academic attribution remains, in
+  `memgar/__init__.py`, citing the 2026 article that informed the
+  layered framing.
+
+### Removed
+
+- `memgar/ml_release_loader.py`, `ml/inference/transformer_detector{,_v2}.py`,
+  `ml/training/transformer_trainer{,_v2}.py`, `ml/training/quick_train.py`,
+  `ml/artifacts/transformer_model/` (ONNX + tokenizer), `scripts/train_transformer*.py`,
+  `scripts/release_transformer.py`, `scripts/prepare_v2_dataset.py`,
+  `tests/test_transformer_v2_pipeline.py`, `dist/release_manifest.json`,
+  `docs/development/training.md`. The supporting CI job
+  (`transformer-quality-gate`) is gone as well.
+- `MEMGAR_TRANSFORMER_*` env vars across `Dockerfile`, `docker-compose.yml`,
+  `deploy/docker-compose.prod.yml`.
+
+---
+
 ## [1.3.0] — 2026-06-07
 
 Threat-coverage, scope, and maintenance release on top of 1.2.0.
