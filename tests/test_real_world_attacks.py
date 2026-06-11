@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
+
 import pytest
 
 from memgar import Analyzer
-from memgar.models import MemoryEntry, Decision
 from memgar.memory_integrity import MemoryIntegrityStore, _entry_id
+from memgar.models import Decision, MemoryEntry
 
 
 @pytest.fixture(scope="module")

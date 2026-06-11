@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+
 import pytest
 
 from memgar.runtime import (
-    MemoryRuntimeEnforcer,
+    ChunkResult,
     EnforcedBoundary,
     EnforcementAction,
-    RuntimePolicy,
     MemoryPoisoningError,
-    ChunkResult,
+    MemoryRuntimeEnforcer,
+    RuntimePolicy,
     _extract_text,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures

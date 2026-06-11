@@ -18,7 +18,9 @@ import pytest
 # ---------------------------------------------------------------------------
 _CRYPTO_FUNCTIONAL = False
 try:
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey as _Ed25519PrivateKey
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+        Ed25519PrivateKey as _Ed25519PrivateKey,
+    )
     _Ed25519PrivateKey.generate()  # triggers the pyo3 panic on broken installs
     _CRYPTO_FUNCTIONAL = True
 except BaseException:  # pyo3_runtime.PanicException is BaseException, not Exception
@@ -142,7 +144,9 @@ class TestFeedVerifier:
     def test_verify_invalid_signature_returns_false(self):
         self._try_import_ed25519()
         import base64
+
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
         from memgar.feed.verifier import FeedVerifier
 
         # Generate keypair, but sign with wrong key → verify with right key → False
@@ -162,7 +166,9 @@ class TestFeedVerifier:
         """Generate a real Ed25519 keypair, sign, and verify with FeedVerifier."""
         self._try_import_ed25519()
         import base64
+
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
         from memgar.feed.verifier import FeedVerifier
 
         private_key = Ed25519PrivateKey.generate()
@@ -179,7 +185,9 @@ class TestFeedVerifier:
     def test_verify_wrong_data_returns_false(self):
         self._try_import_ed25519()
         import base64
+
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
         from memgar.feed.verifier import FeedVerifier
 
         private_key = Ed25519PrivateKey.generate()
@@ -393,7 +401,6 @@ class TestFeedLoader:
 # imports that other test classes might depend on).
 import urllib.error  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # CLI feed commands
 # ---------------------------------------------------------------------------
@@ -401,6 +408,7 @@ import urllib.error  # noqa: E402
 class TestCLIFeedCommands:
     def test_feed_status_no_cache(self):
         from click.testing import CliRunner
+
         from memgar.cli import main
 
         runner = CliRunner()
@@ -410,6 +418,7 @@ class TestCLIFeedCommands:
 
     def test_feed_verify_no_cache(self):
         from click.testing import CliRunner
+
         from memgar.cli import main
 
         runner = CliRunner()
@@ -419,6 +428,7 @@ class TestCLIFeedCommands:
 
     def test_feed_help(self):
         from click.testing import CliRunner
+
         from memgar.cli import main
 
         runner = CliRunner()

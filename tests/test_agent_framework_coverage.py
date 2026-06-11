@@ -18,7 +18,7 @@ BENIGN = "The quarterly sales report is attached for your review."
 
 # --------------------------------------------------------------- LangChain
 def test_langchain_memory_blocks_poison_passes_benign():
-    from memgar.integrations.langchain import guard_memory, MemgarThreatError
+    from memgar.integrations.langchain import MemgarThreatError, guard_memory
     from memgar.integrations.universal import MemoryBlockedError
 
     class Mem:
@@ -37,8 +37,7 @@ def test_langchain_memory_blocks_poison_passes_benign():
 
 # ------------------------------------------------------------------ AutoGen
 def test_autogen_interagent_message_guard():
-    from memgar.integrations.autogen import MemgarAutoGenGuard
-    from memgar.integrations.autogen import MemgarAutoGenThreatError
+    from memgar.integrations.autogen import MemgarAutoGenGuard, MemgarAutoGenThreatError
 
     class Agent:
         def __init__(self): self.received = []
@@ -94,7 +93,9 @@ def test_langgraph_firewall_node_and_guard_node():
 # ----------------------------------------------------------- Semantic Kernel
 def test_semantic_kernel_chat_history_guard():
     from memgar.integrations.semantic_kernel import (
-        MemgarSemanticKernelGuard, MemgarSemanticKernelThreatError)
+        MemgarSemanticKernelGuard,
+        MemgarSemanticKernelThreatError,
+    )
 
     class ChatHistory:
         def __init__(self): self.messages = []
@@ -114,7 +115,9 @@ def test_semantic_kernel_guard_works_on_setattr_locked_history():
     # setattr of new method attributes. The guard must wrap it via a proxy,
     # not by monkey-patching the instance.
     from memgar.integrations.semantic_kernel import (
-        MemgarSemanticKernelGuard, MemgarSemanticKernelThreatError)
+        MemgarSemanticKernelGuard,
+        MemgarSemanticKernelThreatError,
+    )
 
     class PydanticLikeHistory:
         def __init__(self): object.__setattr__(self, "messages", [])

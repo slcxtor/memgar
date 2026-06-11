@@ -15,14 +15,15 @@ appear innocent but form a coordinated exfiltration chain across turns:
 """
 
 import time
-import pytest
-from memgar.multistage.multi_stage_detector import (
-    MultiStageDetector,
-    AttackPhase,
-    ThreatLevel,
-    SessionContext,
-)
 
+import pytest
+
+from memgar.multistage.multi_stage_detector import (
+    AttackPhase,
+    MultiStageDetector,
+    SessionContext,
+    ThreatLevel,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures

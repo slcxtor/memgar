@@ -12,18 +12,19 @@ Based on real-world incidents:
 """
 
 import os
-import time
 import tempfile
 import textwrap
+import time
+
 import pytest
+
 from memgar.supply import (
+    KNOWN_MALICIOUS,
     SupplyChainScanner,
     check_package,
-    scan_file,
     scan_directory,
-    KNOWN_MALICIOUS,
+    scan_file,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

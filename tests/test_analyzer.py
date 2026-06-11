@@ -6,6 +6,7 @@ Comprehensive test suite for the analysis engine.
 """
 
 import pytest
+
 from memgar.analyzer import Analyzer, QuickAnalyzer
 from memgar.models import Decision, MemoryEntry, Severity
 
@@ -399,6 +400,7 @@ class TestAnalyzeAsync:
 
     def test_analyze_async_returns_analysis_result(self):
         import asyncio
+
         from memgar.models import AnalysisResult
         analyzer = Analyzer()
 

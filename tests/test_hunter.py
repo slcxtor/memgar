@@ -16,17 +16,16 @@ Tests:
 
 from __future__ import annotations
 
-import time
 import threading
+import time
 from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from memgar.models import MemoryEntry
-from memgar.hunter import MemoryHunter, HunterStats, _entry_id, _severity
 from memgar.config import HunterConfig, MemgarConfig
-
+from memgar.hunter import HunterStats, MemoryHunter, _entry_id, _severity
+from memgar.models import MemoryEntry
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -780,8 +779,8 @@ class TestOnThreatCallback:
 
     def test_start_hunter_passes_on_threat(self):
         from memgar import Analyzer
-        from memgar.hunter import start_hunter
         from memgar.config import HunterConfig
+        from memgar.hunter import start_hunter
 
         found = []
         a = Analyzer(use_llm=False)

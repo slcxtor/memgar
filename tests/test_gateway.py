@@ -15,11 +15,15 @@ import pytest
 try:
     import httpx
     from fastapi.testclient import TestClient
+
     from memgar.gateway.app import Gateway, create_app
-    from memgar.gateway.policy import (
-        GatewayPolicy, InputPolicy, OutputPolicy, PolicyDecision,
-    )
     from memgar.gateway.mcp_proxy import MCPProxy
+    from memgar.gateway.policy import (
+        GatewayPolicy,
+        InputPolicy,
+        OutputPolicy,
+        PolicyDecision,
+    )
     from memgar.tool_use_guard import ToolUseGuard
     _GATEWAY_AVAILABLE = True
 except ImportError:
