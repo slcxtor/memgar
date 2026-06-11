@@ -154,8 +154,8 @@ class TestDampen:
         # becomes a critical-scoring attack (e.g. patterns updated), the
         # dampen path must not lower risk below CRITICAL_RISK_FLOOR.
         # We construct the scenario by inspecting compute_dampen directly.
-        from memgar.tenant_learning import compute_dampen
         from memgar.models import Severity
+        from memgar.tenant_learning import compute_dampen
         # risk_score 90 (critical) — must not dampen
         assert compute_dampen(90, similarity=1.0, threat_severities=[]) == 0
         # critical severity threat present — must not dampen

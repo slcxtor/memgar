@@ -20,7 +20,7 @@ import codecs
 
 import pytest
 
-from memgar import Analyzer, MemoryEntry, Decision
+from memgar import Analyzer, Decision, MemoryEntry
 
 
 @pytest.fixture(scope="module")

@@ -20,16 +20,15 @@ from datetime import datetime, timedelta
 import pytest
 
 from memgar.eu_ai_act import (
-    ComplianceStatus,
-    RiskLevel,
-    RequirementCategory,
-    Requirement,
     ComplianceConfig,
     ComplianceReport,
+    ComplianceStatus,
     EUAIActReporter,
+    Requirement,
+    RequirementCategory,
+    RiskLevel,
     create_default_requirements,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Enum Values

@@ -13,7 +13,11 @@ from memgar.integrations.universal import (
     secure_memory_writer,
 )
 from memgar.models import AnalysisResult, Decision
-from memgar.secure_memory_store import SecureMemoryBypassError, SecureMemoryStore, SecureMemoryStorePolicy
+from memgar.secure_memory_store import (
+    SecureMemoryBypassError,
+    SecureMemoryStore,
+    SecureMemoryStorePolicy,
+)
 
 
 @dataclass

@@ -12,26 +12,26 @@ Attack vectors:
  - classify_action manipulation: obfuscated action names bypass risk classification
 """
 
-import time
-import threading
 import random
+import threading
+import time
+
 import pytest
 
 from memgar.hitl import (
+    ApprovalRequest,
+    ApprovalResult,
+    ApprovalStatus,
+    CLINotifier,
     HITLCheckpoint,
     HITLDeniedError,
     HITLTimeoutError,
     NullNotifier,
-    CLINotifier,
-    ApprovalResult,
-    ApprovalRequest,
-    ApprovalStatus,
     RiskLevel,
+    _make_token,
     classify_action,
     create_checkpoint,
-    _make_token,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

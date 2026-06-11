@@ -27,12 +27,11 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from memgar import Analyzer, MemoryEntry, Decision
+from memgar import Analyzer, Decision, MemoryEntry
 
 # Import the benchmark datasets directly
 sys.path.insert(0, str(ROOT / "scripts"))
 from zero_shot_benchmark import ZERO_SHOT_ATTACKS, ZERO_SHOT_BENIGN
-
 
 # ---------------------------------------------------------------------------
 # Helpers

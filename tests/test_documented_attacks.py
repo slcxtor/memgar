@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from memgar import Analyzer, MemoryEntry, Decision
+from memgar import Analyzer, Decision, MemoryEntry
 from simulation.documented_attacks import CASES
 
 

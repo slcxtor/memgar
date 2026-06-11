@@ -23,7 +23,6 @@ from memgar.memory_vault import (
 )
 from memgar.models import MemoryEntry
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -547,7 +546,9 @@ class TestSigning:
     @pytest.fixture(autouse=True)
     def _require_crypto(self):
         try:
-            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: F401
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+                Ed25519PrivateKey,  # noqa: F401
+            )
         except BaseException:  # pyo3_runtime.PanicException is BaseException, not ImportError
             pytest.skip("cryptography package not functional in this environment")
 

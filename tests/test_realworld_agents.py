@@ -14,12 +14,13 @@ Scenarios modeled after real APT-style multi-agent attack campaigns:
 """
 
 import time
+
 import pytest
+
 from memgar.agents.agent_security import AgentSecurityGuard, SecurityAction
+from memgar.agents.delegation_monitor import DelegationMonitor
 from memgar.agents.swarm_detector import SwarmDetector, SwarmThreatType
 from memgar.agents.trust_chain import TrustChainManager, TrustLevel
-from memgar.agents.delegation_monitor import DelegationMonitor
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

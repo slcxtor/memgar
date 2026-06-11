@@ -14,13 +14,13 @@ Attack vectors modeled after real incidents:
 import io
 import struct
 import time
+
 import pytest
 
-from memgar.multimodal.image_analyzer import ImageAnalyzer, ImageThreatType, ImageAnalysisResult
-from memgar.multimodal.pdf_analyzer import PDFAnalyzer, PDFThreatType, PDFAnalysisResult
-from memgar.multimodal.audio_analyzer import AudioAnalyzer, AudioThreatType, AudioAnalysisResult
-from memgar.multimodal.multimodal_analyzer import MultiModalAnalyzer, ContentType
-
+from memgar.multimodal.audio_analyzer import AudioAnalysisResult, AudioAnalyzer, AudioThreatType
+from memgar.multimodal.image_analyzer import ImageAnalysisResult, ImageAnalyzer, ImageThreatType
+from memgar.multimodal.multimodal_analyzer import ContentType, MultiModalAnalyzer
+from memgar.multimodal.pdf_analyzer import PDFAnalysisResult, PDFAnalyzer, PDFThreatType
 
 # ---------------------------------------------------------------------------
 # Helpers — minimal synthetic files without external deps

@@ -6,20 +6,20 @@ Tool-Use Guard: last-mile scanner before agent executes a tool call.
 from __future__ import annotations
 
 import time
+
 import pytest
 
 from memgar.canary import (
+    CANARY_PREFIX,
     CanaryTokenManager,
     extract_canaries,
     is_canary,
-    CANARY_PREFIX,
 )
 from memgar.tool_use_guard import (
-    ToolUseGuard,
     ToolDecision,
     ToolRisk,
+    ToolUseGuard,
 )
-
 
 # =============================================================================
 # CanaryTokenManager

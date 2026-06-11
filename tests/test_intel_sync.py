@@ -12,19 +12,28 @@ from pathlib import Path
 import pytest
 
 from scripts.intel.common import (
-    Candidate, CandidateSource, guess_severity, is_ai_relevant,
-    normalize_text, read_seen_fingerprints, write_candidates,
+    Candidate,
+    CandidateSource,
+    guess_severity,
+    is_ai_relevant,
+    normalize_text,
+    read_seen_fingerprints,
+    write_candidates,
 )
 from scripts.intel.curate import auto_accept_by_source, stats
 from scripts.intel.sync_cves import _cve_to_candidate, sync_cves
 from scripts.intel.sync_jailbreak_repos import (
-    JailbreakSource, _parse_source, _sample_to_candidate, sync_jailbreak_repos,
+    JailbreakSource,
+    _parse_source,
+    _sample_to_candidate,
+    sync_jailbreak_repos,
 )
 from scripts.intel.sync_mitre import (
-    _category_from_technique, _technique_to_candidate, sync_mitre,
+    _category_from_technique,
+    _technique_to_candidate,
+    sync_mitre,
 )
 from scripts.intel.sync_owasp import _release_to_candidate, sync_owasp
-
 
 # ─── common helpers ────────────────────────────────────────────────────
 

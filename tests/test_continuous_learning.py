@@ -12,12 +12,13 @@ Tests cover:
 - Auto-improvement cycle
 """
 
-import pytest
-import sys
 import os
-import tempfile
 import shutil
+import sys
+import tempfile
 from pathlib import Path
+
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -375,9 +376,10 @@ class TestContinuousLearningIntegration:
     def test_cl_with_real_detector(self):
         """Test CL system with actual ML detector"""
         try:
-            from ml.continuous_learning import SmartDetector
-            from memgar.ml_semantic_detector import MLSemanticDetector
             import os
+
+            from memgar.ml_semantic_detector import MLSemanticDetector
+            from ml.continuous_learning import SmartDetector
             
             # Find model
             model_paths = [
@@ -422,8 +424,9 @@ class TestContinuousLearningPerformance:
     def test_feedback_collection_speed(self, temp_dir):
         """Test that feedback collection is fast"""
         try:
-            from ml.continuous_learning import ContinuousLearning
             import time
+
+            from ml.continuous_learning import ContinuousLearning
             
             cl = ContinuousLearning(
                 model_path=os.path.join(temp_dir, 'model.pkl'),

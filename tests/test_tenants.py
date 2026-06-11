@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import time
-import tempfile
 import os
+import tempfile
+import time
+
 import pytest
 
-from memgar.tenants import TenantStore, PLAN_LIMITS, PLANS
+from memgar.tenants import PLAN_LIMITS, PLANS, TenantStore
 
 
 @pytest.fixture

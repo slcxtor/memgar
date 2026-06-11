@@ -891,7 +891,8 @@ class TrustAwareRetriever:
             and metadata.created_at is not None
         ):
             try:
-                from datetime import datetime, timezone as _tz
+                from datetime import datetime
+                from datetime import timezone as _tz
                 _now = datetime.now(_tz.utc)
                 _created = metadata.created_at
                 # When reinforce() has been called, the decay clock
@@ -939,7 +940,8 @@ class TrustAwareRetriever:
             and metadata.trust_score < self.recency_scrutiny_trust_threshold
         ):
             try:
-                from datetime import datetime, timezone as _tz2
+                from datetime import datetime
+                from datetime import timezone as _tz2
                 _now2 = datetime.now(_tz2.utc)
                 _ctime = metadata.created_at
                 if _ctime.tzinfo is None:
@@ -1192,7 +1194,8 @@ class TrustAwareRetriever:
                 Pass a datetime to back-date (e.g. for batch re-validation
                 runs that processed entries some time ago).
         """
-        from datetime import datetime, timezone as _tz
+        from datetime import datetime
+        from datetime import timezone as _tz
         if validated_at is None:
             validated_at = datetime.now(_tz.utc)
         elif getattr(validated_at, "tzinfo", None) is None:

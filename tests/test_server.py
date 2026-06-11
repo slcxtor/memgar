@@ -11,7 +11,6 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -262,6 +261,7 @@ class TestRateLimiterUnit:
 
     def test_window_expiry(self):
         import time
+
         from memgar.server import _RateLimiter
         rl = _RateLimiter(requests_per_minute=1)
         rl._window = 0.1  # shrink window for speed
