@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memgar"
-version = "1.3.0"
+version = "1.4.0"
 description = "AI agent memory security — detect, quarantine, and block memory-poisoning attacks (OWASP ASI06) before they reach an LLM agent"
 readme = "README.md"
 license = "MIT"
