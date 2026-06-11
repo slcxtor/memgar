@@ -50,13 +50,13 @@ result = a.analyze(MemoryEntry(content="..."))        # sync
 result = await a.analyze_async(MemoryEntry(...))      # async (thread-pool)
 ```
 
-### Schneider 4-layer compliance (2026-06 wiring sprint)
+### Defense pipeline coverage (2026-06 wiring sprint)
 
-Mapping of Schneider's persistent-memory-poisoning defense architecture
-to memgar components (see SCHNEIDER-AUDIT for the gap analysis that
+Mapping of the persistent-memory-poisoning defense layers to memgar
+components (see the defense-compliance audit for the gap analysis that
 drove this wiring; previous score 72/100, post-wiring ~92/100):
 
-| Schneider layer | Memgar implementation | Default |
+| Layer | Memgar implementation | Default |
 |---|---|---|
 | L1 — Input moderation + composite trust | Analyzer Layer 1 patterns + Layer 2.5 similarity + Layer 3 source trust | on |
 | L2 — Instruction stripping | `memgar.sanitizer.InstructionSanitizer` | (in gateway) |
@@ -72,7 +72,7 @@ drove this wiring; previous score 72/100, post-wiring ~92/100):
 | L4 — Periodic integrity scan | `MemoryAuditor.start_periodic_audit(get_data, interval)` | opt-in |
 | L4 — Cross-agent propagation | `CorrelationDetector._check_cross_agent_propagation` | **on** |
 | L4 — Circuit breakers | `CircuitBreaker.record_from_result` + Analyzer hooks | opt-in (on in `MemgarDefensePipeline`) |
-| Schneider "user confirmation for memory writes" | `MemoryWriteGateway(confirm_all_writes=True)` | opt-in |
+| User confirmation for memory writes | `MemoryWriteGateway(confirm_all_writes=True)` | opt-in |
 
 Items in **bold** were rolled into the default `Analyzer()` flow during the
 sprint — earlier they were class-libraries with no path from the documented

@@ -2,15 +2,14 @@
 Memgar Behavioral Baseline Engine
 ===================================
 
-Layer 4 of the Schneider defense architecture:
-  behavioral monitoring with learned normal behavior and deviation detection.
+Layer 4 — behavioral monitoring with learned normal behavior and
+deviation detection.
 
-Schneider (2026):
-    "Behavioral baselines establish what normal agent behavior looks like
-     for your use case. Deviations from baseline trigger alerts for human
-     review. If an agent starts defending beliefs it should never have
-     learned or taking actions inconsistent with its baseline behavior,
-     you need the ability to immediately quarantine that agent."
+Establishes what normal agent behavior looks like for each agent_id and
+flags departures from that learned baseline so a human reviewer can
+inspect — or so the breaker can quarantine the agent — before a
+compromised agent acts on poisoned context. Absolute thresholds miss
+this; per-agent z-score deviation catches it.
 
 The key distinction from circuit_breaker.py:
     circuit_breaker   = reactive threshold  (fires AFTER N threats)
@@ -592,8 +591,10 @@ class BehavioralBaseline:
                 pass
 
         # Forensics auto-trigger on CRITICAL
-        # Schneider: "when an agent starts defending beliefs it should never have
-        # learned, quarantine that agent" — start forensic investigation immediately.
+        # A CRITICAL deviation is the strongest signal we have that this
+        # agent's behavior no longer matches its learned baseline — start
+        # the forensic snapshot immediately so the evidence is captured
+        # before the breaker trips and downstream state mutates.
         if overall == DeviationLevel.CRITICAL and self._forensics_path is not None:
             now_ts = time.time()
             if (self._last_forensics is None or

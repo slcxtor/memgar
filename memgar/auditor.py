@@ -25,8 +25,8 @@ Usage — on-demand:
     if not report.is_valid:
         memory_store.replace(auditor.rollback(snapshot_id))
 
-Usage — background scheduler (Schneider L4 "periodically validates the
-memory store against known-good states"):
+Usage — background scheduler (Layer 4 periodic integrity scan: re-verify
+the memory store against the last known-good snapshot on a fixed cadence):
     auditor.start_periodic_audit(
         get_snapshot_data=lambda: memory_store.export(),
         interval_seconds=300,
@@ -175,9 +175,9 @@ class MemoryAuditor:
         self._audit_log: List[AuditEvent] = []
         self._lock = threading.Lock()
 
-        # Background periodic auditor (Schneider Layer 4 — "periodically
-        # validates the memory store against known-good states"). State
-        # lives here so start/stop are idempotent across threads.
+        # Background periodic auditor (Layer 4 — re-verifies the memory
+        # store against the last known-good snapshot on a fixed cadence).
+        # State lives here so start/stop are idempotent across threads.
         self._periodic_thread: Optional[threading.Thread] = None
         self._periodic_stop: Optional[threading.Event] = None
         self._periodic_snapshot_id: Optional[str] = None
@@ -494,8 +494,9 @@ class MemoryAuditor:
     ) -> None:
         """
         Start a background thread that snapshots and verifies the memory
-        store on a fixed cadence. Schneider Layer 4: *"periodically validates
-        the memory store against known-good states"*.
+        store on a fixed cadence — the Layer 4 periodic-integrity-scan
+        role: re-verify the live memory store against the last
+        known-good snapshot at a regular interval.
 
         The auditor takes an initial baseline snapshot on first tick, then on
         every subsequent tick it verifies the current state against the

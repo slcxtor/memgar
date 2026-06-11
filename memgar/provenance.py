@@ -12,11 +12,11 @@ Every memory entry is tagged with:
 - Content hash (for integrity verification)
 - Chain of custody (modification history)
 
-Based on Christian Schneider's defense architecture (Layer 2).
+Layer 2 — provenance tagging.
 
 **Auto-applied by default**: every entry passed through `Analyzer.analyze()`
 gains a lightweight provenance dict in `entry.metadata['provenance']`
-recording Schneider's four foundation fields (source, time, session,
+recording the four foundation fields (source, time, session,
 trust+risk) plus a sha256 content hash. See `Analyzer._build_provenance`.
 Pass `Analyzer(auto_provenance=False)` to disable. For full chain-of-
 custody (modification history, expiry, sanitization details), use the

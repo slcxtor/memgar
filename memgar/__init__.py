@@ -4,9 +4,12 @@ Memgar - AI Agent Memory Security
 
 Protect your AI agents from memory poisoning attacks.
 
-Memgar implements Christian Schneider's 4-layer defense architecture for
-persistent memory poisoning. Each layer below has concrete components
-wired into the default Analyzer (unless marked opt-in):
+Memgar implements a 4-layer defense architecture for persistent memory
+poisoning. Each layer below has concrete components wired into the
+default Analyzer (unless marked opt-in):
+
+*Persistent memory poisoning defense framing informed by Christian Schneider's
+2026 analysis (https://christian-schneider.net/blog/persistent-memory-poisoning-in-ai-agents/).*
 
 - Layer 1: Input Moderation
     * patterns.yaml regex + keyword matching (always on)

@@ -10,7 +10,8 @@ Instead of binary BLOCK/ALLOW, sanitizer can:
 2. Keep the safe content
 3. Return sanitized version for storage
 
-Based on Christian Schneider's defense architecture (Layer 2).
+Sits at Layer 2: memory sanitization. Stripping the malicious span keeps
+the surrounding context useful instead of throwing the whole entry away.
 """
 
 import logging
