@@ -2,17 +2,15 @@
 Memgar Composite Trust Scorer
 ==============================
 
-Katman 1 orkestratörü — birden fazla bağımsız sinyali tek bir güven
-skoruna birleştirir.
+Layer 1 orchestrator — combines several independent signals into a
+single trust score.
 
-Schneider'in şu bulgusunu uygular:
-    "Effective input moderation uses composite trust scoring across
-     multiple orthogonal signals. No single signal is sufficient because
-     attackers can craft content that evades any individual detector.
-     But evading multiple independent signals simultaneously becomes
-     exponentially harder."
+No single signal is sufficient on its own: attackers can craft content
+that evades any individual detector. Evading multiple orthogonal
+signals at once is exponentially harder, so the scorer runs the
+signals below in parallel and fuses their verdicts.
 
-Sinyal kaynakları (bağımsız, paralel çalışır):
+Signal sources (independent, run in parallel):
 
     S1 — Threat Analysis      memgar.analyzer   → threat pattern match
     S2 — Source Provenance    memgar.provenance  → kaynak güven seviyesi
@@ -326,9 +324,11 @@ class _S3_InstructionDensity:
     """
     S3 — Instruction Density (Semantik)
 
-    Schneider: "Memory poisoning detection must catch phrases like
-    'remember for future sessions', 'always prefer', 'important context'
-    when combined with action-oriented content."
+    Counts memory-persistence phrases like "remember for future
+    sessions", "always prefer", "important context" — especially when
+    paired with action-oriented verbs. These are the textbook surface
+    forms of write-through poisoning, so density is a strong proxy
+    for malicious intent even before other layers fire.
 
     Direktif yoğunluğu: içerikte ne kadar "komut" var?
     """
@@ -400,9 +400,10 @@ class _S4_AnomalyScore:
     """
     S4 — Contextual Anomaly Score
 
-    Schneider: "Anomaly detection flags content that deviates from
-    expected patterns. If your agent processes financial reports, a
-    document that suddenly discusses system configuration is anomalous."
+    Flags content that deviates from the agent's expected topical mix.
+    A financial-reporting agent that suddenly receives system
+    configuration text is anomalous even when no injection signature
+    fires, and that anomaly is itself a suspicion signal.
 
     Bağlamı olmayan basit versiyon: belirli anomali işaretleri.
     """
@@ -491,7 +492,8 @@ class _S5_EntropyObfuscation:
 
     Yüksek entropi → base64/encode olabilir → şüpheli.
     Çok uzun kelimeler veya garip karakter yoğunluğu.
-    Schneider: "Encoded Instruction Injection" attack vektörü.
+    Catches the encoded-instruction-injection vector — payloads hidden
+    behind base64, hex, or other high-entropy obfuscation.
     """
 
     def compute(self, content: str, _ctx: TrustContext) -> SignalResult:
@@ -622,9 +624,12 @@ class _S7_TemporalFreshness:
     """
     S7 — Temporal Freshness
 
-    Schneider: "Temporal decay should be combined with trust scoring
-    so that stable, verified memories retain higher influence than
-    newly introduced, untrusted inputs."
+    Combines age with trust so that stable, verified memories retain
+    higher influence than fresh untrusted inputs. Content that lands
+    within milliseconds is typical of automated injection bursts;
+    very old content is also suspect (stale assignment, no
+    re-verification). Normal human traffic arrives on a
+    seconds-to-minutes cadence.
 
     Çok yeni içerik (saniyeler içinde) şüpheli olabilir:
     hızlı enjeksiyon denemeleri. Çok eski de şüpheli.

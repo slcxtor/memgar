@@ -688,7 +688,7 @@ class AgentMessageValidator:
         self._message_history = []
 
     # ------------------------------------------------------------------
-    # Agent output monitoring (Schneider Layer 4 — output side)
+    # Agent output monitoring (Layer 4 — output side)
     # ------------------------------------------------------------------
 
     # Patterns that suggest the agent is defending or acting on poisoned beliefs
@@ -718,8 +718,8 @@ class AgentMessageValidator:
         """
         Validate an agent's OUTPUT for signs of poisoned belief execution.
 
-        Schneider Layer 4: "Behavioral monitoring detects when an agent starts
-        defending beliefs it should never have learned."
+        Behavioral monitoring on the output side: catch the moment an agent
+        starts defending beliefs it should never have learned.
 
         Unlike validate() which checks incoming messages, this scans what the
         agent *produces* — catching cases where a memory-poisoning attack has

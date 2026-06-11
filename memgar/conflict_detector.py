@@ -6,11 +6,11 @@ A contradiction between two stored memories is a signal that one of
 them was poisoned, since legitimate updates usually supersede rather
 than directly contradict prior context.
 
-Not a literal Schneider quote, but a corollary of his "agent defends
-beliefs it should never have learned" indicator — if memory A says
-``always X`` and memory B says ``never X``, downstream queries will
-retrieve whichever has the higher trust weight, and the agent will
-then defend an instruction the user never gave.
+If memory A says ``always X`` and memory B says ``never X``, downstream
+queries will retrieve whichever has the higher trust weight, and the
+agent will then defend an instruction the user never gave. Detecting
+the contradiction at retrieval time lets us surface the conflict
+before the agent acts on the poisoned half.
 
 Heuristic-only. No NLP / NLI dependency — uses regex polarity probes
 and (when available) sentence-transformers cosine similarity to gate

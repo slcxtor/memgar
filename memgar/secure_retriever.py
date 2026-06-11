@@ -2,7 +2,7 @@
 Memgar Secure Retrieval Layer
 ==============================
 
-Layer 3 of the Schneider defense architecture:
+Layer 3 — secure retrieval:
   - Trust-weighted ranking: provenance scores adjust relevance
   - Temporal decay: older memories lose influence (combined with trust)
   - Retrieval anomaly detection: flags suspicious access patterns
@@ -406,10 +406,11 @@ class RetrievalAnomalyMonitor:
     """
     Detects anomalous memory access patterns at retrieval time.
 
-    Schneider: "Poisoned memories often have distinctive retrieval signatures:
-    they activate on narrow query ranges designed to match attacker-chosen
-    targets. A memory that suddenly starts appearing in many unrelated
-    contexts warrants investigation."
+    Poisoned memories tend to have distinctive retrieval signatures:
+    they activate on narrow query ranges designed to match
+    attacker-chosen triggers, or — once planted — suddenly surface in
+    many unrelated contexts. Either pattern is worth investigating
+    even when the entry itself looks clean.
 
     Detected patterns:
 

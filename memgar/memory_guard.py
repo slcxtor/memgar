@@ -7,8 +7,9 @@ Integrated Layer 2 protection combining:
 - Provenance Tracking
 - Trust-aware Storage
 
-This is the main entry point for full Layer 2 defense
-as recommended by Christian Schneider's architecture.
+Main entry point for full Layer 2 defense — covers the four moves you
+need before any content is allowed into long-term memory (input
+moderation, sanitization, provenance tagging, write-ahead validation).
 
 Example:
     guard = MemoryGuard(session_id="session_123")
@@ -109,7 +110,7 @@ class MemoryGuard:
     2. Provenance Tracking - Full metadata and chain of custody
     3. Trust Scoring - Source-based trust assessment
 
-    This implements Christian Schneider's defense architecture:
+    Together these cover the full Layer 2 surface:
     - Input moderation
     - Memory sanitization
     - Provenance tagging

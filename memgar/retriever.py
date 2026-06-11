@@ -7,8 +7,9 @@ Layer 3 defense: Trust-weighted retrieval for RAG systems.
 Features:
 - Trust-weighted ranking: Adjusts retrieval scores based on provenance
 - Temporal trust decay: Trust score itself decays with memory age
-  (180-day half-life by default — *not* just retrieval weight). Honors
-  Schneider's "Temporal decay should be combined with trust scoring"
+  (180-day half-life by default — *not* just retrieval weight), so
+  stable, verified memories retain higher influence than fresh
+  untrusted inputs even when both happen to match a query
 - Temporal weight decay: Independent relevance decay (5 decay functions)
 - Retrieval anomaly detection — 5 checks:
     * high_frequency (retrievals/hour)
@@ -17,7 +18,7 @@ Features:
     * trusted_spread (trusted doc → 50+ contexts, severity=medium)
     * sudden_spike (rate spike vs prior windows)
 
-Based on Christian Schneider's defense architecture (Layer 3).
+Layer 3 — trust-aware retrieval for RAG pipelines.
 """
 
 import hashlib
@@ -59,7 +60,7 @@ class RetrievalMetadata:
     flagged: bool = False
     reviewed: bool = False
 
-    # Multi-tenant isolation (Schneider Layer 3 — cross-tenant poisoning
+    # Multi-tenant isolation (Layer 3 — cross-tenant poisoning
     # prevention). When set, retrieve(tenant_id=X) drops any document whose
     # metadata.tenant_id != X. Default None means "global", which is
     # permitted only on requests that also omit tenant_id (no isolation).
@@ -381,7 +382,7 @@ class RetrievalAnomalyDetector:
         high_frequency_threshold: int = 50,      # Retrievals per hour
         narrow_query_threshold: float = 0.8,     # Query similarity threshold
         trust_spread_threshold: int = 10,        # Low-trust doc in N different queries
-        trusted_spread_threshold: int = 50,      # Trusted doc spread (Schneider "unrelated contexts")
+        trusted_spread_threshold: int = 50,      # Trusted doc spread across unrelated contexts
         sudden_spike_multiplier: float = 5.0,    # X times normal rate
 
         # Time windows
@@ -554,8 +555,9 @@ class RetrievalAnomalyDetector:
                     details={"query_diversity": diversity, "query_count": len(queries)},
                 ))
 
-        # Check 3a: Low-trust document spread (Schneider: low-trust memory in
-        # many contexts is a strong attack indicator — high severity).
+        # Check 3a: Low-trust document spread — a low-trust memory
+        # surfacing across many different query contexts is a strong
+        # poisoning indicator, so we flag it at high severity.
         trust_score = self._doc_trust_scores.get(doc_id, 0.5)
         if trust_score < 0.5 and len(queries) >= self.trust_spread_threshold:
             unique_queries = len(set(q.lower().strip() for q in queries))
@@ -569,12 +571,13 @@ class RetrievalAnomalyDetector:
                     details={"trust_score": trust_score, "unique_queries": unique_queries},
                 ))
 
-        # Check 3b: Trusted document spread across many unrelated contexts
-        # (Schneider, verbatim: "A memory that suddenly starts appearing in many
-        # unrelated contexts warrants investigation"). Higher threshold + lower
-        # severity than the low-trust spread above, because trusted content
-        # legitimately gets reused — but extreme cross-context activation is
-        # the textbook poisoning indicator that survived a trust assessment.
+        # Check 3b: Trusted document spread across many unrelated contexts.
+        # A memory that suddenly starts surfacing in dozens of unrelated
+        # queries warrants investigation even when its trust score is
+        # high — that is the textbook signature of a poisoning that
+        # passed initial trust assessment. Higher threshold + lower
+        # severity than the low-trust spread above because trusted
+        # content legitimately gets reused.
         if trust_score >= 0.5 and len(queries) >= self.trusted_spread_threshold:
             unique_queries = len(set(q.lower().strip() for q in queries))
             if unique_queries >= self.trusted_spread_threshold:
@@ -583,7 +586,7 @@ class RetrievalAnomalyDetector:
                     doc_id=doc_id,
                     query="",
                     severity="medium",
-                    description=f"Trusted document ({trust_score:.2f}) appearing in {unique_queries} unrelated contexts — Schneider 'sudden cross-context activation' indicator",
+                    description=f"Trusted document ({trust_score:.2f}) appearing in {unique_queries} unrelated contexts — sudden cross-context activation indicator",
                     details={"trust_score": trust_score, "unique_queries": unique_queries},
                 ))
 
@@ -703,15 +706,15 @@ class TrustAwareRetriever:
         min_trust_score: float = 0.2,
         trust_weight_factor: float = 0.3,    # How much trust affects ranking
         untrusted_penalty: float = 0.5,      # Penalty for untrusted docs
-        # Schneider: trust assigned at write time should decay over the
-        # memory's lifetime — a high-trust assignment from 6 months ago
-        # should not be treated identically to one made today, because the
-        # write-time assessment can't see attacks that emerged since.
+        # Trust assigned at write time decays over the memory's lifetime
+        # — a high-trust assignment from 6 months ago should not be
+        # treated identically to one made today, because the write-time
+        # assessment cannot see attacks that emerged in between.
         # Half-life in days; None disables (preserves old behavior).
         trust_decay_half_life_days: Optional[float] = 180.0,
-        # Schneider: "attackers may exploit recency bias by injecting fresh
-        # malicious memories that temporarily outweigh legitimate long-term
-        # context." Recency scrutiny INVERTS the usual recency-bias: fresh
+        # Recency-bias defense: attackers can plant fresh malicious
+        # memories that temporarily outweigh legitimate long-term
+        # context. Recency scrutiny INVERTS the usual recency-bias: fresh
         # writes from low-trust sources get a MULTIPLICATIVE penalty for the
         # first `recency_scrutiny_hours` so a newly-planted poison does not
         # ride the just-written boost into retrieval results. Set to None to
@@ -775,11 +778,11 @@ class TrustAwareRetriever:
         self.recency_scrutiny_penalty = recency_scrutiny_penalty
         self.recency_scrutiny_trust_threshold = recency_scrutiny_trust_threshold
 
-        # Schneider: "information that has not been reinforced or recently
-        # validated" should decay faster. _reinforced_at tracks per-entry
-        # re-validation timestamps, used by `reinforce(entry_id)` to reset
-        # the decay clock without losing the audit trail of when the
-        # original write happened.
+        # Information that has not been reinforced or recently validated
+        # should decay faster than information that has been re-checked.
+        # _reinforced_at tracks per-entry re-validation timestamps, used
+        # by `reinforce(entry_id)` to reset the decay clock without
+        # losing the audit trail of when the original write happened.
         self._reinforced_at: Dict[str, Any] = {}
 
         self.enable_temporal_decay = enable_temporal_decay
@@ -876,12 +879,12 @@ class TrustAwareRetriever:
 
         trust = metadata.trust_score
 
-        # Schneider: trust assigned at write time decays over the memory's
-        # lifetime. A high-trust assignment from N half-lives ago should be
-        # treated as 0.5^N of its original — re-verification is needed to
-        # maintain influence. Re-trust threshold check uses the DECAYED
-        # value so a stale high-trust memory can drop below min_trust_score
-        # and earn the untrusted penalty.
+        # Trust assigned at write time decays over the memory's
+        # lifetime. A high-trust assignment from N half-lives ago is
+        # scaled to 0.5^N of its original — re-verification is needed
+        # to maintain influence. The threshold check below uses the
+        # DECAYED value so a stale high-trust memory can drop below
+        # min_trust_score and earn the untrusted penalty.
         if (
             self.trust_decay_half_life_days is not None
             and self.trust_decay_half_life_days > 0
@@ -891,9 +894,10 @@ class TrustAwareRetriever:
                 from datetime import datetime, timezone as _tz
                 _now = datetime.now(_tz.utc)
                 _created = metadata.created_at
-                # Schneider: when reinforce() has been called, decay clock
-                # restarts from the most recent re-validation. Older create
-                # timestamp still recorded in metadata for forensics.
+                # When reinforce() has been called, the decay clock
+                # restarts from the most recent re-validation. The
+                # original create timestamp is kept in metadata for
+                # forensics.
                 _doc_id = getattr(metadata, "doc_id", None) or getattr(metadata, "entry_id", None)
                 _reinforced = self._reinforced_at.get(_doc_id) if _doc_id else None
                 _decay_anchor = _reinforced if _reinforced is not None else _created
@@ -922,12 +926,12 @@ class TrustAwareRetriever:
         if metadata.was_sanitized:
             weight *= 0.9
 
-        # Schneider: recency bias defense. A FRESH write from a low-trust
-        # source should NOT ride a recency boost into the result set —
-        # that is the textbook poisoning vector. Original trust (pre-decay)
-        # is checked against the threshold so an old high-trust memory
-        # whose decayed score is now low does NOT get this extra penalty
-        # — only freshly-written low-trust content does.
+        # Recency-bias defense. A FRESH write from a low-trust source
+        # must NOT ride a recency boost into the result set — that is
+        # the textbook poisoning vector. Original trust (pre-decay) is
+        # checked against the threshold so an old high-trust memory
+        # whose decayed score is now low does NOT get this extra
+        # penalty — only freshly-written low-trust content does.
         if (
             self.recency_scrutiny_hours is not None
             and self.recency_scrutiny_hours > 0
@@ -995,10 +999,11 @@ class TrustAwareRetriever:
             query: Query string
             top_k: Number of documents (overrides default)
             tenant_id: Multi-tenant isolation key. When provided, drops any
-                document whose `metadata.tenant_id` does not match — closing
-                Schneider's cross-tenant poisoning vector. When omitted,
-                NO tenant filtering is applied; pass it explicitly on every
-                tenant-scoped query path.
+                document whose `metadata.tenant_id` does not match —
+                closing the cross-tenant poisoning vector where one
+                tenant's writes influence another's retrievals. When
+                omitted, NO tenant filtering is applied; pass it
+                explicitly on every tenant-scoped query path.
             **kwargs: Additional args for base retriever
 
         Returns:
@@ -1018,7 +1023,7 @@ class TrustAwareRetriever:
         for doc in raw_docs:
             doc_id, content, similarity, metadata = self._extract_doc_info(doc)
 
-            # Schneider Layer 3 — tenant isolation. Drop any doc tagged to a
+            # Layer 3 — tenant isolation. Drop any doc tagged to a
             # different tenant before any scoring; a cross-tenant doc must
             # never influence retrieval ranking, statistics, or anomaly
             # detection. Untagged docs (metadata.tenant_id is None) are
@@ -1174,12 +1179,12 @@ class TrustAwareRetriever:
     def reinforce(self, doc_id: str, validated_at: Optional[Any] = None) -> None:
         """Mark a memory as re-validated, resetting its trust-decay clock.
 
-        Schneider: *"information that has not been reinforced or recently
-        validated"* should decay faster than information that has. The
-        inverse — explicit re-validation — should reset the decay timer so
-        a still-correct, still-trusted memory keeps its weight. The
-        original `created_at` stays in metadata for forensics; only the
-        decay anchor moves.
+        Information that has not been reinforced or recently
+        validated should decay faster than information that has. The
+        inverse — explicit re-validation — should reset the decay
+        timer so a still-correct, still-trusted memory keeps its
+        weight. The original `created_at` stays in metadata for
+        forensics; only the decay anchor moves.
 
         Args:
             doc_id: The retrieval id of the memory being re-validated.

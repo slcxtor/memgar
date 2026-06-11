@@ -4,11 +4,11 @@ Memgar Domain-Aware Anomaly Detection
 
 Detects content that is inconsistent with an agent's declared domain.
 
-Schneider (2026):
-    "Anomaly detection flags content that deviates from expected patterns.
-     If your agent processes financial reports, a document that suddenly
-     discusses system configuration is anomalous regardless of whether
-     it contains obvious injection signatures."
+Content whose topic falls outside the agent's expected domain is itself
+a suspicion signal, regardless of whether it matches any known threat
+pattern. A financial-reporting agent that suddenly receives system
+configuration text is anomalous even when no injection signature fires;
+classical pattern-based detectors miss that whole class of attack.
 
 Problem:
     A financial agent receiving network firewall rules is not necessarily

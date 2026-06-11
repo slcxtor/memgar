@@ -161,10 +161,11 @@ class CorrelationDetector:
         causal_chain_threshold: int = 2,
         low_trust_threshold: float = 0.3,
         low_trust_burst: int = 4,
-        # Schneider: "inter-agent communication represents a propagation path"
-        # — same/similar content surfacing on multiple agents within a short
-        # window is a strong indicator of a poisoned source feeding the
-        # multi-agent system. Defaults sized for production fan-out.
+        # Inter-agent communication is itself a propagation path for
+        # poisoning: the same or similar content surfacing on multiple
+        # agents within a short window is a strong indicator of a
+        # shared upstream source that has been compromised. Defaults
+        # sized for production fan-out.
         cross_agent_window_size: int = 200,
         cross_agent_window_secs: float = 1800.0,
         cross_agent_min_agents: int = 3,
@@ -252,10 +253,11 @@ class CorrelationDetector:
     ) -> None:
         """Detect the same/similar payload propagating across multiple agents.
 
-        Schneider, on multi-agent systems: *"a poisoned agent can propagate
-        corruption through inter-agent communication"*. We flag when the
-        current entry's token set has Jaccard similarity >= threshold with
-        recent entries from N or more *distinct* other agents.
+        In multi-agent systems a single poisoned agent can propagate
+        corruption to its peers through inter-agent communication. We
+        flag when the current entry's token set has Jaccard similarity
+        >= threshold with recent entries from N or more *distinct*
+        other agents.
         """
         if not current.tokens or len(self._global_window) < 2:
             return

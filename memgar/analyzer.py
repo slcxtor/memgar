@@ -467,7 +467,7 @@ DANGER_OVERRIDE_PATTERNS = [
     r"(?i)treatment\s+memo\s*:\s*.{0,30}(should\s+not|suppress)",
     r"(?i)contraindicated.{0,20}(suppress|hide|disable)",
 
-    # NEW: Schneider Layer Bypass (Feb 2026)
+    # NEW: Defense-layer bypass (Feb 2026)
     r"(?i)provenance\s+override\s*:",
     r"(?i)retrieval\s+weight\s*:\s*boost",
     r"(?i)baseline\s+update\s*:\s*.{0,30}adjust",
@@ -1352,17 +1352,17 @@ class Analyzer:
             except Exception:
                 pass
 
-        # Schneider Layer 2 — Auto-provenance tagging (default ON). Every
-        # analyzed MemoryEntry gains a provenance dict in entry.metadata
-        # recording the four things Schneider names: source (type+id),
-        # creation time, session context, and trust+risk score. Stored as
+        # Layer 2 — Auto-provenance tagging (default ON). Every analyzed
+        # MemoryEntry gains a provenance dict in entry.metadata recording
+        # the four chain-of-custody fields: source (type+id), creation
+        # time, session context, and trust+risk score. Stored as
         # entry.metadata['provenance'] so downstream persistence layers
         # (MemoryLedger, MemoryStore) can index/audit by provenance.
         # Lightweight: ~10μs per analyze (sha256 + 2 timestamps).
         self._auto_provenance: bool = bool(auto_provenance)
 
-        # Schneider Layer 2 — MINJA Compound Detection (default ON). Goes
-        # beyond single-pattern matching: counts bridging steps, indication
+        # Layer 2 — MINJA Compound Detection (default ON). Goes beyond
+        # single-pattern matching: counts bridging steps, indication
         # prompts, and progressive-shortening density signatures. Catches
         # MINJA-style attacks where each individual segment looks innocent
         # but the composition is malicious — exactly the gap Layer 1 regex
@@ -1375,12 +1375,12 @@ class Analyzer:
             except Exception as exc:
                 logger.warning("Analyzer: minja_detector init failed (%s)", exc)
 
-        # Schneider Layer 4 — Circuit Breaker. Opt-in (default False) because
+        # Layer 4 — Circuit Breaker. Opt-in (default False) because
         # Analyzer is a stateless content scorer reused across many requests;
         # a global breaker on the scorer would trip under any sustained
-        # adversarial workload (load tests, busy SOCs). For Schneider-aligned
-        # halting at the operator level use MemgarDefensePipeline (orchestrator)
-        # — or pass `circuit_breaker=True` to wire it into this Analyzer with
+        # adversarial workload (load tests, busy SOCs). For operator-level
+        # halting use MemgarDefensePipeline (orchestrator) — or pass
+        # `circuit_breaker=True` to wire it into this Analyzer with
         # production-friendly defaults (threshold=100 weighted blocks / 60s).
         # Accepts bool (auto-create with defaults) or a configured instance.
         self._circuit_breaker: Any = None
@@ -1596,10 +1596,11 @@ class Analyzer:
         from memgar.observability.tracing import get_tracer
         tracer = get_tracer()
 
-        # Schneider Layer 4 — Circuit breaker pre-check. If the breaker has
-        # tripped (too many threats in window), halt before any analysis to
-        # force operator intervention. Schneider: "automatically halt agent
-        # operations when anomalies are detected".
+        # Layer 4 — Circuit breaker pre-check. If the breaker has tripped
+        # (too many threats in window), halt the call before any layer
+        # runs so a tripped breaker is honored even on the very next
+        # request — that's the only way to force operator intervention
+        # before more poisoned content reaches downstream memory.
         if self._circuit_breaker is not None and self._circuit_breaker.is_tripped:
             from memgar.circuit_breaker import AgentHaltedException
             raise AgentHaltedException(
@@ -1998,17 +1999,17 @@ class Analyzer:
                 )
                 result.layers_used = list(result.layers_used) + ["fail_close"]
 
-        # Schneider Layer 2 — Auto-provenance tag. Stamp the entry with the
-        # four Schneider-mandated fields so downstream persistence (ledger,
-        # memory_store) carries full chain-of-custody. Source + time +
-        # session + trust/risk. Content-hash binds it for tamper detection.
+        # Layer 2 — Auto-provenance tag. Stamp the entry with the four
+        # chain-of-custody fields so downstream persistence (ledger,
+        # memory_store) carries it forward. Source + time + session +
+        # trust/risk. Content-hash binds it for tamper detection.
         if self._auto_provenance and entry.metadata is not None:
             try:
                 entry.metadata.setdefault("provenance", self._build_provenance(entry, result))
             except Exception:
                 pass
 
-        # Schneider Layer 4 — Record into circuit breaker on BLOCK only.
+        # Layer 4 — Record into circuit breaker on BLOCK only.
         # Recording every detected threat (even on ALLOW) would trip the
         # breaker on routine pattern matches against benign content; we only
         # want it to fire on actual blocks (the operator-visible threat rate).
@@ -2173,7 +2174,7 @@ class Analyzer:
             threats.append(fuzzy_threat)
             layers_used.append("fuzzy_matching")
 
-        # Schneider Layer 2 — MINJA compound detection (bridging + indication
+        # Layer 2 — MINJA compound detection (bridging + indication
         # + progressive-shortening density). Each pattern alone may look
         # innocent; the COMBINATION reveals MINJA intent. Adds a single
         # ThreatMatch when the compound score crosses ~30.
@@ -2776,13 +2777,13 @@ class Analyzer:
         return "\n".join(lines)
 
     def _build_provenance(self, entry: MemoryEntry, result: AnalysisResult) -> dict[str, Any]:
-        """Build a Schneider-aligned provenance dict for an analyzed entry.
+        """Build a chain-of-custody provenance dict for an analyzed entry.
 
-        Records the four fields Schneider names as the chain-of-custody
-        foundation: source (type + id), creation time, session context,
-        and trust + risk score. The content hash binds the entry to the
-        exact bytes that were analyzed so any later tampering is
-        detectable by recomputing and comparing.
+        Records the four fields that form the chain-of-custody foundation:
+        source (type + id), creation time, session context, and trust +
+        risk score. The content hash binds the entry to the exact bytes
+        that were analyzed so any later tampering is detectable by
+        recomputing and comparing.
         """
         import hashlib
         from datetime import datetime, timezone
@@ -2806,7 +2807,7 @@ class Analyzer:
             "decision": result.decision.value,
             "content_sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
             "content_length": len(content),
-            "schneider_layer": 2,
+            "defense_tier": "sanitization",
         }
 
     def _degraded_layers(self) -> list[str]:
@@ -2882,12 +2883,12 @@ class Analyzer:
             "n_agents": len(self._baselines),
         }
 
-        # Layer 2 (Schneider) — MINJA compound detector
+        # Layer 2 — MINJA compound detector
         layers["minja_detector"] = {
             "status": "ok" if self._minja_detector is not None else "disabled",
         }
 
-        # Layer 2 (Schneider) — Auto-provenance tagging
+        # Layer 2 — Auto-provenance tagging
         layers["auto_provenance"] = {
             "status": "ok" if self._auto_provenance else "disabled",
         }

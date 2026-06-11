@@ -5,12 +5,13 @@ Memgar Write-Ahead Validator (Guardian Pattern)
 Katman 2 tamamlayıcısı — bir hafıza girdisi kalıcı depolamaya yazılmadan
 independent validation layer that runs before memory persistence.
 
-Schneider (2026): "Write-ahead validation uses a separate, smaller model
-to evaluate proposed memory updates before they're committed. The validator
-receives the proposed entry and asks: Does this look like legitimate learned
-context, or does it contain elements that could influence future agent
-behavior in unintended ways? This guardian pattern adds latency but catches
-attacks that evaded input moderation."
+A smaller, faster model evaluates each proposed memory write before it
+hits the ledger. The guardian asks a single question: does this look
+like legitimate learned context, or does it contain elements that
+could steer future agent behavior in unintended ways? The pattern adds
+latency to every write but catches attacks that slipped past input
+moderation — particularly compound ones that look benign one piece at
+a time.
 
 Neden kritik — MINJA sorunu:
     MINJA saldırısı üç aşamada çalışır:
@@ -617,9 +618,10 @@ class SemanticGuardian:
     """
     LLM-backed semantic intent classifier.
 
-    Schneider: "The validator asks: Does this look like legitimate learned
-    context, or does it contain elements that could influence future agent
-    behavior in unintended ways?"
+    The guardian asks one question per write: does this look like
+    legitimate learned context, or could it influence future agent
+    behavior in unintended ways? An LLM is the right tool for that
+    judgement because the answer hinges on intent, not surface form.
 
     Küçük, hızlı bir model kullanır (haiku-class).
     Opsiyonel — yoksa diğer checker'lar devreye girer.
@@ -939,14 +941,14 @@ class MemoryWriteGateway:
     ) -> None:
         """
         ...
-        confirm_all_writes — Schneider's immediate-steps list explicitly names
-            "user confirmation for memory writes". When True, EVERY write
-            (including APPROVE outcomes) is gated through HITL at the
-            `hitl_confirm_risk_level` (default "medium") before committing
-            to the ledger. Requires `hitl` to be set; ignored otherwise.
-            Default False — most deployments accept the validator's verdict
-            on APPROVE; turn this on for high-stakes domains (clinical
-            memory, financial agents, persistent-memory chatbots).
+        confirm_all_writes — when True, EVERY write (including APPROVE
+            outcomes) is gated through HITL at the `hitl_confirm_risk_level`
+            (default "medium") before committing to the ledger. Requires
+            `hitl` to be set; ignored otherwise. Default False — most
+            deployments accept the validator's verdict on APPROVE; turn
+            this on for high-stakes domains (clinical memory, financial
+            agents, persistent-memory chatbots) where a human must sign
+            off on every memory mutation.
         """
         self._ledger         = ledger
         self._validator      = validator or WriteAheadValidator(
@@ -1062,8 +1064,8 @@ class MemoryWriteGateway:
                 )
             # else: no HITL, raise_on_q=False → write with quarantine marker
 
-        # 3b. Schneider "user confirmation for memory writes" — when
-        # confirm_all_writes=True, gate APPROVE outcomes through HITL too.
+        # 3b. Confirm-all-writes gate — when confirm_all_writes=True,
+        # route APPROVE outcomes through HITL too, not just REJECT/QUARANTINE.
         # Only reachable after a non-rejecting validator outcome AND when a
         # HITL backend is configured. Quarantined-then-HITL-approved writes
         # have already passed through HITL above, so skip them here.
