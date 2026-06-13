@@ -13,6 +13,24 @@ PersistentMemoryStore (disk-backed):
 
 bulk_scan():
     One-shot function: scan an arbitrary list of MemoryEntry objects
+
+Module family — which memory_*.py do I need?
+--------------------------------------------
+
+   memory_store          ← (THIS FILE) Simple K-V holder for session/retroactive scans.
+   secure_memory_store   Production write boundary — DLP + policy + audit on top of this.
+   memory_guard          Layer 2 façade (sanitize + score + provenance) before any write.
+   memory_integrity      Per-entry hash baselines + rollback for tamper detection.
+   memory_vault          Multi-entry signed snapshots + Merkle proofs (whole-store integrity).
+   memory_ledger         Append-only tamper-evident hash chain (audit trail).
+
+Quick picker:
+  - I want to STORE entries during a session            → THIS FILE
+  - I want DLP/policy on a production write path        → secure_memory_store
+  - I want to SANITIZE+VALIDATE content before storing  → memory_guard
+  - I want per-entry tamper detection + rollback        → memory_integrity
+  - I want signed snapshots of the whole store          → memory_vault
+  - I want an immutable audit trail of every write      → memory_ledger
     (e.g. loaded from your database) and return all detected threats.
 
 Usage — persistent store (survives restart):

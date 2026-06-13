@@ -5,6 +5,27 @@ Provides snapshot, hash-baseline verification, and rollback for MemoryEntry
 objects so a compromised/poisoned entry can be detected and reverted to its
 last known-good state.
 
+Module family — which memory_*.py do I need?
+--------------------------------------------
+
+   memory_integrity      ← (THIS FILE) Per-entry hash baselines + rollback.
+                           Catches tampering at the single-entry granularity.
+   memory_vault          Multi-entry signed snapshots + Merkle proofs over the WHOLE store.
+                           Use this when you need to prove an entire snapshot is
+                           untampered, not just one entry.
+   memory_ledger         Append-only tamper-evident hash chain (cross-entry audit trail).
+   memory_store          Simple K-V holder for session/retroactive scans.
+   secure_memory_store   Production write boundary — DLP + policy + audit.
+   memory_guard          Layer 2 façade (sanitize + score + provenance) before any write.
+
+Quick picker:
+  - I want per-entry tamper detection + rollback        → THIS FILE
+  - I want signed snapshots of the whole store          → memory_vault
+  - I want an immutable audit trail of every write      → memory_ledger
+  - I want to STORE entries during a session            → memory_store
+  - I want DLP/policy on a production write path        → secure_memory_store
+  - I want to SANITIZE+VALIDATE content before storing  → memory_guard
+
 Usage
 -----
     from memgar import Analyzer, MemoryEntry

@@ -9,6 +9,26 @@ Each entry in the ledger is cryptographically chained to the previous one
 poisoning attack, silent corruption, or unauthorized write — breaks the
 chain and is immediately detectable.
 
+Module family — which memory_*.py do I need?
+--------------------------------------------
+
+   memory_ledger         ← (THIS FILE) Append-only tamper-evident hash chain over
+                           every write — cross-entry audit trail. Pluggable JSON /
+                           SQLite / in-memory backends.
+   memory_integrity      Per-entry hash baselines + rollback (single-entry granularity).
+   memory_vault          Multi-entry signed snapshots + Merkle proofs (whole-store).
+   memory_store          Simple K-V holder for session/retroactive scans.
+   secure_memory_store   Production write boundary — DLP + policy + audit.
+   memory_guard          Layer 2 façade (sanitize + score + provenance) before any write.
+
+Quick picker:
+  - I want an immutable audit trail of every write      → THIS FILE
+  - I want per-entry tamper detection + rollback        → memory_integrity
+  - I want signed snapshots of the whole store          → memory_vault
+  - I want to STORE entries during a session            → memory_store
+  - I want DLP/policy on a production write path        → secure_memory_store
+  - I want to SANITIZE+VALIDATE content before storing  → memory_guard
+
 Key capabilities:
 
     MemoryLedger        — append-only hash chain for memory entries
