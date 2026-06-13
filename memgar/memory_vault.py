@@ -4,6 +4,26 @@ MemoryVault - signed memory snapshots with diff and rollback.
 Snapshots bind content, source/provenance metadata, and snapshot manifest fields
 into integrity checks and Ed25519 signatures. This prevents attackers from
 changing metadata or provenance while preserving content hashes.
+
+Module family — which memory_*.py do I need?
+--------------------------------------------
+
+   memory_vault          ← (THIS FILE) Multi-entry signed snapshots + Merkle proofs
+                           over the WHOLE store. Use for periodic "the store as a
+                           whole is untampered" attestation.
+   memory_integrity      Per-entry hash baselines + rollback (single-entry granularity).
+   memory_ledger         Append-only tamper-evident hash chain (cross-entry audit trail).
+   memory_store          Simple K-V holder for session/retroactive scans.
+   secure_memory_store   Production write boundary — DLP + policy + audit.
+   memory_guard          Layer 2 façade (sanitize + score + provenance) before any write.
+
+Quick picker:
+  - I want signed snapshots of the whole store          → THIS FILE
+  - I want per-entry tamper detection + rollback        → memory_integrity
+  - I want an immutable audit trail of every write      → memory_ledger
+  - I want to STORE entries during a session            → memory_store
+  - I want DLP/policy on a production write path        → secure_memory_store
+  - I want to SANITIZE+VALIDATE content before storing  → memory_guard
 """
 
 from __future__ import annotations

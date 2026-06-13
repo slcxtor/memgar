@@ -91,6 +91,11 @@ jobs:
       - security-regression
       - red-team-offline
     if: failure()
+    # Hoist the optional webhook secret to job-level env so step-level
+    # `if:` conditions can read it (`secrets.*` is not accessible inside
+    # step `if:` — env context is).
+    env:
+      MEMGAR_SECURITY_ALERT_WEBHOOK: ${{ secrets.MEMGAR_SECURITY_ALERT_WEBHOOK }}
 
     steps:
       - name: Emit failure summary
@@ -99,9 +104,7 @@ jobs:
           echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - name: Send webhook alert (optional)
-        if: ${{ secrets.MEMGAR_SECURITY_ALERT_WEBHOOK != '' }}
-        env:
-          MEMGAR_SECURITY_ALERT_WEBHOOK: ${{ secrets.MEMGAR_SECURITY_ALERT_WEBHOOK }}
+        if: ${{ env.MEMGAR_SECURITY_ALERT_WEBHOOK != '' }}
         run: |
           curl -sS -X POST "$MEMGAR_SECURITY_ALERT_WEBHOOK" \
             -H "Content-Type: application/json" \

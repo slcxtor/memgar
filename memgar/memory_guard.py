@@ -11,6 +11,25 @@ Main entry point for full Layer 2 defense — covers the four moves you
 need before any content is allowed into long-term memory (input
 moderation, sanitization, provenance tagging, write-ahead validation).
 
+Module family — which memory_*.py do I need?
+--------------------------------------------
+
+   memory_guard          ← (THIS FILE) Layer 2 façade: sanitize + score + provenance
+                           before any write. Use as the single intake checkpoint.
+   memory_store          Simple K-V holder for session/retroactive scans.
+   secure_memory_store   Production write boundary — DLP + policy + audit on top of memory_store.
+   memory_integrity      Per-entry hash baselines + rollback for tamper detection.
+   memory_vault          Multi-entry signed snapshots + Merkle proofs (whole-store integrity).
+   memory_ledger         Append-only tamper-evident hash chain (audit trail).
+
+Quick picker:
+  - I want to SANITIZE+VALIDATE content before storing  → THIS FILE
+  - I want to STORE entries during a session            → memory_store
+  - I want DLP/policy on a production write path        → secure_memory_store
+  - I want per-entry tamper detection + rollback        → memory_integrity
+  - I want signed snapshots of the whole store          → memory_vault
+  - I want an immutable audit trail of every write      → memory_ledger
+
 Example:
     guard = MemoryGuard(session_id="session_123")
 

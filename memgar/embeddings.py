@@ -2,12 +2,40 @@
 Memgar Embeddings Analyzer
 ==========================
 
-Semantic similarity analysis using sentence embeddings.
+Sentence-transformer threat detection — original public API and the
+canonical home of the ``THREAT_EXAMPLES`` corpus that downstream layers
+share.
 
-Uses sentence-transformers for local, offline threat detection.
+Which class should I use?
+-------------------------
+
+This module ships **two** entry points that look similar at first
+glance. They are not interchangeable; pick by what the caller needs.
+
+``SimilarityLayer`` (canonical, *use this*)
+    Lives in :mod:`memgar.similarity_layer`. Powers the analyzer's
+    Layer 2.5 cosine check. Exposes a low-level
+    :meth:`~memgar.similarity_layer.SimilarityLayer.score` /
+    :meth:`~memgar.similarity_layer.SimilarityLayer.encode` API,
+    plus a process-wide LRU cache so repeated encodings are cheap.
+    This is what every Memgar pipeline uses internally — start here.
+
+``EmbeddingAnalyzer`` (legacy, opt-in higher-level wrapper)
+    Defined below. Wraps the same model with a higher-level
+    :meth:`~EmbeddingAnalyzer.analyze` decision (``is_threat`` /
+    ``category``) plus batching helpers. Predates ``SimilarityLayer``
+    and is kept for backward compatibility with code that already
+    imports it. Emits :class:`DeprecationWarning` on construction so
+    new integrations see the canonical class. Slated for removal in
+    Memgar 2.0; new code should call :class:`SimilarityLayer` directly.
+
+Both load the same ``all-MiniLM-L6-v2`` model and the same
+``THREAT_EXAMPLES`` dict — there is no detection-quality difference,
+only an API-altitude difference.
 """
 
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -372,7 +400,21 @@ class EmbeddingAnalyzer:
             threat_threshold: Similarity score to consider as threat (0-1)
             quarantine_threshold: Similarity score for quarantine (0-1)
             custom_examples: Additional threat examples by category
+
+        .. deprecated:: 1.4.0
+            Use :class:`memgar.similarity_layer.SimilarityLayer` instead.
+            It powers every Memgar pipeline today and exposes the same
+            embedding model with a low-level cached API.
+            ``EmbeddingAnalyzer`` will be removed in Memgar 2.0.
         """
+        warnings.warn(
+            "EmbeddingAnalyzer is deprecated and will be removed in Memgar 2.0. "
+            "Use memgar.similarity_layer.SimilarityLayer for the same model "
+            "with a cached, lower-level API. See memgar/embeddings.py module "
+            "docstring for the migration guide.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.threat_threshold = threat_threshold
         self.quarantine_threshold = quarantine_threshold
         self._model = None

@@ -203,7 +203,7 @@ ignore = [
 # Availability-probe modules: a bare `import optional_dep` is the documented way
 # these detect whether an optional backend is installed; F401 is the intent.
 "memgar/embeddings.py" = ["F401"]
-"memgar/cli.py" = ["F401"]
+"memgar/cli/__init__.py" = ["F401"]
 "memgar/frameworks/langchain_deep.py" = ["F401"]
 "memgar/frameworks/llamaindex_deep.py" = ["F401"]
 "memgar/integrations/mcp_server.py" = ["F401"]

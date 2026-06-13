@@ -14,6 +14,25 @@ backend and enforces the same pipeline before persistence:
 Reads, retrieval chunks, and tool results can also be routed through the same
 runtime enforcer before they enter model context.
 
+Module family — which memory_*.py do I need?
+--------------------------------------------
+
+   secure_memory_store   ← (THIS FILE) Production write boundary — DLP + policy + audit
+                           wrapper around any backend.
+   memory_store          Simple K-V holder for session/retroactive scans (the backend).
+   memory_guard          Layer 2 façade (sanitize + score + provenance) before any write.
+   memory_integrity      Per-entry hash baselines + rollback for tamper detection.
+   memory_vault          Multi-entry signed snapshots + Merkle proofs (whole-store integrity).
+   memory_ledger         Append-only tamper-evident hash chain (audit trail).
+
+Quick picker:
+  - I want DLP/policy on a production write path        → THIS FILE
+  - I want to STORE entries during a session            → memory_store
+  - I want to SANITIZE+VALIDATE content before storing  → memory_guard
+  - I want per-entry tamper detection + rollback        → memory_integrity
+  - I want signed snapshots of the whole store          → memory_vault
+  - I want an immutable audit trail of every write      → memory_ledger
+
 Direct writes to the wrapped backend bypass this protection. Production agent
 integrations should expose only SecureMemoryStore to application code and keep
 the raw backend private. Raw backend access is disabled by default and must be

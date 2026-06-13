@@ -46,6 +46,11 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: write       # Needed to commit updated model artifact
+    # Hoist the optional LLM API key to job-level env so step-level `if:`
+    # conditions can branch on it (`secrets.*` is not accessible inside
+    # step `if:` — env context is).
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
     steps:
       - name: Checkout main
@@ -73,9 +78,7 @@ jobs:
         if: >-
           (github.event_name == 'schedule' ||
            (github.event_name == 'workflow_dispatch' && github.event.inputs.use_llm == 'true'))
-          && secrets.ANTHROPIC_API_KEY != ''
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          && env.ANTHROPIC_API_KEY != ''
         run: |
           N_SEEDS="${{ github.event.inputs.n_seeds || '20' }}"
           N_VARIANTS="${{ github.event.inputs.n_variants || '8' }}"
