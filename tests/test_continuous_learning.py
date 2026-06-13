@@ -371,44 +371,15 @@ class TestVersionManagement:
 
 
 class TestContinuousLearningIntegration:
-    """Test integration with ML detector"""
-    
-    def test_cl_with_real_detector(self):
-        """Test CL system with actual ML detector"""
-        try:
-            import os
+    """Test integration with ML detector.
 
-            from memgar.ml_semantic_detector import MLSemanticDetector
-            from ml.continuous_learning import SmartDetector
-            
-            # Find model
-            model_paths = [
-                'ml/artifacts/gradient_boost_model.pkl',
-                'gradient_boost_model.pkl',
-            ]
-            
-            model_path = None
-            for path in model_paths:
-                if os.path.exists(path):
-                    model_path = path
-                    break
-            
-            if not model_path:
-                pytest.skip("Model file not found")
-            
-            # Create smart detector
-            detector = SmartDetector(
-                model_path=model_path,
-                enable_learning=False
-            )
-            
-            # Test detection
-            result = detector.detect("test input")
-            
-            assert result is not None
-            assert hasattr(result, 'attack_probability')
-        except ImportError:
-            pytest.skip("Dependencies not available")
+    The `test_cl_with_real_detector` exercise was removed alongside
+    ``memgar.ml_semantic_detector`` — the only path that referenced
+    `MLSemanticDetector`. Continuous-learning integration is now exercised
+    via `SmartDetector` directly in `test_continuous_learning.py` further
+    above; reintroduce a dedicated case here only if a new ML detector
+    enters the production path.
+    """
 
 
 class TestContinuousLearningPerformance:
