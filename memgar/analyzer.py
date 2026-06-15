@@ -745,17 +745,65 @@ def _decode_leet_speak(text: str) -> str:
     leet_map = {"3": "e", "1": "i", "0": "o", "4": "a", "5": "s", "7": "t",
                 "@": "a", "$": "s"}
 
+    def _looks_like_email(tok: str) -> bool:
+        # token contains "@" followed by domain-shaped content. Decoding "@"
+        # here would obliterate email-exfiltration patterns that rely on
+        # detecting addresses like "@verify-me.example" — far worse than
+        # missing the "@"-as-"a" obfuscation on a single word.
+        if "@" not in tok:
+            return False
+        local, _, rest = tok.partition("@")
+        return bool(local) and "." in rest
+
     def _decode_token(tok: str) -> str:
-        # A token is a "leet word" only if it already contains an ASCII
-        # letter; then every leet glyph inside it is decoded
-        # ("4550c14t3d" -> "associated", "P4t13nt" -> "Patient",
-        # "$ystem" -> "system"). A token with no letters is a number /
-        # amount / ID ("30379", "4269", "$5000", "100%") and is preserved
-        # verbatim — decoding it would corrupt the numeric structure that
-        # patterns key on (e.g. EHR patient-ID remapping attacks).
-        if any(c.isascii() and c.isalpha() for c in tok):
-            return "".join(leet_map.get(c, c) for c in tok)
-        return tok
+        # Two-gate rule to recover leet words ("4550c14t3d" -> "associated",
+        # "P4t13nt" -> "Patient") without corrupting numeric structure
+        # ("30379" -> stays, "30379's" -> stays — only the possessive 's is
+        # alphabetic, the digit run is preserved):
+        #   1. The token must contain an ASCII letter at all (otherwise it
+        #      is a pure number / amount / ID — leave it alone).
+        #   2. A leet glyph is decoded only when adjacent to an ASCII
+        #      letter. Adjacency is computed against the CURRENT pass
+        #      output so a fixed-point iteration peels runs of leet glyphs
+        #      one neighbour at a time ("4550c..." -> "455oc..." ->
+        #      "45soc..." -> "4ssoc..." -> "assoc..."). Termination is
+        #      guaranteed: each pass either decodes at least one glyph or
+        #      stops the loop.
+        # Possessive-leet hand-fix: "30379'5" / "J0hn 5m1th'5" — a digit
+        # right after an apostrophe is, in real prose, almost always the
+        # possessive "s" leet-substituted. Resolve before the main rule so
+        # the trailing "'5" doesn't escape on no-letter / no-adjacent
+        # grounds. Same goes for "'0" -> "'o" (less common but cheap).
+        if "'" in tok:
+            tok = re.sub(r"'5\b", "'s", tok)
+            tok = re.sub(r"'0\b", "'o", tok)
+        if not any(c.isascii() and c.isalpha() for c in tok):
+            return tok
+        protect_at = _looks_like_email(tok)
+        cur = tok
+        for _ in range(len(tok)):  # at most one pass per character
+            n = len(cur)
+            out = []
+            changed = False
+            for i, c in enumerate(cur):
+                if c not in leet_map:
+                    out.append(c)
+                    continue
+                if c == "@" and protect_at:
+                    out.append(c)
+                    continue
+                prev_a = i > 0 and cur[i - 1].isascii() and cur[i - 1].isalpha()
+                next_a = i < n - 1 and cur[i + 1].isascii() and cur[i + 1].isalpha()
+                if prev_a or next_a:
+                    out.append(leet_map[c])
+                    changed = True
+                else:
+                    out.append(c)
+            nxt = "".join(out)
+            if not changed:
+                break
+            cur = nxt
+        return cur
 
     return re.sub(r"\S+", lambda m: _decode_token(m.group()), text)
 
