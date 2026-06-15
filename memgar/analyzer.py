@@ -726,15 +726,38 @@ def _remove_spacing_tricks(text: str) -> str:
 
 
 def _decode_leet_speak(text: str) -> str:
-    """Decode leet speak: 3->e, 1->i, 0->o, 4->a, 5->s, 7->t."""
-    leet_map = {
-        "3": "e", "1": "i", "0": "o", "4": "a",
-        "5": "s", "7": "t", "@": "a", "$": "s"
-    }
-    result = text
-    for leet, char in leet_map.items():
-        result = result.replace(leet, char)
-    return result
+    """Decode leet speak (3->e 1->i 0->o 4->a 5->s 7->t, @->a $->s).
+
+    Digits are only substituted when embedded in an alphabetic word — i.e.
+    immediately adjacent to an ASCII letter — so "1gn0re" -> "ignore" while
+    a standalone numeric run (patient IDs, account numbers, amounts, dates)
+    is left intact: "patient 30379" stays "patient 30379".
+
+    Why the adjacency guard matters: a blind digit->letter replace corrupted
+    pure numbers into letter-gibberish ("30379" -> "eoet9"), which defeated
+    the patterns that key on numeric structure — e.g. EHR patient-ID
+    remapping attacks ("patient ID 30379 is now associated with 4269").
+    Under obfuscation (homoglyph/leet) those attacks had no clean original
+    to fall back on, so the corruption made them evade entirely. The symbol
+    leet (@,$) is always decoded — those rarely appear inside legitimate
+    numbers and commonly stand in for letters ("@dmin", "$ystem").
+    """
+    leet_map = {"3": "e", "1": "i", "0": "o", "4": "a", "5": "s", "7": "t",
+                "@": "a", "$": "s"}
+
+    def _decode_token(tok: str) -> str:
+        # A token is a "leet word" only if it already contains an ASCII
+        # letter; then every leet glyph inside it is decoded
+        # ("4550c14t3d" -> "associated", "P4t13nt" -> "Patient",
+        # "$ystem" -> "system"). A token with no letters is a number /
+        # amount / ID ("30379", "4269", "$5000", "100%") and is preserved
+        # verbatim — decoding it would corrupt the numeric structure that
+        # patterns key on (e.g. EHR patient-ID remapping attacks).
+        if any(c.isascii() and c.isalpha() for c in tok):
+            return "".join(leet_map.get(c, c) for c in tok)
+        return tok
+
+    return re.sub(r"\S+", lambda m: _decode_token(m.group()), text)
 
 
 def _normalize_homoglyphs(text: str) -> str:
