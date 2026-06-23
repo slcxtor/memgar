@@ -18,10 +18,6 @@ from rich.table import Table
 from rich.text import Text
 
 from memgar.analyzer import Analyzer
-from memgar.models import Decision, Severity
-from memgar.patterns import PATTERNS, pattern_stats
-from memgar.scanner import Scanner
-
 from memgar.cli import main
 from memgar.cli._banner import (
     DECISION_STYLES,
@@ -30,6 +26,9 @@ from memgar.cli._banner import (
     console,
     print_banner,
 )
+from memgar.models import Decision, Severity
+from memgar.patterns import PATTERNS, pattern_stats
+from memgar.scanner import Scanner
 
 
 @main.command()
@@ -547,6 +546,7 @@ def check(content: str) -> None:
 @main.command()
 def version() -> None:
     """Show version and system information."""
+    from memgar import __version__
     print_banner()
     console.print(f"\n[bold]Version:[/bold] {__version__}")
     console.print(f"[bold]Patterns:[/bold] {len(PATTERNS)}")
