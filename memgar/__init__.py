@@ -575,6 +575,17 @@ from memgar.secure_embeddings import (
 )
 
 # Secure Retrieval Layer (v0.5.14)
+from memgar.secure_memory_store import (
+    DLPFinding,
+    DLPPattern,
+    DLPPolicy,
+    DLPRedactor,
+    DLPResult,
+    SecureMemoryBoundaryError,
+    SecureMemoryStore,
+    SecureMemoryStorePolicy,
+    SecureWriteResult,
+)
 from memgar.secure_retriever import (
     AnomalyEvent,
     AnomalyType,

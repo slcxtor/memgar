@@ -107,22 +107,33 @@ Provenance is attached to `entry.metadata['provenance']` automatically — sourc
 
 ## Secure memory write boundary
 
-For applications that need DLP, policy enforcement, and an audit ledger on every memory write:
+For applications that need DLP, policy enforcement, and a tamper-evident ledger on every memory write:
 
 ```python
-from memgar import SecureMemoryStore, MemoryGuard
+from memgar import MemoryGuard
 
 guard = MemoryGuard(session_id="session-123")
-store = SecureMemoryStore(backend_store=my_backend, guard=guard)
 
-result = store.write(content=untrusted_content, source_type="email")
+result = guard.process(content=untrusted_content, source_type="email")
 if result.allowed:
-    persist(result.safe_content)
+    persist(result.safe_content)              # sanitized text, provenance attached
 else:
-    quarantine(result.violations)
+    quarantine(result)                        # result.threats_detected, result.risk_score
 ```
 
-The store inspects, sanitizes, scores, and registers each write in a tamper-evident ledger before the backend ever sees it.
+`MemoryGuard.process()` runs the full Layer 2 path: sanitize → score → tag provenance → optional write-ahead validation. Return value carries the cleaned content, the trust score, and every threat that was matched.
+
+For a backend wrapper that adds DLP redaction, runtime policy enforcement, and ledger registration around any storage you already have:
+
+```python
+from memgar import SecureMemoryStore
+
+store = SecureMemoryStore(backend=my_backend, agent_id="agent-1")
+
+write_result = store.save(content=untrusted_content, source_type="email")
+if write_result.allowed:
+    pass                                       # already persisted to backend
+```
 
 ---
 
@@ -187,13 +198,14 @@ Opt-in capabilities:
 Drop-in adapters for memory-using agent frameworks:
 
 ```python
-# LangChain
-from memgar.integrations.langchain_rag import wrap_retriever
-safe_retriever = wrap_retriever(my_chain.retriever)
+# LangChain — wrap any retriever
+from memgar.integrations.langchain_rag import MemgarRetriever
+safe = MemgarRetriever(base_retriever=my_chain.retriever)
 
-# LlamaIndex
-from memgar.integrations.llamaindex_rag import wrap_query_engine
-safe_engine = wrap_query_engine(my_index.as_query_engine())
+# LlamaIndex — drop in as a node postprocessor
+from memgar.integrations.llamaindex_rag import MemgarNodePostprocessor
+postprocessor = MemgarNodePostprocessor()
+query_engine = my_index.as_query_engine(node_postprocessors=[postprocessor])
 
 # CrewAI / AutoGen / MCP — see memgar.integrations.*
 ```
