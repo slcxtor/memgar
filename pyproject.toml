@@ -155,11 +155,17 @@ Changelog = "https://github.com/slcxtor/memgar/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["memgar"]
+# Ship the bundled signed feed alongside the package so a fresh install
+# has a local fallback when the remote feed at GitHub Releases is
+# unavailable or hasn't been published yet.
+[tool.hatch.build.targets.wheel.force-include]
+"feeds/memgar-feed.json.gz" = "memgar/data/memgar-feed.json.gz"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/memgar",
     "/tests",
+    "/feeds",
     "/README.md",
     "/LICENSE",
     "/CHANGELOG.md",
