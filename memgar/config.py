@@ -320,9 +320,17 @@ class CloudConfig:
 
 @dataclass
 class FeedConfig:
-    """Threat intelligence feed configuration."""
+    """Threat intelligence feed configuration.
 
-    enabled: bool = True
+    Default is OFF — memgar ships 801+ patterns bundled inside the package
+    (``memgar/data/patterns.yaml``), and that's enough for every default
+    code path. The remote feed is for operators who want to receive new
+    patterns between releases via a signed GitHub Releases bundle. Enable
+    it explicitly when a signed feed bundle has been published for the
+    repo (``MEMGAR_FEED_ENABLED=true`` or ``cfg.feed.enabled = True``).
+    """
+
+    enabled: bool = False
     auto_sync: bool = True
     max_age_days: int = 7
     github_repo: str = "slcxtor/memgar"
