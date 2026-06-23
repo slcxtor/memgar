@@ -3,32 +3,16 @@
 from __future__ import annotations
 
 import json
-import os
-import sys
-import time
 from pathlib import Path
-from typing import Optional
 
 import click
 from rich import box
-from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-from rich.text import Text
-
-from memgar.analyzer import Analyzer
-from memgar.models import Decision, Severity
-from memgar.patterns import PATTERNS, pattern_stats
-from memgar.scanner import Scanner
 
 from memgar.cli import main
 from memgar.cli._banner import (
-    DECISION_STYLES,
-    SEVERITY_COLORS,
-    SEVERITY_ICONS,
     console,
-    print_banner,
 )
 
 
