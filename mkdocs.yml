@@ -9,6 +9,7 @@ copyright: MIT licensed. Built by the memgar community.
 
 theme:
   name: material
+  custom_dir: overrides
   font:
     text: Inter
     code: Geist Mono

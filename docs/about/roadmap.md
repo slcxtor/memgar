@@ -61,8 +61,9 @@ Open questions we'd love help on:
 
 These were considered for v1.0 and explicitly postponed:
 
-- Pre-shipped transformer model artifact (intentional — the default
-  training data overfits; see [training docs](../development/training.md))
+- Pre-shipped transformer model artifact (removed in v1.4.0 — the
+  bundled artifact over-fired on prosaic memory writes and added no
+  recall on the gold corpus)
 - Closed-source pattern packs
 - Auto-learned source trust
 - Telemetry phoning home
