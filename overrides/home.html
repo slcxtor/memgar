@@ -152,16 +152,19 @@ guard.<span class="fn">analyze</span>(<span class="fn">MemoryEntry</span>(conten
     <span class="mg-eyebrow">what the default analyzer does</span>
     <h2 class="mg-h2">layered inspection on every memory entry</h2>
     <p class="mg-psub">Each layer runs independently and contributes to a unified risk score.
-      All layers below ship default-on. LLM-based semantic analysis is opt-in.</p>
+      Pattern, similarity, MINJA, and provenance are <span style="color:var(--mg-green)">default-on</span>.
+      Trust and behavioral activate <span style="color:var(--mg-cyan)">automatically</span> once a source is
+      registered or an agent warms up. LLM analysis and integrity snapshots are
+      <span style="color:var(--mg-amber)">opt-in</span>.</p>
     <div class="mg-layers">
-      <div class="mg-layer"><span class="ln">LAYER 1</span><div><h3>Pattern Matching</h3><p>801 regex + keyword rules. Obfuscation-normalized (homoglyph, leetspeak, zero-width, NFKD, base64).</p></div><span class="lat">&lt;1 ms</span></div>
-      <div class="mg-layer"><span class="ln">LAYER 2.5</span><div><h3>Semantic Similarity</h3><p>sentence-transformer cosine against a curated attack-paraphrase corpus. Catches paraphrases regex misses.</p></div><span class="lat">~5 ms</span></div>
-      <div class="mg-layer"><span class="ln">LAYER 2</span><div><h3>MINJA Compound</h3><p>Bridging step + indication prompt + progressive-shortening density. Catches attacks benign one piece at a time.</p></div><span class="lat">&lt;1 ms</span></div>
-      <div class="mg-layer"><span class="ln">LAYER 2</span><div><h3>Auto-Provenance</h3><p>Source, time, session, initial trust, and SHA-256 content hash on every analyzed entry.</p></div><span class="lat">&lt;1 ms</span></div>
-      <div class="mg-layer"><span class="ln">LAYER 3</span><div><h3>Trust-Aware Scoring</h3><p>Per-source trust adjusts risk. Trust decays over time (180-day half-life) unless explicitly reinforced.</p></div><span class="lat">&lt;0.1 ms</span></div>
-      <div class="mg-layer"><span class="ln">LAYER 4</span><div><h3>Behavioral Baseline</h3><p>Per-agent EWM z-score detects drift. Cross-agent propagation flag fires when one payload reaches multiple agents.</p></div><span class="lat">&lt;1 ms</span></div>
+      <div class="mg-layer"><span class="ln">LAYER 1</span><div><h3>Pattern Matching <span style="color:var(--mg-green)">· default</span></h3><p>801 regex + keyword rules. Obfuscation-normalized (homoglyph, leetspeak, zero-width, NFKD, base64).</p></div><span class="lat">&lt;1 ms</span></div>
+      <div class="mg-layer"><span class="ln">LAYER 2.5</span><div><h3>Semantic Similarity <span style="color:var(--mg-green)">· default</span></h3><p>sentence-transformer cosine against a curated attack-paraphrase corpus. Catches paraphrases regex misses.</p></div><span class="lat">~5 ms</span></div>
+      <div class="mg-layer"><span class="ln">LAYER 2</span><div><h3>MINJA Compound <span style="color:var(--mg-green)">· default</span></h3><p>Bridging step + indication prompt + progressive-shortening density. Catches attacks benign one piece at a time.</p></div><span class="lat">&lt;1 ms</span></div>
+      <div class="mg-layer"><span class="ln">LAYER 2</span><div><h3>Auto-Provenance <span style="color:var(--mg-green)">· default</span></h3><p>Source, time, session, initial trust, and SHA-256 content hash on every analyzed entry.</p></div><span class="lat">&lt;1 ms</span></div>
+      <div class="mg-layer"><span class="ln">LAYER 3</span><div><h3>Trust-Aware Scoring <span style="color:var(--mg-cyan)">· auto</span></h3><p>Activates once a source is registered. Per-source trust adjusts risk; trust decays over time (180-day half-life) unless reinforced.</p></div><span class="lat">&lt;0.1 ms</span></div>
+      <div class="mg-layer"><span class="ln">LAYER 4</span><div><h3>Behavioral Baseline <span style="color:var(--mg-cyan)">· auto</span></h3><p>Per-agent EWM z-score after warm-up. Cross-agent propagation flag fires when one payload reaches multiple agents.</p></div><span class="lat">&lt;1 ms</span></div>
       <div class="mg-layer"><span class="ln">LAYER 2</span><div><h3>LLM Semantic <span style="color:var(--mg-amber)">· opt-in</span></h3><p>Optional analysis via Claude or OpenAI for ambiguous borderline cases. Uses your own provider key.</p></div><span class="lat" style="color:var(--mg-amber)">~200 ms</span></div>
-      <div class="mg-layer"><span class="ln">INTEGRITY</span><div><h3>Snapshot &amp; Rollback</h3><p>SHA-256 baselines per entry, periodic auditor, tamper-evident hash chain. Detect tampering, restore.</p></div><span class="lat">OWASP AMG</span></div>
+      <div class="mg-layer"><span class="ln">INTEGRITY</span><div><h3>Snapshot &amp; Rollback <span style="color:var(--mg-amber)">· opt-in</span></h3><p>SHA-256 baselines per entry, periodic auditor, tamper-evident hash chain. Pass an integrity store to enable.</p></div><span class="lat">OWASP AMG</span></div>
     </div>
   </div></section>
 
