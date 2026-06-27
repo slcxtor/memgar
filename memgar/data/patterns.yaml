@@ -1878,20 +1878,26 @@
   mitre_attack: T1190
 - id: INJECT-004
   name: Template Injection
-  description: Attempts server-side template injection
+  description: >-
+    Server-side template injection (SSTI). Keys on the dangerous payload
+    tokens inside the template delimiters — object-traversal dunders,
+    sandbox-escape globals (config/self/request/cycler), code-exec calls
+    (system/exec/eval/popen/Runtime/getClass), or the classic arithmetic
+    probe ({{7*7}}) — NOT bare delimiters. A benign template literal
+    ("${user.name}", "{{ user.email }}") carries none of these, so it
+    stays benign.
   category: injection
   severity: critical
   patterns:
-  - \{\{.*\}\}
-  - \$\{.*\}
-  - (?i)<%.*%>
-  - (?i)(jinja|twig|freemarker|velocity).*\{
+  - (?i)\{\{\s*[^}]{0,200}?(?:__(?:class|mro|subclasses|globals|builtins|base|init|import)__|\b(?:config|self|request|session|cycler|lipsum|namespace|joiner)\b|\bos\.|\bsubprocess\b|\bpopen\b|\bsystem\s*\(|\bexec\s*\(|\beval\s*\(|getattr\s*\(|\b__import__\b)[^}]{0,200}?\}\}
+  - (?i)\$\{\s*[^}]{0,200}?(?:T\s*\(|\bRuntime\b|getRuntime|ProcessBuilder|getClass|forName|\bexec\s*\(|\bsystem\s*\(|\beval\s*\(|__\w|\b__import__\b)[^}]{0,200}?\}
+  - (?i)<%[=!]?\s*[^%]{0,200}?(?:system|exec|eval|popen|runtime|process|`)[^%]{0,200}?%>
+  - (?i)\b(jinja|twig|freemarker|velocity)\b[^{]{0,40}\{
+  - \{\{\s*\d+\s*[*/+-]\s*\d+\s*\}\}
+  - \$\{\s*\d+\s*[*/+-]\s*\d+\s*\}
   keywords:
   - template injection
   - SSTI
-  - '{{'
-  - ${
-  - <%
   examples:
   - '{{config.items()}}'
   - ${7*7}
@@ -2453,8 +2459,13 @@
   severity: critical
   patterns:
   - (?i)(encrypt|lock)\s+.{0,10}(file|data|system)\s+.{0,10}(demand|ransom|payment|bitcoin)
-  - (?i)(wipe|delete|destroy|erase)\s+.{0,10}(all|entire)?\s*(data|file|system|backup|server)
-  - (?i)(deface|vandalize|modify)\s+.{0,10}(website|homepage|portal|page)
+  # require a mass/high-value qualifier so a single-file op
+  # ("delete the file with ID 13, it's a duplicate") stays benign,
+  # while "wipe all data" / "erase the backups" / "destroy the database"
+  # still fire.
+  - (?i)\b(wipe|delete|destroy|erase|purge)\b\s+(?:the\s+)?(?:all|every|entire|everything)\b
+  - (?i)\b(wipe|delete|destroy|erase|purge|format|drop)\b\s+.{0,15}\b(database|backups?|production|disk|drive|volume|partition|repositor(?:y|ies)|all\s+files?|all\s+data|all\s+records?|entire\s+system)\b
+  - (?i)(deface|vandalize)\s+.{0,10}(website|homepage|portal|page)
   - (?i)(stop|kill|terminate|disrupt)\s+.{0,10}(critical|essential|important)\s+(service|process|system)
   - (?i)\b(ransomware|cryptolocker|wannacry|locky)\b
   - (?i)(rm\s+-rf|del\s+/[fqs]|format\s+c:)
