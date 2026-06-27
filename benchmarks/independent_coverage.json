@@ -1,35 +1,35 @@
 {
-  "generated_at": "2026-06-27T08:24:40Z",
+  "generated_at": "2026-06-27T08:34:53Z",
   "analyzer_config": "Analyzer(use_llm=False)",
-  "in_scope_total": 27,
-  "in_scope_caught": 27,
+  "in_scope_total": 38,
+  "in_scope_caught": 38,
   "in_scope_recall": 1.0,
   "benign_total": 8,
   "benign_fp": 0,
   "per_category": {
     "memory_poison": {
-      "n": 6,
-      "caught": 6
+      "n": 8,
+      "caught": 8
     },
     "fragment": {
       "n": 3,
       "caught": 3
     },
     "prompt_injection": {
+      "n": 11,
+      "caught": 11
+    },
+    "tool_hijack": {
       "n": 6,
       "caught": 6
     },
-    "tool_hijack": {
-      "n": 5,
-      "caught": 5
-    },
     "exfiltration": {
-      "n": 4,
-      "caught": 4
+      "n": 6,
+      "caught": 6
     },
     "behavior": {
-      "n": 3,
-      "caught": 3
+      "n": 4,
+      "caught": 4
     }
   },
   "misses": [],
