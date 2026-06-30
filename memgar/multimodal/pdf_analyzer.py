@@ -24,17 +24,22 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-# Optional imports
+# Optional imports. Catch BaseException, not just ImportError: pypdf pulls
+# in `cryptography`, whose pyo3 _rust binding can raise pyo3_runtime.
+# PanicException (a BaseException, NOT ImportError) when the installed
+# system package is broken. Without this guard, merely having pypdf
+# installed alongside a broken cryptography makes `import memgar` fail
+# outright. Mirrors the guards in analyzer.py and feed/verifier.py.
 try:
     import pypdf
     from pypdf import PdfReader
     PYPDF_AVAILABLE = True
-except ImportError:
+except BaseException:  # noqa: BLE001 — pyo3 panic is not an ImportError
     try:
         import PyPDF2 as pypdf
         from PyPDF2 import PdfReader
         PYPDF_AVAILABLE = True
-    except ImportError:
+    except BaseException:  # noqa: BLE001
         PYPDF_AVAILABLE = False
         PdfReader = None
 

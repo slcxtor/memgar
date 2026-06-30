@@ -101,6 +101,14 @@
 
     .mg-foot { padding:2.5rem 0; color:var(--mg-ink3); font-size:.82rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:.6rem; }
 
+    .mg-donate { display:flex; align-items:center; gap:.7rem; margin-top:1.9rem; border:1px solid var(--mg-line2); border-radius:6px; background:var(--mg-bg2); padding:.9rem 1rem; flex-wrap:wrap; box-shadow:0 12px 40px -16px rgba(0,0,0,.8); }
+    .mg-donate .net { font-size:.7rem; color:var(--mg-green); border:1px solid var(--mg-line2); border-radius:3px; padding:.25rem .5rem; white-space:nowrap; }
+    .mg-donate code { color:var(--mg-ink); font-size:.82rem; word-break:break-all; flex:1; min-width:200px; }
+    .mg-copy { border:1px solid var(--mg-line2); border-radius:3px; background:transparent; color:var(--mg-ink); font-family:inherit; font-size:.78rem; padding:.42rem .8rem; cursor:pointer; white-space:nowrap; }
+    .mg-copy:hover { border-color:var(--mg-green); color:var(--mg-green); }
+    .mg-copy.ok { color:var(--mg-green); border-color:var(--mg-green); }
+    .mg-warn { color:var(--mg-amber); font-size:.78rem; margin-top:.8rem; }
+
     @media (max-width:760px) {
       .mg-h1 { font-size:1.9rem; }
       .mg-stats { grid-template-columns:repeat(2,1fr); }
@@ -227,10 +235,45 @@ $ memgar scan ./memories.json</pre>
     </div>
   </div></section>
 
+  <section class="mg-sec"><div class="mg-inner">
+    <span class="mg-eyebrow">support</span>
+    <h2 class="mg-h2">fund the threat feed</h2>
+    <p class="mg-psub">memgar is MIT-licensed and free to use. Donations keep the signed
+      threat feed, corpus curation, and CI running. Sent in USDT on the TRON
+      network (TRC-20).</p>
+    <div class="mg-donate">
+      <span class="net">USDT · TRC-20</span>
+      <code id="mg-addr">TUBHFHopgac88E7ZXRngajrRP7N6opL1FY</code>
+      <button class="mg-copy" type="button" onclick="mgCopy(this)">copy</button>
+    </div>
+    <p class="mg-warn">⚠ TRON network (TRC-20) only — sending another asset or using a different chain may permanently lose the funds.</p>
+  </div></section>
+
   <div class="mg-foot"><div class="mg-inner" style="display:flex;justify-content:space-between;width:100%;">
     <span>© 2026 memgar · MIT licensed</span>
     <span>$ memgar --version → v1.4.0</span>
   </div></div>
 
 </div>
+
+<script>
+  function mgCopy(btn){
+    var addr = document.getElementById('mg-addr').textContent.trim();
+    function done(){
+      var prev = btn.textContent;
+      btn.textContent = 'copied ✓'; btn.classList.add('ok');
+      setTimeout(function(){ btn.textContent = prev; btn.classList.remove('ok'); }, 1600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(addr).then(done, function(){ fallback(addr); done(); });
+    } else { fallback(addr); done(); }
+    function fallback(text){
+      var t = document.createElement('textarea');
+      t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(t);
+    }
+  }
+</script>
 {% endblock %}
