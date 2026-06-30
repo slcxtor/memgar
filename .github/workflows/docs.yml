@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - "docs/**"
+      - "overrides/**"
       - "mkdocs.yml"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs/**"
+      - "overrides/**"
       - "mkdocs.yml"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
