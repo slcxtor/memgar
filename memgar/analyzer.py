@@ -1524,6 +1524,32 @@ class Analyzer:
         """
         self._doc_trust_scores[source_id] = max(0.0, min(1.0, trust_score))
 
+    def warmup(self) -> float:
+        """Eagerly load lazy resources (Layer 2.5's sentence-transformer model)
+        so the first real `analyze()` call is fast, not a multi-second stall.
+
+        Layer 2.5 downloads/loads its embedding model on first use — cheap to
+        forget in local scripts, but a real production hazard: the FIRST
+        request served after a container start, autoscale-out, or serverless
+        cold start would otherwise eat that load time as request latency.
+        Call this once during application startup (e.g. a FastAPI `startup`
+        event handler, a Django `AppConfig.ready()`, or right after
+        constructing the `Analyzer`) to pay that cost before traffic arrives.
+
+        Returns:
+            Wall-clock seconds spent warming up (0.0 if there was nothing to
+            warm — similarity_layer disabled, sentence-transformers not
+            installed, or already warm).
+        """
+        import time
+        t0 = time.perf_counter()
+        if self._similarity_layer is not None:
+            try:
+                self._similarity_layer.available  # triggers lazy model load
+            except Exception:
+                pass
+        return time.perf_counter() - t0
+
     def scan_output(
         self,
         text: str,

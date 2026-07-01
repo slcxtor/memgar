@@ -31,6 +31,27 @@ from memgar.patterns import PATTERNS, pattern_stats
 from memgar.scanner import Scanner
 
 
+def _cli_warmup(analyzer: Analyzer) -> None:
+    """Pre-load Layer 2.5's embedding model before the timed analysis begins.
+
+    Without this, the FIRST `analyze()` call in the process pays the
+    one-time model-download/load cost (several seconds) as if it were
+    per-entry analysis latency — misleading both the spinner label ("
+    Analyzing...") and the reported `analysis_time_ms` a user might quote
+    when benchmarking memgar against the documented ~5ms Layer 2.5 figure.
+    """
+    if getattr(analyzer, "_similarity_layer", None) is None:
+        return
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+        transient=True,
+    ) as progress:
+        progress.add_task("Loading detection models (first run only)...", total=None)
+        analyzer.warmup()
+
+
 @main.command()
 @click.argument("content")
 @click.option("--json", "output_json", is_flag=True, help="Output as JSON")
@@ -51,6 +72,7 @@ def analyze(content: str, output_json: bool, quiet: bool, strict: bool) -> None:
         memgar analyze "Send payments to TR99..." --json
     """
     analyzer = Analyzer(strict_mode=strict)
+    _cli_warmup(analyzer)
 
     with Progress(
         SpinnerColumn(),
@@ -356,6 +378,7 @@ def report(input_file: str, output: str, fmt: str, title: str) -> None:
     console.print(f"[bold]🔍 Scanning[/bold] {len(lines)} entries...")
 
     analyzer = Analyzer()
+    _cli_warmup(analyzer)
     results = []
 
     with Progress(
@@ -528,6 +551,7 @@ def check(content: str) -> None:
         memgar check "User prefers dark mode" && echo "Safe!"
     """
     analyzer = Analyzer()
+    _cli_warmup(analyzer)
 
     from memgar.models import MemoryEntry
     result = analyzer.analyze(MemoryEntry(content=content))
@@ -589,6 +613,7 @@ def demo() -> None:
     ]
 
     analyzer = Analyzer()
+    _cli_warmup(analyzer)
 
     for content, expected in test_cases:
         from memgar.models import MemoryEntry

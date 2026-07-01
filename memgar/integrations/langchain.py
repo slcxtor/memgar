@@ -131,6 +131,8 @@ class MemgarMemoryGuard:
                 )
         except MemoryBlockedError as exc:
             scan_result = self._scan_result_from_protection(content, exc.result, boundary)
+            if self._callback:
+                self._callback(scan_result)
             self._handle_threat(scan_result, content)
             return scan_result
 
