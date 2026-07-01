@@ -6,6 +6,14 @@ Memgar Basic Usage Examples
 This script demonstrates the core functionality of Memgar.
 """
 
+import sys
+from pathlib import Path
+
+# Run straight from a git clone (no `pip install -e .` needed): put the repo
+# root on sys.path so `import memgar` resolves the local package instead of
+# raising ModuleNotFoundError.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from memgar import Memgar, Decision, Severity
 
 

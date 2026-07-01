@@ -14,7 +14,14 @@ Run with: python examples/quickstart.py
 
 from __future__ import annotations
 
+import sys
 import time
+from pathlib import Path
+
+# Run straight from a git clone (no `pip install -e .` needed): put the repo
+# root on sys.path so `import memgar` resolves the local package instead of
+# raising ModuleNotFoundError.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from memgar import Analyzer, MemoryEntry, Decision
 from memgar.memory_vault import MemoryVault

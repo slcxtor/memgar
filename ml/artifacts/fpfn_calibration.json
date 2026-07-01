@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "generated_at": "2026-07-01T18:40:16Z",
+  "generated_at": "2026-07-01T18:56:34Z",
   "corpus_path": "/home/user/memgar/ml/data/calibration_corpus.json",
   "n_samples": 247,
   "n_attack": 56,
@@ -856,7 +856,7 @@
     }
   },
   "latency_ms": {
-    "p50": 33.34,
-    "p95": 48.69
+    "p50": 32.33,
+    "p95": 46.45
   }
 }
