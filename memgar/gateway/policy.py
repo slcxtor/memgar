@@ -56,6 +56,18 @@ class OutputPolicy:
         r"(?i)system prompt[:\s]+\".+\"",
         r"(?i)my instructions are[:\s]+",
     ])
+    # Streaming responses from an unrecognized provider shape (not
+    # Anthropic/OpenAI/Gemini's known delta envelopes) can't be reassembled
+    # into logical text, so leak/jailbreak scanning can't see their content
+    # at all — those frames pass through untouched by default (fail-open,
+    # matching pre-streaming-scan behavior for any format this gateway
+    # doesn't understand: Bedrock's binary event-stream, a custom internal
+    # protocol, a future provider shape not yet added here). Since unbounded
+    # protocol shapes can't be individually pattern-matched, set this to
+    # block the WHOLE stream instead the first time an unrecognized-shape
+    # frame is seen — for deployments that would rather lose availability
+    # against an unsupported upstream than risk a silent, unscannable leak.
+    fail_closed_on_unrecognized_stream: bool = False
 
 
 _LOCAL_HOSTNAMES = {
