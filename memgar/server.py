@@ -23,6 +23,7 @@ by the MEMGAR_ADMIN_KEY environment variable. If unset, admin routes return 501.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import secrets
@@ -292,7 +293,15 @@ def create_app(
 
     valid_api_keys = _load_api_keys(api_keys)
     auth_required = _should_require_api_key(require_api_key)
-    public_path_set = set(public_paths or ["/health", "/ready"])
+    # /docs, /redoc, /openapi.json describe the API shape only — no data
+    # endpoint, no secret. Gating them behind auth (the previous default)
+    # blocks a new developer from even seeing what the API offers before
+    # they have a key, and breaks generic OpenAPI tooling that fetches the
+    # schema unauthenticated. Standard practice (Stripe, GitHub, etc.) keeps
+    # these public while every data endpoint stays behind auth.
+    public_path_set = set(
+        public_paths or ["/health", "/ready", "/docs", "/redoc", "/openapi.json"]
+    )
 
     if auth_required and not valid_api_keys:
         raise ValueError(
@@ -320,8 +329,19 @@ def create_app(
     async def lifespan(app: FastAPI):
         logger.info("Memgar server starting — loading analyzer …")
         from memgar.analyzer import Analyzer
-        _state["analyzer"] = Analyzer()
-        logger.info("Analyzer ready: %d patterns loaded", len(_state["analyzer"].patterns))
+        analyzer = Analyzer()
+        _state["analyzer"] = analyzer
+        # Eagerly load Layer 2.5's embedding model here, before `yield` (before
+        # uvicorn reports startup complete / the app starts accepting
+        # traffic). Without this the model loads lazily on the first real
+        # request instead — measured at 11+ seconds, which can outright
+        # time out client HTTP libraries and load balancers that default to
+        # a 5-10s timeout, not just look slow.
+        warmup_secs = await asyncio.get_event_loop().run_in_executor(None, analyzer.warmup)
+        logger.info(
+            "Analyzer ready: %d patterns loaded, warmup=%.2fs",
+            len(analyzer.patterns), warmup_secs,
+        )
         yield
         logger.info("Memgar server shutting down")
 
@@ -332,7 +352,7 @@ def create_app(
         title="Memgar API",
         description=(
             "AI agent memory security — multi-layer threat detection REST API.\n\n"
-            "**Layers**: 1 pattern matching · 2 transformer ML · "
+            "**Layers**: 1 pattern matching · 2.5 semantic similarity · "
             "3 trust scoring · 4 behavioural baseline\n\n"
             "**Auth**: set `X-API-Key` header "
             "(manage keys via `memgar keys` CLI or admin endpoints)."
