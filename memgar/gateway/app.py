@@ -71,7 +71,9 @@ def _extract_input_texts(payload: Dict[str, Any], *, include_tools: bool = True)
                 _append_text(out, role, content, ["messages", msg_idx, "content"], "message")
             elif isinstance(content, list):
                 for block_idx, block in enumerate(content):
-                    if isinstance(block, dict) and isinstance(block.get("text"), str):
+                    if not isinstance(block, dict):
+                        continue
+                    if isinstance(block.get("text"), str):
                         _append_text(
                             out,
                             role,
@@ -79,6 +81,40 @@ def _extract_input_texts(payload: Dict[str, Any], *, include_tools: bool = True)
                             ["messages", msg_idx, "content", block_idx, "text"],
                             "message_block",
                         )
+                    block_type = block.get("type")
+                    # Anthropic Messages API native tool-call shape: the model's
+                    # own tool invocation carries its arguments in `input`
+                    # (a dict), not `text` — invisible to the check above.
+                    if include_tools and block_type == "tool_use" and isinstance(block.get("input"), (dict, list)):
+                        _collect_tool_arguments(
+                            block["input"],
+                            ["messages", msg_idx, "content", block_idx, "input"],
+                            out,
+                            role=role,
+                            surface="tool_use_input",
+                        )
+                    # Anthropic Messages API native tool-RESULT shape: this is
+                    # the primary untrusted-tool-output channel (a poisoned
+                    # webpage/API response coming back through the tool). Its
+                    # `content` can be a bare string or a nested list of blocks
+                    # (each with its own `.text`) — neither is `.text` on this
+                    # outer block, so it was invisible to the check above too.
+                    if block_type == "tool_result":
+                        tr_content = block.get("content")
+                        if isinstance(tr_content, str):
+                            _append_text(
+                                out, role, tr_content,
+                                ["messages", msg_idx, "content", block_idx, "content"],
+                                "tool_result",
+                            )
+                        elif isinstance(tr_content, list):
+                            for tr_idx, tr_block in enumerate(tr_content):
+                                if isinstance(tr_block, dict) and isinstance(tr_block.get("text"), str):
+                                    _append_text(
+                                        out, role, tr_block["text"],
+                                        ["messages", msg_idx, "content", block_idx, "content", tr_idx, "text"],
+                                        "tool_result",
+                                    )
 
             if include_tools:
                 function_call = msg.get("function_call")
