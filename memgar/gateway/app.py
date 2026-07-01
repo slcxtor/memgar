@@ -318,22 +318,33 @@ def _extract_sse_text_delta(frame: str) -> Optional[str]:
     """Return the text an SSE frame's delta carries, or None if it doesn't
     carry one (and should just be forwarded untouched).
 
-    Real streaming completions (Anthropic's Messages API, which is the
-    gateway's own documented default upstream) wrap EVERY token/word of
-    generated text in its own `content_block_delta` event:
-    `data: {"type": "content_block_delta", "delta": {"type": "text_delta",
-    "text": "..."}}`. A leaked secret or jailbreak phrase is therefore
-    fragmented across many small JSON envelopes as a matter of course, not
+    Real streaming completions wrap EVERY token/word of generated text in
+    its own small JSON envelope. A leaked secret or jailbreak phrase is
+    therefore fragmented across many envelopes as a matter of course, not
     as an evasion technique — scanning raw SSE bytes (even buffered across
     frame boundaries) can never match a multi-word pattern, because the
-    text is interleaved with JSON/event syntax between pieces, not simply
-    split mid-word within otherwise-contiguous text. The only way to see
-    the real generated text is to parse each frame and pull out just the
-    `delta.text` field, then scan the reassembled logical text.
+    text is interleaved with JSON/protocol syntax between pieces, not
+    simply split mid-word within otherwise-contiguous text. The only way
+    to see the real generated text is to parse each frame and pull out
+    just its delta-text field, then scan the reassembled logical text.
+
+    Two provider shapes are recognized (the gateway's `upstream_base_url`
+    can point at either):
+      - Anthropic Messages API: `data: {"type": "content_block_delta",
+        "delta": {"type": "text_delta", "text": "..."}}`
+      - OpenAI Chat Completions API: `data: {"choices": [{"delta":
+        {"content": "..."}}]}`, terminated by a literal `data: [DONE]`
+        line (not JSON — falls through to the "not text" return below,
+        same as any other non-text frame).
+    Any other provider's streaming shape (Gemini, Bedrock, a custom
+    protocol) is NOT recognized here; frames from those upstreams pass
+    through unscanned, same as before this function existed — a disclosed
+    gap, not a silent one.
 
     Frames that aren't text deltas (message_start, content_block_start/
-    stop, tool-call argument deltas, message_stop, ...) return None; they
-    can't carry leaked prose and are forwarded immediately.
+    stop, tool-call argument deltas, message_stop, OpenAI's terminal
+    finish_reason chunk, `[DONE]`, ...) return None; they can't carry
+    leaked prose and are forwarded immediately.
     """
     for line in frame.splitlines():
         if line.startswith("data:"):
@@ -341,11 +352,27 @@ def _extract_sse_text_delta(frame: str) -> Optional[str]:
                 obj = json.loads(line[len("data:"):].strip())
             except Exception:
                 return None
-            delta = obj.get("delta") if isinstance(obj, dict) else None
+            if not isinstance(obj, dict):
+                return None
+
+            # Anthropic shape.
+            delta = obj.get("delta")
             if isinstance(delta, dict) and delta.get("type") == "text_delta":
                 text = delta.get("text")
                 if isinstance(text, str):
                     return text
+
+            # OpenAI shape.
+            choices = obj.get("choices")
+            if isinstance(choices, list) and choices:
+                first = choices[0]
+                if isinstance(first, dict):
+                    oai_delta = first.get("delta")
+                    if isinstance(oai_delta, dict):
+                        content = oai_delta.get("content")
+                        if isinstance(content, str):
+                            return content
+
             return None
     return None
 
