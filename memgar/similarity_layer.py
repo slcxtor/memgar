@@ -13,7 +13,12 @@ have *high semantic similarity* to known attacks, even with zero lexical overlap
 How it works
 ------------
 1. At first use, all threat examples in ``THREAT_EXAMPLES`` are encoded with
-   the ``all-MiniLM-L6-v2`` sentence-transformer (~80 MB, CPU, ~40ms/entry).
+   the ``paraphrase-multilingual-MiniLM-L12-v2`` sentence-transformer
+   (~470 MB, CPU, ~50 languages, ~40-80ms/entry after warm-up). Switched
+   from the English-only ``all-MiniLM-L6-v2`` so an attack phrased in a
+   language other than the corpus's (Turkish, Spanish, ...) still lands
+   near its English threat centroid instead of scoring near-zero on
+   language alone. Same 384-dim output — no other code changed.
 2. Incoming memory entry is encoded (one call, ~5–50ms depending on length).
 3. Cosine similarity between the entry and every threat centroid is computed
    with a single matrix multiply (numpy, <1ms).
@@ -84,8 +89,10 @@ class SimilarityLayer:
     """Cosine-similarity threat detector based on sentence-transformers.
 
     Args:
-        model_name: HuggingFace model identifier. Default ``all-MiniLM-L6-v2``
-            (~80 MB, good quality/speed trade-off, no GPU needed).
+        model_name: HuggingFace model identifier. Default
+            ``paraphrase-multilingual-MiniLM-L12-v2`` (~470 MB, ~50
+            languages, no GPU needed) so non-English paraphrases of a known
+            attack land in the same region as the English corpus example.
         threat_threshold: cosine similarity ≥ this → flag as potential threat.
         quarantine_threshold: ≥ this but < threat_threshold → elevated risk,
             not blocked outright; Analyzer can add partial risk.
@@ -96,9 +103,9 @@ class SimilarityLayer:
 
     def __init__(
         self,
-        model_name: str = "all-MiniLM-L6-v2",
-        threat_threshold: float = 0.55,
-        quarantine_threshold: float = 0.45,
+        model_name: str = "paraphrase-multilingual-MiniLM-L12-v2",
+        threat_threshold: float = 0.68,
+        quarantine_threshold: float = 0.60,
         top_k: int = 3,
         custom_examples: Optional[Dict[str, List[str]]] = None,
     ) -> None:
