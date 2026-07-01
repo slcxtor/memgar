@@ -328,23 +328,38 @@ def _extract_sse_text_delta(frame: str) -> Optional[str]:
     to see the real generated text is to parse each frame and pull out
     just its delta-text field, then scan the reassembled logical text.
 
-    Two provider shapes are recognized (the gateway's `upstream_base_url`
-    can point at either):
+    Three provider shapes are recognized (the gateway's `upstream_base_url`
+    can point at any of them):
       - Anthropic Messages API: `data: {"type": "content_block_delta",
         "delta": {"type": "text_delta", "text": "..."}}`
       - OpenAI Chat Completions API: `data: {"choices": [{"delta":
         {"content": "..."}}]}`, terminated by a literal `data: [DONE]`
         line (not JSON — falls through to the "not text" return below,
         same as any other non-text frame).
-    Any other provider's streaming shape (Gemini, Bedrock, a custom
-    protocol) is NOT recognized here; frames from those upstreams pass
-    through unscanned, same as before this function existed — a disclosed
-    gap, not a silent one.
+      - Gemini `streamGenerateContent?alt=sse`: `data: {"candidates":
+        [{"content": {"parts": [{"text": "..."}], "role": "model"}}]}`.
+    Amazon Bedrock is explicitly NOT recognized here and can't be added
+    the same incremental way the three above were: its streaming
+    response is `application/vnd.amazon.eventstream` — a binary,
+    length-prefixed, CRC-checksummed frame format, not text-based SSE at
+    all — and requests are SigV4-signed, which a body-rewriting proxy
+    breaks unless it re-signs after any modification. Proxying Bedrock
+    correctly needs a binary event-stream parser and SigV4 awareness,
+    not an addition to this function; `wants_stream` detection here
+    (a JSON `"stream"` field) wouldn't even fire for Bedrock, which
+    signals streaming via URL path (`/invoke-with-response-stream`) not
+    a body flag. Any other provider's streaming shape (a custom internal
+    protocol, ...) is likewise NOT recognized here; frames from those
+    upstreams pass through unscanned, same as before this function
+    existed — a disclosed gap, not a silent one. See `GatewayPolicy.
+    fail_closed_on_unrecognized_stream` to reject rather than silently
+    pass through unrecognized shapes.
 
     Frames that aren't text deltas (message_start, content_block_start/
     stop, tool-call argument deltas, message_stop, OpenAI's terminal
-    finish_reason chunk, `[DONE]`, ...) return None; they can't carry
-    leaked prose and are forwarded immediately.
+    finish_reason chunk, `[DONE]`, Gemini's bare finishReason chunk with
+    no text part, ...) return None; they can't carry leaked prose and
+    are forwarded immediately.
     """
     for line in frame.splitlines():
         if line.startswith("data:"):
@@ -373,8 +388,65 @@ def _extract_sse_text_delta(frame: str) -> Optional[str]:
                         if isinstance(content, str):
                             return content
 
+            # Gemini shape.
+            candidates = obj.get("candidates")
+            if isinstance(candidates, list) and candidates:
+                first_cand = candidates[0]
+                if isinstance(first_cand, dict):
+                    content_obj = first_cand.get("content")
+                    if isinstance(content_obj, dict):
+                        parts = content_obj.get("parts")
+                        if isinstance(parts, list):
+                            texts = [p.get("text") for p in parts
+                                     if isinstance(p, dict) and isinstance(p.get("text"), str)]
+                            if texts:
+                                return "".join(texts)
+
             return None
     return None
+
+
+# Anthropic's structural events — message_start, content_block_start/stop,
+# message_stop, ping, error — carry no `delta` key at all (only
+# content_block_delta and message_delta do), so recognizing Anthropic frames
+# by "has a delta key" alone misses most of a real stream's frames. Match on
+# the documented `type` values instead; this is what actually identifies a
+# frame as Anthropic's shape, whether or not it happens to carry text.
+_ANTHROPIC_SSE_EVENT_TYPES = frozenset({
+    "message_start", "content_block_start", "content_block_delta",
+    "content_block_stop", "message_delta", "message_stop", "ping", "error",
+})
+
+
+def _is_recognized_sse_shape(frame: str) -> bool:
+    """True if a frame's JSON payload matches one of the three provider
+    shapes `_extract_sse_text_delta` understands — even if *this particular*
+    frame carries no text (e.g. a structural frame like `message_stop`).
+    False for anything else: a provider this gateway doesn't recognize at
+    all (Bedrock's binary event-stream would fail the `\\n\\n`-frame split
+    and JSON parse entirely, `data: [DONE]` isn't JSON either — both
+    correctly count as "not recognized" here, though `[DONE]` is a
+    harmless, expected terminator rather than a leak risk in its own right).
+
+    Used only when `OutputPolicy.fail_closed_on_unrecognized_stream` is set:
+    an operator's signal that they'd rather lose availability against an
+    upstream this gateway can't parse than risk forwarding content it
+    can't scan for leaks at all.
+    """
+    for line in frame.splitlines():
+        if line.startswith("data:"):
+            try:
+                obj = json.loads(line[len("data:"):].strip())
+            except Exception:
+                return False
+            if not isinstance(obj, dict):
+                return False
+            return (
+                obj.get("type") in _ANTHROPIC_SSE_EVENT_TYPES
+                or "choices" in obj
+                or "candidates" in obj
+            )
+    return True  # no data: line at all (e.g. a bare "event: ping" keepalive) — nothing to scan, not a shape mismatch
 
 
 # ---------------------------------------------------------------------------
@@ -699,7 +771,19 @@ class Gateway:
         fwd_headers = {k: v for k, v in request.headers.items() if k.lower() in allowed_headers}
         fwd_headers.pop("host", None)
 
-        wants_stream = bool(payload.get("stream")) if isinstance(payload, dict) else False
+        # Streaming is signaled differently across providers: Anthropic/
+        # OpenAI use a `"stream": true` body field; Gemini instead encodes
+        # it in the URL (`:streamGenerateContent`, typically with
+        # `?alt=sse` for SSE-framed output). A request that streams but
+        # isn't detected as such here takes the NON-streaming branch below,
+        # which buffers the whole SSE-formatted body as one string and
+        # regex-scans it directly — reproducing the exact same-fragment-
+        # split-by-JSON-syntax blind spot `stream_iter`'s SSE-aware parsing
+        # exists to fix, just via the wrong code path.
+        wants_stream = (
+            (isinstance(payload, dict) and bool(payload.get("stream")))
+            or "streamGenerateContent" in path
+        )
         upstream_req = self._client.build_request(
             request.method,
             upstream_url,
@@ -791,6 +875,13 @@ class Gateway:
                     while "\n\n" in raw_carry:
                         frame, raw_carry = raw_carry.split("\n\n", 1)
                         frame_full = frame + "\n\n"
+                        if (
+                            self.policy.output.fail_closed_on_unrecognized_stream
+                            and not _is_recognized_sse_shape(frame)
+                        ):
+                            yield b'data: {"error": "memgar_output_blocked", "reason": "unrecognized_stream_shape"}\n\n'
+                            await upstream_resp.aclose()
+                            return
                         extracted = _extract_sse_text_delta(frame)
                         pending.append((frame_full, len(extracted) if extracted is not None else None))
                         if extracted is not None:
