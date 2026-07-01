@@ -4,6 +4,7 @@ Memgar AI Gateway - FastAPI reverse proxy with input/output enforcement.
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import json
 import logging
@@ -313,6 +314,42 @@ def _sanitize_text(content: str) -> Dict[str, Any]:
         return {"blocked": False, "content": content, "modified": False, "reason": f"sanitizer error: {exc}"}
 
 
+def _extract_sse_text_delta(frame: str) -> Optional[str]:
+    """Return the text an SSE frame's delta carries, or None if it doesn't
+    carry one (and should just be forwarded untouched).
+
+    Real streaming completions (Anthropic's Messages API, which is the
+    gateway's own documented default upstream) wrap EVERY token/word of
+    generated text in its own `content_block_delta` event:
+    `data: {"type": "content_block_delta", "delta": {"type": "text_delta",
+    "text": "..."}}`. A leaked secret or jailbreak phrase is therefore
+    fragmented across many small JSON envelopes as a matter of course, not
+    as an evasion technique — scanning raw SSE bytes (even buffered across
+    frame boundaries) can never match a multi-word pattern, because the
+    text is interleaved with JSON/event syntax between pieces, not simply
+    split mid-word within otherwise-contiguous text. The only way to see
+    the real generated text is to parse each frame and pull out just the
+    `delta.text` field, then scan the reassembled logical text.
+
+    Frames that aren't text deltas (message_start, content_block_start/
+    stop, tool-call argument deltas, message_stop, ...) return None; they
+    can't carry leaked prose and are forwarded immediately.
+    """
+    for line in frame.splitlines():
+        if line.startswith("data:"):
+            try:
+                obj = json.loads(line[len("data:"):].strip())
+            except Exception:
+                return None
+            delta = obj.get("delta") if isinstance(obj, dict) else None
+            if isinstance(delta, dict) and delta.get("type") == "text_delta":
+                text = delta.get("text")
+                if isinstance(text, str):
+                    return text
+            return None
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Gateway
 # ---------------------------------------------------------------------------
@@ -339,6 +376,16 @@ class Gateway:
             timeout=httpx.Timeout(self.policy.upstream_timeout_seconds),
             limits=httpx.Limits(max_connections=200, max_keepalive_connections=50),
         )
+        # Eagerly load Layer 2.5's embedding model here, off the event loop,
+        # before the gateway starts accepting traffic. Without this the model
+        # loads lazily on the first real request instead — and a single
+        # gateway request typically fans out into several analyze() calls
+        # (system prompt, each message, each tool_use/tool_result block), so
+        # unlike a single-shot API call the cold-start cost here is paid
+        # once per gateway process but felt on literally the first user
+        # request through an always-on proxy sitting in front of live agent
+        # traffic. Mirrors the same fix in memgar/server.py.
+        await asyncio.get_event_loop().run_in_executor(None, self.analyzer.warmup)
 
     async def shutdown(self) -> None:
         if self._client:
@@ -667,20 +714,83 @@ class Gateway:
                 media_type=upstream_resp.headers.get("content-type"),
             )
 
+        # Hold back this many characters of RECONSTRUCTED delta text (not raw
+        # SSE bytes) before scanning+releasing, so a pattern split across
+        # many small text_delta events has a full holdback's worth of
+        # subsequent text to complete before its containing frames are
+        # forwarded. Sized well above the longest configured redact/
+        # jailbreak pattern's realistic match span; a pattern longer than
+        # the holdback can still straddle a release boundary, same inherent
+        # bound as any bounded-window streaming scanner.
+        _STREAM_HOLDBACK_CHARS = 256
+
         async def stream_iter() -> AsyncIterator[bytes]:
             try:
                 upstream_resp = await self._client.send(upstream_req, stream=True)
             except httpx.HTTPError as exc:
                 yield f'data: {{"error": "upstream_error: {exc}"}}\n\n'.encode("utf-8")
                 return
+            raw_carry = ""             # partial SSE frame bytes (no \n\n yet)
+            # Single ordered queue holding EVERY frame (text-carrying or
+            # not) — non-text frames (content_block_stop, message_stop, ...)
+            # must not jump ahead of an unreleased text frame that arrived
+            # before them, or a real client sees "message complete" before
+            # it has seen the text the message actually contains.
+            pending: List[tuple] = []  # [(complete_frame_bytes, text_len_or_None), ...]
+            text_buffer = ""           # reconstructed logical text still held in `pending`
+
+            def _release_ready(safe_len: int):
+                nonlocal text_buffer
+                released_text = 0
+                out = []
+                while pending:
+                    frame_bytes, tlen = pending[0]
+                    if tlen is None:
+                        pending.pop(0)
+                        out.append(frame_bytes)
+                        continue
+                    if released_text + tlen <= safe_len:
+                        pending.pop(0)
+                        out.append(frame_bytes)
+                        released_text += tlen
+                        continue
+                    break
+                text_buffer = text_buffer[released_text:]
+                return out
+
             try:
                 async for chunk in upstream_resp.aiter_text():
-                    scanned = self.scan_chunk(chunk)
+                    raw_carry += chunk
+                    while "\n\n" in raw_carry:
+                        frame, raw_carry = raw_carry.split("\n\n", 1)
+                        frame_full = frame + "\n\n"
+                        extracted = _extract_sse_text_delta(frame)
+                        pending.append((frame_full, len(extracted) if extracted is not None else None))
+                        if extracted is not None:
+                            text_buffer += extracted
+
+                        safe_len = max(0, len(text_buffer) - _STREAM_HOLDBACK_CHARS)
+                        if safe_len:
+                            scanned = self.scan_chunk(text_buffer[:safe_len])
+                            if scanned["block"]:
+                                yield b'data: {"error": "memgar_output_blocked"}\n\n'
+                                await upstream_resp.aclose()
+                                return
+                        for released_frame in _release_ready(safe_len):
+                            yield released_frame.encode("utf-8")
+                # Stream ended: the remaining buffered text is now complete
+                # (nothing more can arrive to split a pattern further) —
+                # scan it whole, then release every remaining frame in order.
+                if text_buffer:
+                    scanned = self.scan_chunk(text_buffer)
                     if scanned["block"]:
                         yield b'data: {"error": "memgar_output_blocked"}\n\n'
                         await upstream_resp.aclose()
                         return
-                    yield scanned["text"].encode("utf-8")
+                for frame_full, _ in pending:
+                    yield frame_full.encode("utf-8")
+                if raw_carry:
+                    yield raw_carry.encode("utf-8")
             finally:
                 await upstream_resp.aclose()
 
