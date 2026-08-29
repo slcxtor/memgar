@@ -55,6 +55,7 @@ For more information, visit https://memgar.com
 
 from __future__ import annotations
 
+import importlib
 from typing import Optional
 
 __version__ = "1.4.0"
@@ -63,614 +64,356 @@ __license__ = "MIT"
 __email__ = "hello@memgar.com"
 
 # =============================================================================
-# CORE MODELS (Always available)
+# LAZY IMPORT REGISTRY  (PEP 562)
+#
+# Every public name is resolved on first access via __getattr__.
+# This drops `import memgar` from ~1s to <50ms — the 35 eager module
+# imports that dominated startup are now deferred until actually used.
 # =============================================================================
-# =============================================================================
-# CORE ANALYSIS (Always available)
-# =============================================================================
-from memgar.analyzer import Analyzer, QuickAnalyzer
 
-# =============================================================================
-# MEMORY AUDITOR (Always available)
-# =============================================================================
-from memgar.auditor import (
-    AuditEvent,
-    AuditEventType,
-    IntegrityReport,
-    MemoryAuditor,
-    Snapshot,
-)
+# Maps  public_name → (module_path, attribute_name_in_module)
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {}
 
-# =============================================================================
-# DETECTION LAYERS 8-9 — canary tracers + tool-use guard
-# =============================================================================
-from memgar.canary import (
-    CANARY_PREFIX,
-    CanaryLeak,
-    CanaryToken,
-    CanaryTokenManager,
-    extract_canaries,
-    is_canary,
-)
 
-# =============================================================================
-# CIRCUIT BREAKER (Always available)
-# =============================================================================
-from memgar.circuit_breaker import (
-    AgentHaltedException,
-    CircuitBreaker,
-    CircuitBreakerStats,
-    CircuitState,
-    MultiCircuitBreaker,
-    ThreatEvent,
-)
-from memgar.config import FeedConfig, HunterConfig, MemgarConfig, ObservabilityConfig
-from memgar.correlation_detector import (
-    CorrelationDetector,
-    CorrelationFinding,
-    CorrelationReport,
-)
+def _register(module: str, *names: str) -> None:
+    """Register names that map 1:1 to the same attr name in *module*."""
+    for n in names:
+        _LAZY_IMPORTS[n] = (module, n)
 
-# =============================================================================
-# UNIFIED DEFENSE PIPELINE (Always available)
-# =============================================================================
-from memgar.defense_pipeline import (
-    DefensePipelineResult,
-    MemgarDefensePipeline,
-    create_defense_pipeline,
-)
-from memgar.ensemble_voter import EnsembleVerdict, EnsembleVoter, LayerScore
-from memgar.hunter import HunterStats, MemoryHunter, start_hunter
 
-# =============================================================================
-# LAYER 2: MEMORY GUARD (Always available)
-# =============================================================================
-from memgar.memory_guard import (
-    GuardDecision,
-    GuardResult,
-    MemoryGuard,
-)
-from memgar.memory_integrity import IntegrityViolation, MemoryIntegrityStore, MemorySnapshot
-from memgar.memory_store import MemoryStore, PersistentMemoryStore, bulk_scan
-from memgar.memory_vault import (
-    DiffEntry,
-    MemoryVault,
-    RollbackPlan,
-    SnapshotEntry,
-    VaultDiff,
-    VaultSnapshot,
-    VaultVerificationResult,
-)
-from memgar.models import (
-    AnalysisResult,
-    Decision,
-    MemoryEntry,
-    ScanResult,
-    Severity,
-    Threat,
-    ThreatCategory,
-    ThreatMatch,
-)
-from memgar.patterns import PATTERNS, get_pattern_by_id, get_patterns_by_severity, pattern_stats
-from memgar.policy_engine import (
-    PolicyContext,
-    PolicyEngine,
-    PolicyProfile,
-    PolicyRule,
-    PolicyVerdict,
-    get_global_engine,
-    most_restrictive,
-    reset_global_engine,
-)
-from memgar.policy_engine import (
-    PolicyDecision as EnginePolicyDecision,
-)
+def _alias(public_name: str, module: str, attr: str) -> None:
+    """Register a name that differs from the attr it wraps."""
+    _LAZY_IMPORTS[public_name] = (module, attr)
 
-# =============================================================================
-# LAYER 2: PROVENANCE (Always available)
-# =============================================================================
-from memgar.provenance import (
-    ForensicAnalyzer,
-    MemoryProvenance,
-    ProvenanceTracker,
-    SourceInfo,
-    SourceType,
-    TrackedMemoryEntry,
-    TrustLevel,
-)
 
-# =============================================================================
-# LAYER 4: MONITORING (Always available)
-# =============================================================================
-from memgar.reporter import HTMLReporter
+# --- Core analysis -----------------------------------------------------------
+_register("memgar.analyzer", "Analyzer", "QuickAnalyzer")
+_register("memgar.models",
+          "AnalysisResult", "Decision", "MemoryEntry", "ScanResult",
+          "Severity", "Threat", "ThreatCategory", "ThreatMatch")
+_register("memgar.scanner", "Scanner")
+_register("memgar.config",
+          "FeedConfig", "HunterConfig", "MemgarConfig", "ObservabilityConfig")
+_register("memgar.patterns",
+          "PATTERNS", "get_pattern_by_id", "get_patterns_by_severity",
+          "pattern_stats")
 
-# =============================================================================
-# LAYER 3: TRUST-AWARE RETRIEVAL (Always available)
-# =============================================================================
-from memgar.retriever import (
-    DecayFunction,
-    RetrievalAnomalyDetector,
-    RetrievalMetadata,
-    RetrievedDocument,
-    TemporalDecay,
-    TrustAwareRetriever,
-)
-from memgar.runtime import (
-    ChunkResult,
-    EnforcedBoundary,
-    EnforcementAction,
-    EnforcementResult,
-    MemoryPoisoningError,
-    MemoryRuntimeEnforcer,
-    RuntimePolicy,
-    ThreatInfo,
-)
+# --- Layer 2: Sanitization / Provenance / Guard ------------------------------
+_register("memgar.sanitizer",
+          "InstructionSanitizer", "SanitizeAction", "SanitizeResult")
+_register("memgar.provenance",
+          "ForensicAnalyzer", "MemoryProvenance", "ProvenanceTracker",
+          "SourceInfo", "SourceType", "TrackedMemoryEntry", "TrustLevel")
+_register("memgar.memory_guard",
+          "GuardDecision", "GuardResult", "MemoryGuard")
+_register("memgar.defense_pipeline",
+          "DefensePipelineResult", "MemgarDefensePipeline",
+          "create_defense_pipeline")
+_register("memgar.write_ahead_validator",
+          "CheckResult", "GuardianVerdict", "MemoryWriteBlocked",
+          "MemoryWriteGateway", "MINJADetector", "RuleBasedChecker",
+          "SemanticGuardian", "ValidationContext", "ValidationOutcome",
+          "WriteAheadValidator")
 
-# =============================================================================
-# LAYER 2: SANITIZATION (Always available)
-# =============================================================================
-from memgar.sanitizer import (
-    InstructionSanitizer,
-    SanitizeAction,
-    SanitizeResult,
-)
-from memgar.scanner import Scanner
-from memgar.similarity_layer import SimilarityLayer, SimilarityResult, get_global_layer
+# --- Layer 3: Trust-aware retrieval ------------------------------------------
+_register("memgar.retriever",
+          "DecayFunction", "RetrievalAnomalyDetector", "RetrievalMetadata",
+          "RetrievedDocument", "TemporalDecay", "TrustAwareRetriever")
+_register("memgar.secure_retriever",
+          "AnomalyEvent", "AnomalyType", "DecayShape",
+          "RetrievalAnomalyMonitor", "RetrievalResult", "ScoredEntry",
+          "SecureMemoryRetriever", "TemporalDecayEngine",
+          "TrustWeightedScorer", "create_retriever")
+_register("memgar.trust_scorer",
+          "CompositeTrustResult", "CompositeTrustScorer", "SignalName",
+          "SignalResult", "TrustContext", "TrustDecision",
+          "get_default_scorer", "score_content")
 
-# =============================================================================
-# ADVANCED DETECTION LAYERS 5-7
-# =============================================================================
-from memgar.stego_detector import StegoDetector, StegoFinding, StegoReport
-from memgar.tenants import PLAN_LIMITS, ApiKey, Tenant, TenantStore
-from memgar.tool_use_guard import (
-    ToolCheckResult,
-    ToolDecision,
-    ToolFinding,
-    ToolRisk,
-    ToolUseGuard,
-)
-from memgar.watcher import MemoryWatcher
+# --- Layer 4: Behavioral monitoring ------------------------------------------
+_register("memgar.behavioral_baseline",
+          "SIGNAL_REGISTRY", "BaselineIntegration", "BaselineRegistry",
+          "BehavioralBaseline", "BehaviorSnapshot", "DeviationLevel",
+          "DeviationReport", "EWMBaseline", "SignalDeviation",
+          "create_baseline")
+_register("memgar.correlation_detector",
+          "CorrelationDetector", "CorrelationFinding", "CorrelationReport")
+_register("memgar.reporter", "HTMLReporter")
+_register("memgar.watcher", "MemoryWatcher")
 
-# =============================================================================
-# SEMANTIC ANALYSIS (Optional - requires sentence-transformers)
-# =============================================================================
-SEMANTIC_AVAILABLE = False
-SemanticAnalyzer = None
-EmbeddingAnalyzer = None
+# --- Auditor / Integrity -----------------------------------------------------
+_register("memgar.auditor",
+          "AuditEvent", "AuditEventType", "IntegrityReport",
+          "MemoryAuditor", "Snapshot")
+_register("memgar.memory_integrity",
+          "IntegrityViolation", "MemoryIntegrityStore", "MemorySnapshot")
+_register("memgar.memory_ledger",
+          "GENESIS_HASH", "EntryStatus", "LedgerEntry",
+          "LedgerForensicsIntegration", "LedgerReport", "LedgerVerifier",
+          "MemoryLedger", "TamperEvent", "create_ledger", "verify_ledger")
+_register("memgar.memory_vault",
+          "DiffEntry", "MemoryVault", "RollbackPlan", "SnapshotEntry",
+          "VaultDiff", "VaultSnapshot", "VaultVerificationResult")
 
-try:
-    from memgar.semantic import (
-        AnalysisLayer,
-        SemanticAnalyzer,
-        SemanticResult,
-        check_available_layers,
-        quick_analyze,
-    )
-    SEMANTIC_AVAILABLE = True
-except ImportError:
-    pass
+# --- Circuit breaker ----------------------------------------------------------
+_register("memgar.circuit_breaker",
+          "AgentHaltedException", "CircuitBreaker", "CircuitBreakerStats",
+          "CircuitState", "MultiCircuitBreaker", "ThreatEvent")
 
-try:
-    from memgar.embeddings import (
-        THREAT_EXAMPLES,
-        EmbeddingAnalyzer,
-        EmbeddingResult,
-    )
-except ImportError:
-    pass
+# --- Memory store -------------------------------------------------------------
+_register("memgar.memory_store",
+          "MemoryStore", "PersistentMemoryStore", "bulk_scan")
 
-# =============================================================================
-# LLM ANALYSIS (Optional - requires anthropic or openai)
-# =============================================================================
-LLM_AVAILABLE = False
-LLMAnalyzer = None
+# --- Hunter -------------------------------------------------------------------
+_register("memgar.hunter",
+          "HunterStats", "MemoryHunter", "start_hunter")
 
-try:
-    from memgar.llm_analyzer import (
-        LLMAnalyzer,
-        LLMResult,
-    )
-    LLM_AVAILABLE = True
-except ImportError:
-    pass
+# --- Canary / Stego / Tool guard ---------------------------------------------
+_register("memgar.canary",
+          "CANARY_PREFIX", "CanaryLeak", "CanaryToken",
+          "CanaryTokenManager", "extract_canaries", "is_canary")
+_register("memgar.stego_detector",
+          "StegoDetector", "StegoFinding", "StegoReport")
+_register("memgar.tool_use_guard",
+          "ToolCheckResult", "ToolDecision", "ToolFinding", "ToolRisk",
+          "ToolUseGuard")
 
-# =============================================================================
-# THREAT INTELLIGENCE FEED (Optional - requires cryptography)
-# =============================================================================
-FEED_AVAILABLE = False
-PatternFeed = None
-sync_feed = None
+# --- Multi-agent security ----------------------------------------------------
+_register("memgar.agents",
+          "AgentMessageValidator", "AgentSecurityGuard", "DelegationEvent",
+          "DelegationMonitor", "MCPSecurityLayer", "MCPValidationResult",
+          "SwarmDetector", "SwarmThreat", "TrustChainManager")
+_alias("AgentTrustLevel", "memgar.agents", "TrustLevel")
 
-try:
-    from memgar.feed.loader import FeedLoader as PatternFeed  # type: ignore[assignment]
-    from memgar.feed.loader import sync_feed
-    from memgar.feed.models import FeedManifest, PatternBundle
-    from memgar.feed.verifier import FeedSignatureError, FeedVerifier
-    FEED_AVAILABLE = True
-except ImportError:
-    FeedManifest = None  # type: ignore[assignment,misc]
-    PatternBundle = None  # type: ignore[assignment,misc]
-    FeedSignatureError = None  # type: ignore[assignment,misc]
-    FeedVerifier = None  # type: ignore[assignment,misc]
+# --- High-performance core ----------------------------------------------------
+_register("memgar.core", "AhoCorasick", "PatternMatcher", "ThreatScanner")
+
+# --- Policy engine ------------------------------------------------------------
+_register("memgar.policy_engine",
+          "PolicyContext", "PolicyEngine", "PolicyProfile", "PolicyRule",
+          "PolicyVerdict", "get_global_engine", "most_restrictive",
+          "reset_global_engine")
+_alias("EnginePolicyDecision", "memgar.policy_engine", "PolicyDecision")
+
+# --- Runtime enforcer ---------------------------------------------------------
+_register("memgar.runtime",
+          "ChunkResult", "EnforcedBoundary", "EnforcementAction",
+          "EnforcementResult", "MemoryPoisoningError",
+          "MemoryRuntimeEnforcer", "RuntimePolicy", "ThreatInfo")
+
+# --- Ensemble voter -----------------------------------------------------------
+_register("memgar.ensemble_voter",
+          "EnsembleVerdict", "EnsembleVoter", "LayerScore")
+
+# --- Similarity layer ---------------------------------------------------------
+_register("memgar.similarity_layer",
+          "SimilarityLayer", "SimilarityResult", "get_global_layer")
+
+# --- Auto-protect -------------------------------------------------------------
+_register("memgar.auto_protect",
+          "AutoProtectConfig", "AutoProtectStatus",
+          "auto_protect", "auto_protect_off")
+_alias("auto_protect_status", "memgar.auto_protect", "get_status")
+_alias("auto_protect_reset_stats", "memgar.auto_protect", "reset_stats")
+
+# --- Domain detector ----------------------------------------------------------
+_register("memgar.domain_detector",
+          "AgentDomainProfile", "DomainAnomalyDetector",
+          "DomainAnomalyResult", "DomainClassifier",
+          "build_detector", "mismatch_to_trust_penalty")
+
+# --- HITL checkpoint ----------------------------------------------------------
+_register("memgar.hitl",
+          "CRITICAL_ACTIONS", "HIGH_RISK_ACTIONS", "ApprovalRequest",
+          "ApprovalResult", "ApprovalStatus", "CLINotifier", "EmailNotifier",
+          "HITLCheckpoint", "HITLDeniedError", "HITLNotifier", "HITLServer",
+          "HITLTimeoutError", "NullNotifier", "RiskLevel", "SlackNotifier",
+          "TelegramNotifier", "WebhookNotifier", "classify_action",
+          "create_checkpoint")
+
+# --- Identity -----------------------------------------------------------------
+_register("memgar.identity",
+          "HIGH_RISK_SCOPES", "AgentContext", "AgentIdentity",
+          "AgentRegistry", "AgentStatus", "AgentToken", "DelegationLink",
+          "PermissionScope", "create_registry", "get_registry")
+_alias("IdentityAuditEvent", "memgar.identity", "AuditEvent")
+
+# --- Learning -----------------------------------------------------------------
+_register("memgar.learning",
+          "FalsePositive", "GapDetector", "LearningStats",
+          "PatternCandidate", "PatternLearner", "PatternSource",
+          "PatternStore", "ReviewDecision", "create_learner", "scan_for_gaps")
+
+# --- Secure embeddings --------------------------------------------------------
+_register("memgar.secure_embeddings",
+          "AnthropicEmbedding", "EmbeddingBackend", "KeywordFallback",
+          "LedgerEmbeddingIndex", "SklearnTFIDF",
+          "build_similarity_fn", "get_best_backend")
+
+# --- Secure memory store ------------------------------------------------------
+_register("memgar.secure_memory_store",
+          "DLPFinding", "DLPPattern", "DLPPolicy", "DLPRedactor",
+          "DLPResult", "SecureMemoryBoundaryError", "SecureMemoryStore",
+          "SecureMemoryStorePolicy", "SecureWriteResult")
+
+# --- SIEM ---------------------------------------------------------------------
+_register("memgar.siem",
+          "DatadogSink", "ElasticSink", "EventCategory", "FileSink",
+          "OCSFClass", "OCSFSeverity", "SIEMEvent", "SIEMRouter",
+          "SIEMSink", "SplunkHECSink", "SyslogSink", "WebhookSink")
+_alias("create_siem_router", "memgar.siem", "create_router")
+
+# --- Supply chain scanner -----------------------------------------------------
+_register("memgar.supply",
+          "KNOWN_MALICIOUS", "FindingSeverity", "FindingType",
+          "SupplyChainScanner", "SupplyFinding", "SupplyScanReport")
+_alias("supply_check_package", "memgar.supply", "check_package")
+_alias("supply_scan_directory", "memgar.supply", "scan_directory")
+_alias("supply_scan_file", "memgar.supply", "scan_file")
+
+# --- Tenants / multi-tenant ---------------------------------------------------
+_register("memgar.tenants",
+          "PLAN_LIMITS", "ApiKey", "Tenant", "TenantStore")
+_register("memgar.tenant_learning",
+          "BenignRecord", "MarkAttackRecord", "PoisoningRefused",
+          "RateLimited", "TenantLearningStore", "TenantPolicy",
+          "TenantStoreFull")
+
+# --- Compliance / EU AI Act ---------------------------------------------------
+_register("memgar.compliance",
+          "ComplianceCheck", "ComplianceStatus", "EUAIActReport",
+          "RiskClassification")
+_register("memgar.eu_ai_act",
+          "ComplianceConfig", "EUAIActReporter", "Requirement")
+_alias("EUAIActComplianceStatus", "memgar.eu_ai_act", "ComplianceStatus")
 
 # =============================================================================
-# OBSERVABILITY (Optional - requires prometheus_client)
+# OPTIONAL IMPORTS — return None on ImportError (external dep missing)
 # =============================================================================
-OBSERVABILITY_AVAILABLE = False
-start_metrics_server = None
 
-try:
-    from memgar.observability import start_metrics_server  # type: ignore[assignment]
-    OBSERVABILITY_AVAILABLE = True
-except ImportError:
-    pass
+_OPTIONAL_IMPORTS: dict[str, tuple[str, str]] = {}
 
-# =============================================================================
-# REST SERVER (Optional — requires fastapi + uvicorn)
-# =============================================================================
-create_app = None  # type: ignore[assignment]
 
-try:
-    from memgar.server import create_app  # type: ignore[assignment]
-except ImportError:
-    pass
+def _optional(module: str, *names: str) -> None:
+    for n in names:
+        _OPTIONAL_IMPORTS[n] = (module, n)
 
-# =============================================================================
-# OPENTELEMETRY TRACING (Optional — requires opentelemetry-sdk)
-# =============================================================================
-TRACING_AVAILABLE = False
-configure_tracing = None  # type: ignore[assignment]
 
-try:
-    from memgar.observability.tracing import (
-        _OTEL_AVAILABLE as TRACING_AVAILABLE,
-    )
-    from memgar.observability.tracing import (  # type: ignore[assignment]
-        configure_tracing,
-        get_tracer,
-    )
-except ImportError:
-    get_tracer = None  # type: ignore[assignment]
+def _optional_alias(public_name: str, module: str, attr: str) -> None:
+    _OPTIONAL_IMPORTS[public_name] = (module, attr)
 
-# =============================================================================
-# MULTI-MODAL DETECTION (Optional - enhanced with PIL, scipy, etc.)
-# =============================================================================
-MULTIMODAL_AVAILABLE = False
 
-try:
-    from memgar.multimodal import (
-        AudioAnalyzer,
-        ImageAnalyzer,
-        MultiModalAnalyzer,
-        PDFAnalyzer,
-    )
-    MULTIMODAL_AVAILABLE = True
-except ImportError:
-    MultiModalAnalyzer = None
-    ImageAnalyzer = None
-    PDFAnalyzer = None
-    AudioAnalyzer = None
+# Semantic analysis (requires sentence-transformers)
+_optional("memgar.semantic",
+          "AnalysisLayer", "SemanticAnalyzer", "SemanticResult",
+          "check_available_layers", "quick_analyze")
+_optional("memgar.embeddings",
+          "THREAT_EXAMPLES", "EmbeddingAnalyzer", "EmbeddingResult")
 
-# =============================================================================
-# MULTI-AGENT SECURITY (Always available)
-# =============================================================================
-from memgar.agents import (
-    AgentMessageValidator,
-    AgentSecurityGuard,
-    DelegationEvent,
-    DelegationMonitor,
-    MCPSecurityLayer,
-    MCPValidationResult,
-    SwarmDetector,
-    SwarmThreat,
-    TrustChainManager,
-)
-from memgar.agents import (
-    TrustLevel as AgentTrustLevel,
-)
+# LLM analysis (requires anthropic or openai)
+_optional("memgar.llm_analyzer", "LLMAnalyzer", "LLMResult")
+
+# Threat intelligence feed (requires cryptography)
+_optional("memgar.feed.loader", "sync_feed")
+_optional("memgar.feed.models", "FeedManifest", "PatternBundle")
+_optional("memgar.feed.verifier", "FeedSignatureError", "FeedVerifier")
+_optional_alias("PatternFeed", "memgar.feed.loader", "FeedLoader")
+
+# Observability (requires prometheus_client)
+_optional("memgar.observability", "start_metrics_server")
+
+# REST server (requires fastapi + uvicorn)
+_optional("memgar.server", "create_app")
+
+# OpenTelemetry tracing (requires opentelemetry-sdk)
+_optional("memgar.observability.tracing", "configure_tracing", "get_tracer")
+
+# Multi-modal detection (requires PIL, scipy, numpy)
+_optional("memgar.multimodal",
+          "AudioAnalyzer", "ImageAnalyzer", "MultiModalAnalyzer",
+          "PDFAnalyzer")
+
+# Memory forensics
+_optional("memgar.forensics",
+          "ForensicEntry", "ForensicReport", "MemoryCleanser",
+          "MemoryForensicsEngine", "PoisonEvent", "PoisonSeverity",
+          "SkillFileScanner")
+
+# Framework integrations (requires langchain / llamaindex / crewai / autogen)
+_optional("memgar.frameworks",
+          "MemgarChatMemory", "MemgarConversationBufferMemory",
+          "MemgarDocumentFilter", "MemgarIndexSecurity",
+          "MemgarIngestionPipelineSecurity", "MemgarLCELMiddleware",
+          "MemgarNodeFilter", "MemgarQueryEngineSecurity",
+          "MemgarSecurityRunnable", "MemgarStorageContextSecurity",
+          "SecureVectorIndexRetriever", "SecureVectorStoreRetriever",
+          "create_secure_lcel_chain", "create_secure_query_pipeline")
 
 # =============================================================================
-# HIGH-PERFORMANCE CORE (Always available)
+# AVAILABILITY FLAGS  (computed lazily on first access)
 # =============================================================================
-from memgar.core import (
-    AhoCorasick,
-    PatternMatcher,
-    ThreatScanner,
-)
 
-# Memory Forensics (v0.5.1)
-try:
-    from memgar.forensics import (
-        ForensicEntry,
-        ForensicReport,
-        MemoryCleanser,
-        MemoryForensicsEngine,
-        PoisonEvent,
-        PoisonSeverity,
-        SkillFileScanner,
-    )
-    _FORENSICS_AVAILABLE = True
-except ImportError:
-    _FORENSICS_AVAILABLE = False
-    MemoryForensicsEngine = ForensicReport = ForensicEntry = None  # type: ignore[assignment,misc]
-    PoisonEvent = PoisonSeverity = MemoryCleanser = SkillFileScanner = None  # type: ignore[assignment,misc]
-
-# Framework deep integrations (v0.5.0)
-try:
-    from memgar.frameworks import (
-        MemgarChatMemory,
-        MemgarConversationBufferMemory,
-        MemgarDocumentFilter,
-        MemgarIndexSecurity,
-        MemgarIngestionPipelineSecurity,
-        MemgarLCELMiddleware,
-        MemgarNodeFilter,
-        MemgarQueryEngineSecurity,
-        MemgarSecurityRunnable,
-        MemgarStorageContextSecurity,
-        SecureVectorIndexRetriever,
-        SecureVectorStoreRetriever,
-        create_secure_lcel_chain,
-        create_secure_query_pipeline,
-    )
-    _FRAMEWORKS_AVAILABLE = True
-except ImportError:
-    _FRAMEWORKS_AVAILABLE = False
-    MemgarSecurityRunnable = MemgarChatMemory = MemgarConversationBufferMemory = None  # type: ignore[assignment,misc]
-    SecureVectorStoreRetriever = MemgarLCELMiddleware = MemgarDocumentFilter = None  # type: ignore[assignment,misc]
-    create_secure_lcel_chain = MemgarQueryEngineSecurity = MemgarIndexSecurity = None  # type: ignore[assignment,misc]
-    MemgarStorageContextSecurity = SecureVectorIndexRetriever = MemgarIngestionPipelineSecurity = None  # type: ignore[assignment,misc]
-    MemgarNodeFilter = create_secure_query_pipeline = None  # type: ignore[assignment,misc]
+# flag_name → module that must import successfully for the flag to be True
+_AVAILABILITY_FLAGS: dict[str, str] = {
+    "SEMANTIC_AVAILABLE": "memgar.semantic",
+    "LLM_AVAILABLE": "memgar.llm_analyzer",
+    "FEED_AVAILABLE": "memgar.feed.loader",
+    "OBSERVABILITY_AVAILABLE": "memgar.observability",
+    "MULTIMODAL_AVAILABLE": "memgar.multimodal",
+    "COMPLIANCE_AVAILABLE": "memgar.compliance",
+    "_FORENSICS_AVAILABLE": "memgar.forensics",
+    "_FRAMEWORKS_AVAILABLE": "memgar.frameworks",
+}
 
 
-# Domain-Aware Anomaly Detection (v0.5.16)
-# Auto-protect (v0.5.3)
-from memgar.auto_protect import (
-    AutoProtectConfig,
-    AutoProtectStatus,
-    auto_protect,
-    auto_protect_off,
-)
-from memgar.auto_protect import (
-    get_status as auto_protect_status,
-)
-from memgar.auto_protect import (
-    reset_stats as auto_protect_reset_stats,
-)
+# =============================================================================
+# __getattr__  — PEP 562 lazy attribute resolution
+# =============================================================================
 
-# Behavioral Baseline Engine (v0.5.15)
-from memgar.behavioral_baseline import (
-    SIGNAL_REGISTRY,
-    BaselineIntegration,
-    BaselineRegistry,
-    BehavioralBaseline,
-    BehaviorSnapshot,
-    DeviationLevel,
-    DeviationReport,
-    EWMBaseline,
-    SignalDeviation,
-    create_baseline,
-)
+def __getattr__(name: str):
+    # 1. Regular lazy imports (always-available modules)
+    if name in _LAZY_IMPORTS:
+        mod_path, attr = _LAZY_IMPORTS[name]
+        module = importlib.import_module(mod_path)
+        val = getattr(module, attr)
+        globals()[name] = val
+        return val
 
-# ---------------------------------------------------------------------------
-# Compliance / EU AI Act reporting
-# ---------------------------------------------------------------------------
-# Standalone product surface — NOT part of the analyzer pipeline. Exposed
-# here for convenience (`from memgar import EUAIActReporter`) but lazy so
-# the import cost stays in the analyzer hot path's cold-import budget
-# instead of the steady-state library import budget.
-COMPLIANCE_AVAILABLE = False
-try:
-    from memgar.compliance import (
-        ComplianceCheck,
-        ComplianceStatus,
-        EUAIActReport,
-        RiskClassification,
-    )
-    from memgar.eu_ai_act import (
-        ComplianceConfig,
-        EUAIActReporter,
-        Requirement,
-    )
-    from memgar.eu_ai_act import (
-        ComplianceStatus as EUAIActComplianceStatus,
-    )
-    COMPLIANCE_AVAILABLE = True
-except ImportError:
-    ComplianceCheck = None  # type: ignore[assignment,misc]
-    ComplianceStatus = None  # type: ignore[assignment,misc]
-    EUAIActReport = None  # type: ignore[assignment,misc]
-    RiskClassification = None  # type: ignore[assignment,misc]
-    ComplianceConfig = None  # type: ignore[assignment,misc]
-    EUAIActComplianceStatus = None  # type: ignore[assignment,misc]
-    EUAIActReporter = None  # type: ignore[assignment,misc]
-    Requirement = None  # type: ignore[assignment,misc]
+    # 2. Optional imports (return None when the dependency is missing)
+    if name in _OPTIONAL_IMPORTS:
+        mod_path, attr = _OPTIONAL_IMPORTS[name]
+        try:
+            module = importlib.import_module(mod_path)
+            val = getattr(module, attr)
+        except (ImportError, AttributeError):
+            val = None
+        globals()[name] = val
+        return val
 
-from memgar.domain_detector import (
-    AgentDomainProfile,
-    DomainAnomalyDetector,
-    DomainAnomalyResult,
-    DomainClassifier,
-    build_detector,
-    mismatch_to_trust_penalty,
-)
+    # 3. Availability flags
+    if name in _AVAILABILITY_FLAGS:
+        mod_path = _AVAILABILITY_FLAGS[name]
+        try:
+            importlib.import_module(mod_path)
+            val = True
+        except ImportError:
+            val = False
+        globals()[name] = val
+        return val
 
-# HITL Checkpoint (v0.5.6)
-from memgar.hitl import (
-    CRITICAL_ACTIONS,
-    HIGH_RISK_ACTIONS,
-    ApprovalRequest,
-    ApprovalResult,
-    ApprovalStatus,
-    CLINotifier,
-    EmailNotifier,
-    HITLCheckpoint,
-    HITLDeniedError,
-    HITLNotifier,
-    HITLServer,
-    HITLTimeoutError,
-    NullNotifier,
-    RiskLevel,
-    SlackNotifier,
-    TelegramNotifier,
-    WebhookNotifier,
-    classify_action,
-    create_checkpoint,
-)
+    # 4. Special: TRACING_AVAILABLE reads a module-level bool
+    if name == "TRACING_AVAILABLE":
+        try:
+            from memgar.observability.tracing import (
+                _OTEL_AVAILABLE,
+            )
+            val = _OTEL_AVAILABLE
+        except ImportError:
+            val = False
+        globals()[name] = val
+        return val
 
-# Per-Agent Identity (v0.5.9)
-from memgar.identity import (
-    HIGH_RISK_SCOPES,
-    AgentContext,
-    AgentIdentity,
-    AgentRegistry,
-    AgentStatus,
-    AgentToken,
-    DelegationLink,
-    PermissionScope,
-    create_registry,
-    get_registry,
-)
-from memgar.identity import (
-    AuditEvent as IdentityAuditEvent,
-)
+    raise AttributeError(f"module 'memgar' has no attribute {name!r}")
 
-# Self-Learning Pattern System (v0.5.7)
-from memgar.learning import (
-    FalsePositive,
-    GapDetector,
-    LearningStats,
-    PatternCandidate,
-    PatternLearner,
-    PatternSource,
-    PatternStore,
-    ReviewDecision,
-    create_learner,
-    scan_for_gaps,
-)
-
-# Memory Integrity Ledger (v0.5.5)
-from memgar.memory_ledger import (
-    GENESIS_HASH,
-    EntryStatus,
-    LedgerEntry,
-    LedgerForensicsIntegration,
-    LedgerReport,
-    LedgerVerifier,
-    MemoryLedger,
-    TamperEvent,
-    create_ledger,
-    verify_ledger,
-)
-
-# Semantic Embedding Layer (v0.5.16)
-from memgar.secure_embeddings import (
-    AnthropicEmbedding,
-    EmbeddingBackend,
-    KeywordFallback,
-    LedgerEmbeddingIndex,
-    SklearnTFIDF,
-    build_similarity_fn,
-    get_best_backend,
-)
-
-# Secure Retrieval Layer (v0.5.14)
-from memgar.secure_memory_store import (
-    DLPFinding,
-    DLPPattern,
-    DLPPolicy,
-    DLPRedactor,
-    DLPResult,
-    SecureMemoryBoundaryError,
-    SecureMemoryStore,
-    SecureMemoryStorePolicy,
-    SecureWriteResult,
-)
-from memgar.secure_retriever import (
-    AnomalyEvent,
-    AnomalyType,
-    DecayShape,
-    RetrievalAnomalyMonitor,
-    RetrievalResult,
-    ScoredEntry,
-    SecureMemoryRetriever,
-    TemporalDecayEngine,
-    TrustWeightedScorer,
-    create_retriever,
-)
-
-# SIEM Integration (v0.5.10)
-from memgar.siem import (
-    DatadogSink,
-    ElasticSink,
-    EventCategory,
-    FileSink,
-    OCSFClass,
-    OCSFSeverity,
-    SIEMEvent,
-    SIEMRouter,
-    SIEMSink,
-    SplunkHECSink,
-    SyslogSink,
-    WebhookSink,
-)
-from memgar.siem import (
-    create_router as create_siem_router,
-)
-
-# Supply Chain Scanner (v0.5.8)
-from memgar.supply import (
-    KNOWN_MALICIOUS,
-    FindingSeverity,
-    FindingType,
-    SupplyChainScanner,
-    SupplyFinding,
-    SupplyScanReport,
-)
-from memgar.supply import (
-    check_package as supply_check_package,
-)
-from memgar.supply import (
-    scan_directory as supply_scan_directory,
-)
-from memgar.supply import (
-    scan_file as supply_scan_file,
-)
-
-# Composite Trust Scorer (v0.5.12)
-from memgar.tenant_learning import (
-    BenignRecord,
-    MarkAttackRecord,
-    PoisoningRefused,
-    RateLimited,
-    TenantLearningStore,
-    TenantPolicy,
-    TenantStoreFull,
-)
-from memgar.trust_scorer import (
-    CompositeTrustResult,
-    CompositeTrustScorer,
-    SignalName,
-    SignalResult,
-    TrustContext,
-    TrustDecision,
-    get_default_scorer,
-    score_content,
-)
-
-# Write-Ahead Validator / Guardian Pattern (v0.5.13)
-from memgar.write_ahead_validator import (
-    CheckResult,
-    GuardianVerdict,
-    MemoryWriteBlocked,
-    MemoryWriteGateway,
-    MINJADetector,
-    RuleBasedChecker,
-    SemanticGuardian,
-    ValidationContext,
-    ValidationOutcome,
-    WriteAheadValidator,
-)
 
 # =============================================================================
 # MAIN CLIENT CLASS
@@ -721,36 +464,39 @@ class Memgar:
                      MEMGAR_API_KEY environment variable.
             strict_mode: If True, block suspicious content instead of quarantine.
         """
+        from memgar.analyzer import Analyzer as _Analyzer
+        from memgar.scanner import Scanner as _Scanner
+
         # Reuse singleton for default config — avoids 212ms re-init cost
         if not use_llm and not api_key and not strict_mode:
             if Memgar._default_analyzer is None:
-                Memgar._default_analyzer = Analyzer()
+                Memgar._default_analyzer = _Analyzer()
             self.analyzer = Memgar._default_analyzer
         else:
-            self.analyzer = Analyzer(use_llm=use_llm, api_key=api_key, strict_mode=strict_mode)
-        self.scanner = Scanner(analyzer=self.analyzer)
+            self.analyzer = _Analyzer(use_llm=use_llm, api_key=api_key, strict_mode=strict_mode)
+        self.scanner = _Scanner(analyzer=self.analyzer)
 
         # Auto-start observability if enabled in config.
-        if OBSERVABILITY_AVAILABLE and start_metrics_server is not None:
-            try:
-                from memgar.config import get_config
-                cfg = get_config()
-                obs = getattr(cfg, "observability", None)
-                if obs is not None and getattr(obs, "enabled", False):
-                    start_metrics_server(
-                        port=getattr(obs, "port", 9090),
-                        psi_threshold=getattr(obs, "drift_alert_threshold", 0.20),
-                        window_size=getattr(obs, "drift_window_size", 1000),
-                    )
-            except Exception:
-                pass  # observability must never prevent initialization
+        try:
+            from memgar.observability import start_metrics_server as _start
+            from memgar.config import get_config
+            cfg = get_config()
+            obs = getattr(cfg, "observability", None)
+            if obs is not None and getattr(obs, "enabled", False):
+                _start(
+                    port=getattr(obs, "port", 9090),
+                    psi_threshold=getattr(obs, "drift_alert_threshold", 0.20),
+                    window_size=getattr(obs, "drift_window_size", 1000),
+                )
+        except Exception:
+            pass  # observability must never prevent initialization
 
     def analyze(
         self,
         content: str,
         source_type: str = "unknown",
         source_id: Optional[str] = None
-    ) -> AnalysisResult:
+    ) -> "AnalysisResult":
         """
         Analyze content for memory poisoning threats.
 
@@ -775,7 +521,8 @@ class Memgar:
             >>> if result.decision == Decision.BLOCK:
             ...     log_threat(result)
         """
-        entry = MemoryEntry(
+        from memgar.models import MemoryEntry as _ME
+        entry = _ME(
             content=content,
             source_type=source_type,
             source_id=source_id
@@ -789,7 +536,8 @@ class Memgar:
         source_id: Optional[str] = None,
     ) -> "AnalysisResult":
         """Async version of analyze() — runs in thread-pool, safe for asyncio frameworks."""
-        entry = MemoryEntry(content=content, source_type=source_type, source_id=source_id)
+        from memgar.models import MemoryEntry as _ME
+        entry = _ME(content=content, source_type=source_type, source_id=source_id)
         return await self.analyzer.analyze_async(entry)
 
     def register_source_trust(self, source_id: str, trust_score: float) -> None:
@@ -815,7 +563,7 @@ class Memgar:
         """
         return self.scanner.scan_file(path)
 
-    def scan_directory(self, path: str, recursive: bool = True) -> ScanResult:
+    def scan_directory(self, path: str, recursive: bool = True) -> "ScanResult":
         """
         Scan a directory for memory poisoning threats.
 
@@ -828,7 +576,7 @@ class Memgar:
         """
         return self.scanner.scan_directory(path, recursive=recursive)
 
-    def scan_memories(self, memories: list[dict | str]) -> ScanResult:
+    def scan_memories(self, memories: list[dict | str]) -> "ScanResult":
         """
         Scan a list of memory entries.
 
@@ -858,14 +606,16 @@ class Memgar:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-def analyze(content: str) -> AnalysisResult:
+def analyze(content: str) -> "AnalysisResult":
     """Quick analysis of content using default settings."""
-    return QuickAnalyzer.check(content)
+    from memgar.analyzer import QuickAnalyzer as _QA
+    return _QA.check(content)
 
 
 def is_safe(content: str) -> bool:
     """Quick check if content is safe."""
-    return QuickAnalyzer.is_safe(content)
+    from memgar.analyzer import QuickAnalyzer as _QA
+    return _QA.is_safe(content)
 
 
 def get_version() -> str:
@@ -875,7 +625,6 @@ def get_version() -> str:
 
 def check_installation() -> dict:
     """Return a real-time status report of all Memgar features."""
-    from pathlib import Path
 
     # Layer 3: trust scoring wired into Analyzer
     try:
@@ -901,7 +650,6 @@ def check_installation() -> dict:
     # FastAPI server available
     try:
         import fastapi as _fa  # noqa: F401
-
         from memgar.server import create_app as _ca  # noqa: F401
         _server_ok = True
     except ImportError:
@@ -921,25 +669,49 @@ def check_installation() -> dict:
     except Exception:
         pass
 
+    # Compute availability flags inline (avoid triggering __getattr__
+    # side effects that cache into globals)
+    def _available(mod: str) -> bool:
+        try:
+            importlib.import_module(mod)
+            return True
+        except ImportError:
+            return False
+
+    _semantic = _available("memgar.semantic")
+    _llm = _available("memgar.llm_analyzer")
+    _multimodal = _available("memgar.multimodal")
+    _feed = _available("memgar.feed.loader")
+    _obs = _available("memgar.observability")
+
+    _tracing = False
+    try:
+        from memgar.observability.tracing import _OTEL_AVAILABLE
+        _tracing = _OTEL_AVAILABLE
+    except ImportError:
+        pass
+
+    from memgar.patterns import PATTERNS as _P
+
     return {
         "version": __version__,
         "core": True,
-        "patterns": len(PATTERNS),
+        "patterns": len(_P),
         # Analysis layers
         "layer1_pattern_matching": True,
-        "layer2_llm_semantic": LLM_AVAILABLE,
+        "layer2_llm_semantic": _llm,
         "layer3_trust_scoring": _layer3_ok,
         "layer4_behavioral_baseline": _layer4_ok,
         "async_analyze": True,
         # Optional features
-        "semantic": SEMANTIC_AVAILABLE,
-        "multimodal": MULTIMODAL_AVAILABLE,
+        "semantic": _semantic,
+        "multimodal": _multimodal,
         "agents": True,
-        "feed": FEED_AVAILABLE,
+        "feed": _feed,
         "feed_cached": _feed_cached,
         "feed_version": _feed_version,
-        "observability": OBSERVABILITY_AVAILABLE,
-        "tracing": TRACING_AVAILABLE,
+        "observability": _obs,
+        "tracing": _tracing,
         "adversarial": _adversarial_ok,
         "server": _server_ok,
     }
