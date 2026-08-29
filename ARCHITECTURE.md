@@ -172,17 +172,12 @@ OpenTelemetry tracing available via `configure_tracing()` (`memgar/observability
 ml/
 ├── adversarial/
 │   ├── attack_generator.py   # 4 offline mutations + optional Claude API
-│   ├── variant_curator.py    # TF-IDF cosine dedup, max 3 per cluster
-│   └── hard_negative_miner.py
-├── continuous_learning.py    # AutoRetrainer, StorageManager, DriftDetector
-├── quality_gate.py           # precision≥0.94, recall≥0.94, P95≤25ms
-└── artifacts/
-    └── gradient_boost_model.pkl
+│   └── variant_curator.py    # TF-IDF cosine dedup, max 3 per cluster
+├── continuous_learning.py    # StorageManager, FeedbackTracker, DriftDetector
+└── artifacts/                # calibration outputs
 ```
 
-**AutoRetrainer pipeline:** backup → retrain → quality gate → promote or restore.
-
-**Adversarial loop:** `AttackGenerator` produces 4 mutation types (homoglyph Cyrillic, leetspeak, base64, passive rewrite). `VariantCurator` deduplicates with TF-IDF cosine similarity. `HardNegativeMiner` selects near-misses for maximum training value.
+**Adversarial loop:** `AttackGenerator` produces 4 mutation types (homoglyph Cyrillic, leetspeak, base64, passive rewrite). `VariantCurator` deduplicates with TF-IDF cosine similarity. Variants are tested against the live Analyzer and false negatives are queued for review (`scripts/continuous_redteam.py`).
 
 ---
 

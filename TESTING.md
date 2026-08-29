@@ -205,7 +205,8 @@ Hunter uses `threading.Event.wait()` internally. If `stop(timeout=2.0)` hangs, a
 Expected — Ed25519 requires a working pyo3/cffi backend. On this system, `_cffi_backend` is missing. The test is correctly guarded with `requires_crypto`.
 
 ### ML tests skipping
-Run `python rebuild_model.py` first to generate `ml/artifacts/gradient_boost_model.pkl`.
+The standalone XGBoost model was removed (2026-08). ML-related tests now
+exercise the adversarial variant pipeline and feedback tracking only.
 
 ### False positive in a new benign test
 Check `analyzer.risk_score` and `result.threats` to see which patterns fired. If a pattern is overly broad, open a PR with the false positive string added to the test suite and the pattern refined in `patterns.py`.

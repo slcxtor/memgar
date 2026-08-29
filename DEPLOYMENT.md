@@ -222,23 +222,20 @@ Feed auto-refreshes when `max_age_days` is exceeded (default: 7 days).
 
 ---
 
-## Rebuilding the ML Model
+## Red-Team and Calibration
 
-After collecting new adversarial variants:
+After discovering new attack patterns, test them against the live Analyzer:
 
 ```bash
-# Full rebuild with quality gate (precision≥0.94, recall≥0.94, P95≤25ms)
-python rebuild_model.py
-
-# Red-team dry run first (generates variants without injecting)
+# Red-team dry run (generates variants, tests against live Analyzer)
 python scripts/red_team_run.py --n-seeds 10 --n-variants 5 --dry-run --offline
 
-# Inject new variants and rebuild
-python scripts/red_team_run.py --n-seeds 10 --n-variants 5
-python rebuild_model.py
-```
+# Full continuous red-team loop (appends missed variants to review queue)
+python scripts/continuous_redteam.py --n-seeds 40 --n-variants 6
 
-The quality gate will refuse to promote a model that regresses more than 2% on precision or recall.
+# Verify gold-corpus calibration gates still pass
+python scripts/check_calibration_gate.py
+```
 
 ---
 
