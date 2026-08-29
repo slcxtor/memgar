@@ -26,15 +26,6 @@ Now every subsystem:
     "status": "ok",
     "n_patterns": 770,
   },
-  "layer1_5_semantic_guard": {
-    "status": "degraded",
-    "reason": "centroids_file_missing",
-    "is_fitted": False,
-    "n_centroids": 0,
-    "centroids_path": "/path/to/centroids.pkl",
-    "sentence_transformers_available": True,
-    "fix_hint": "python scripts/compute_semantic_centroids.py",
-  },
   "threat_feed": {
     "status": "ok",
     "repo": "slcxtor/memgar",
