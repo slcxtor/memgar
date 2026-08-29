@@ -1,7 +1,7 @@
 # Memgar AI Security System - .gitignore
 
 # ============================================================================
-# ML Models (Large Files - Rebuild with: python rebuild_model.py)
+# ML Models (Large Files)
 # ============================================================================
 *.pkl
 *.h5
@@ -9,6 +9,7 @@
 *.ckpt
 *.model
 *.weights
+*.onnx
 
 # General rule: ignore safetensors outputs
 *.safetensors

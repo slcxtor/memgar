@@ -46,8 +46,8 @@ a.register_source_trust("untrusted-wiki",  0.10)
 
 ```python
 a.health_check()
-# {'patterns': {...}, 'layer1_5_semantic_guard': {...},
-#  'threat_feed': {...}}
+# {'patterns': {...}, 'threat_feed': {...},
+#  'trust': {...}, 'behavioral_baseline': {...}}
 ```
 
 ## Calibration (offline)

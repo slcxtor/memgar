@@ -93,7 +93,7 @@ default.
 ### Adversarial Red-Team Loop (`ml/adversarial/`)
 
 ```
-AttackGenerator  →  VariantCurator  →  HardNegativeMiner  →  AutoRetrainer.retrain()
+AttackGenerator  →  VariantCurator  →  live Analyzer test  →  review queue
 ```
 
 - **`AttackGenerator`**: 4 offline mutations (homoglyph Cyrillic, leetspeak, base64, passive rewrite) + optional Claude API
@@ -118,10 +118,17 @@ memgar.start_metrics_server(port=9090)  # idempotent
 
 ### Continuous Learning (`ml/continuous_learning.py`)
 
-- `AutoRetrainer.retrain()`: backup → quality gate (precision≥0.94, recall≥0.94, P95≤25ms) → promote or restore
-- `inject_adversarial_variants(variants)`: appends to `adversarial_variants.jsonl`
-- `StorageManager.save_prediction()`: called automatically by `Analyzer.analyze()` for every prediction
-- `compare_to_baseline(new_metrics, baseline_metrics, max_regression=0.02)`: regression guard
+- `StorageManager.save_prediction()`: prediction persistence
+- `FeedbackTracker` / `DriftDetector`: metric-based drift alerting
+- `AutoRetrainer.inject_adversarial_variants(variants)`: appends to `adversarial_variants.jsonl`
+
+> **Removed (2026-08):** `AutoRetrainer.retrain()` — trained a standalone
+> XGBoost model (`gradient_boost_model.pkl`) that `Analyzer.analyze()` never
+> loaded.  Also removed: `SmartDetector`, `ml/quality_gate.py`,
+> `ml/training/train.py`, `ml/training/ml_feature_extractor.py`,
+> `memgar/ml_semantic_detector.py`, `rebuild_model.py`.  Detection is handled
+> entirely by the 4-layer pipeline; the red-team loop now tests against the
+> live Analyzer (`scripts/continuous_redteam.py`).
 
 ## Development Workflow
 
@@ -130,7 +137,7 @@ memgar.start_metrics_server(port=9090)  # idempotent
 pip install -e ".[dev,adversarial,feed,observability]"
 
 # Run tests
-python -m pytest -q                    # ~1594 pass, ~81 skip, 0 errors, 0 failures
+python -m pytest -q                    # ~1105 pass, ~63 skip, 0 errors, 0 failures
 
 # Pattern authoring note: Analyzer._compile_patterns() forces re.IGNORECASE
 # on every regex (see analyzer.py:1243). To require case-sensitive matching
@@ -140,9 +147,6 @@ python -m pytest tests/test_analyzer.py -v      # Layer 3+4 integration tests
 python -m pytest tests/test_feed.py -v          # Feed verify/cache/loader tests
 python -m pytest tests/test_adversarial.py -v   # Red-team tests
 python -m pytest tests/test_observability.py -v # Prometheus/drift tests
-
-# Rebuild ML model (runs quality gate)
-python rebuild_model.py
 
 # Red-team dry run
 python scripts/red_team_run.py --n-seeds 10 --n-variants 5 --dry-run --offline
@@ -189,8 +193,7 @@ python scripts/check_expanded_gate.py              # Merged: 6 regression-only g
 | `memgar/config.py` | `MemgarConfig`, `FeedConfig`, `ObservabilityConfig` |
 | `memgar/behavioral_baseline.py` | Layer 4 BehavioralBaseline, SIGNAL_REGISTRY |
 | `memgar/retriever.py` | Layer 3 TrustAwareRetriever (standalone RAG) |
-| `ml/continuous_learning.py` | AutoRetrainer, StorageManager, DriftDetector |
-| `ml/quality_gate.py` | `run_quality_gate()`, `compare_to_baseline()` |
+| `ml/continuous_learning.py` | StorageManager, FeedbackTracker, DriftDetector |
 | `ml/adversarial/` | AttackGenerator, VariantCurator |
 | `memgar/observability/` | Prometheus metrics, DriftMonitor |
 | `memgar/siem.py` | OCSF-compatible SIEM events |
