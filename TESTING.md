@@ -37,7 +37,7 @@ tests/
 └── test_load_benchmark.py    # Throughput benchmarks (marked `slow`)
 ```
 
-**Current totals:** 1,024 passed, 3 skipped (Ed25519 pyo3 panic — environment limit), 1 deselected (slow).
+**Current totals:** 1,105 passed, 63 skipped, 1 deselected (slow).
 
 ---
 

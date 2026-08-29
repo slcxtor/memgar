@@ -137,7 +137,7 @@ memgar.start_metrics_server(port=9090)  # idempotent
 pip install -e ".[dev,adversarial,feed,observability]"
 
 # Run tests
-python -m pytest -q                    # ~1594 pass, ~81 skip, 0 errors, 0 failures
+python -m pytest -q                    # ~1105 pass, ~63 skip, 0 errors, 0 failures
 
 # Pattern authoring note: Analyzer._compile_patterns() forces re.IGNORECASE
 # on every regex (see analyzer.py:1243). To require case-sensitive matching
