@@ -1,43 +1,14 @@
 """
-ML Inference Components
-=======================
+ML Inference Components (stub)
+==============================
 
-Production-ready ML detectors for real-time threat detection.
+The standalone XGBoost ML detector that previously lived here was removed
+in the dead-code cleanup (2026-08).  The Analyzer never loaded or called it;
+detection is handled entirely by the 4-layer pipeline in memgar/analyzer.py.
 
-Available Detectors:
-- MLSemanticDetector: Intent-based semantic detection (97.92% accuracy)
-- HybridOrchestrator: Multi-layer defense (Regex + ML)
-
-Usage:
-    from ml.inference.ml_detector import MLSemanticDetector
-    
-    detector = MLSemanticDetector('model.pkl')
-    result = detector.detect("user input")
-    
-    if result.should_block:
-        print(f"Attack detected: {result.threat_level}")
+This package is retained only so ``import ml.inference`` doesn't crash in
+downstream code that catches ImportError gracefully.
 """
 
-# Lazy imports to avoid forcing dependencies
-# Users can import what they need
-
-__all__ = [
-    # 'MLSemanticDetector',      # Uncomment when ml_detector.py is moved here
-    # 'HybridOrchestrator',       # Uncomment when orchestrator is moved here
-]
-
-# Version tracking
-__version__ = '1.0.0'
-
-
-def check_dependencies():
-    """Check if ML dependencies are installed"""
-    try:
-        import sklearn
-        import xgboost
-        import numpy
-        return True
-    except ImportError as e:
-        print(f"Missing ML dependency: {e}")
-        print("Install with: pip install scikit-learn xgboost numpy")
-        return False
+__version__ = '2.0.0'
+__all__: list = []

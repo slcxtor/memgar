@@ -907,22 +907,6 @@ def check_installation() -> dict:
     except ImportError:
         _server_ok = False
 
-    # ML model file on disk
-    _model_path = Path("ml/artifacts/gradient_boost_model.pkl")
-    _model_ok = _model_path.exists()
-    _model_version: Optional[str] = None
-    if _model_ok:
-        try:
-            import json as _json
-            _cfg = _json.loads((_model_path.with_suffix(".pkl.config.json")).read_text())
-            _hist = _cfg.get("training_history", [])
-            if _hist:
-                import datetime as _dt
-                ts = _hist[-1].get("timestamp", 0)
-                _model_version = _dt.datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
-        except Exception:
-            pass
-
     # Feed cache status
     _feed_cached = False
     _feed_version: Optional[str] = None
@@ -958,9 +942,6 @@ def check_installation() -> dict:
         "tracing": TRACING_AVAILABLE,
         "adversarial": _adversarial_ok,
         "server": _server_ok,
-        # ML model
-        "ml_model": _model_ok,
-        "ml_model_date": _model_version,
     }
 
 
