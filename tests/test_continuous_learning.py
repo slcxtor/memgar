@@ -77,13 +77,14 @@ class TestContinuousLearningInitialization:
             
             feedback_dir = os.path.join(temp_dir, 'feedback')
             
-            cl = ContinuousLearning(
+            # Constructing it is the thing under test: the side effect is
+            # that the feedback directory gets created.
+            ContinuousLearning(
                 model_path=os.path.join(temp_dir, 'model.pkl'),
                 feedback_dir=feedback_dir,
                 min_feedback_count=10
             )
-            
-            # Should create feedback directory
+
             assert os.path.exists(feedback_dir), "Feedback directory not created"
         except ImportError:
             pytest.skip("Continuous learning not available")

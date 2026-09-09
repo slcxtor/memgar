@@ -161,8 +161,6 @@ def mine_examples(
     existing: Dict[str, List[str]],
 ) -> Dict[str, List[str]]:
     """Mine diverse examples per subcategory, deduplicated against existing."""
-    from sentence_transformers import util
-    import numpy as np
 
     # Build a set of existing example embeddings for dedup
     existing_texts = [t for texts in existing.values() for t in texts]

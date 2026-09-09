@@ -301,7 +301,6 @@ class TestFeedLoader:
         loader = FeedLoader(cache_dir=str(tmp_path), verify_signature=False)
         # Patch sync to detect if called
         called = []
-        original_sync = loader.sync
         loader.sync = lambda: called.append(True) or None
 
         result = loader.load(auto_sync=True)

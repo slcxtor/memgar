@@ -49,14 +49,12 @@ import concurrent.futures as futures
 import json
 import logging
 import random
-import statistics
 import sys
-import threading
 import time
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -643,9 +641,7 @@ def run_simulation(
     t0 = time.perf_counter()
     analyzer = Analyzer(use_llm=False)
     load_ms = (time.perf_counter() - t0) * 1000
-    print(f"[sim] analyzer loaded in {load_ms:.0f} ms; transformer ready: "
-          f"{analyzer._transformer is not None and analyzer._transformer.is_ready}",
-          file=sys.stderr, flush=True)
+    print(f"[sim] analyzer loaded in {load_ms:.0f} ms", file=sys.stderr, flush=True)
 
     # Prepare per-agent workloads up-front (deterministic from seed)
     workloads: List[Tuple[str, AgentRole, List[str]]] = []

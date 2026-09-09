@@ -32,7 +32,6 @@ Version: 1.0.0
 
 import json
 import time
-import pickle
 import hashlib
 import logging
 import os
@@ -40,8 +39,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict, field
-from datetime import datetime, timedelta
-from collections import defaultdict
+from datetime import datetime
 import numpy as np
 
 from ml.training.hard_negative_miner import HardNegativeMiner, merge_training_examples
@@ -400,9 +398,6 @@ class DriftDetector:
                 if p.predicted_attack and not p.actual_attack)
         fn = sum(1 for p in labeled 
                 if not p.predicted_attack and p.actual_attack)
-        tn = sum(1 for p in labeled 
-                if not p.predicted_attack and not p.actual_attack)
-        
         total = len(labeled)
         accuracy = correct / total
         

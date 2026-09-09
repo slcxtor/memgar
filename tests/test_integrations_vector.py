@@ -94,7 +94,7 @@ class TestSecurityShell:
             write_policy=WritePolicy.BLOCK,
             on_block=events.append,
         )
-        records = shell.scan_writes([POISON])
+        shell.scan_writes([POISON])
         assert len(events) == 1
         assert events[0].risk_score > 40
 

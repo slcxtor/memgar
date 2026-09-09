@@ -10,25 +10,26 @@ Incoming Content
        ▼
 ┌──────────────────────────────────────────────┐
 │  Layer 1 — Pattern Matching          <1ms    │
-│  Aho-Corasick (1,335 keywords)               │
-│  Regex patterns (736 compiled)               │
-│  Unicode normalization (NFKC)                │
+│  814 threat patterns (3,103 compiled regex)  │
+│  2,271 keywords (per-keyword compiled regex) │
+│  Obfuscation normalization (NFKC/NFKD, leet, │
+│  homoglyph, zero-width, base64)              │
 └──────────────────────┬───────────────────────┘
                        │ risk_score += matched weight
-                       ▼
-┌──────────────────────────────────────────────┐
-│  Layer 1.5 — SemanticGuard (optional) ~5ms  │
-│  sentence-transformers all-MiniLM-L6-v2      │
-│  K-means cluster centroids                   │
-│  Sigmoid-calibrated similarity score         │
-└──────────────────────┬───────────────────────┘
-                       │
                        ▼
 ┌──────────────────────────────────────────────┐
 │  Layer 2 — LLM Semantic Analysis   ~200ms   │
 │  Claude API (optional, use_llm=True)         │
 │  Catches obfuscated / indirect attacks       │
 │  Independent of Layer 1                      │
+└──────────────────────┬───────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────┐
+│  Layer 2.5 — Semantic Similarity     ~5ms   │
+│  sentence-transformers cosine against a      │
+│  curated attack-paraphrase corpus            │
+│  Optional: pip install "memgar[semantic]"    │
 └──────────────────────┬───────────────────────┘
                        │
                        ▼
@@ -66,20 +67,12 @@ Key methods:
 - `register_source_trust(source_id, score)` — Layer 3 setup
 - `quick_check(content) → bool` — Layer 1 only, no overhead
 
-### Pattern Engine (`memgar/patterns.py` + `memgar/core/`)
+### Pattern Engine (`memgar/patterns.py`)
 
-- 736 threat patterns loaded from `patterns.py`
+- 814 threat patterns loaded from `memgar/data/patterns.yaml`
 - Compiled on first use, then pickle-cached (`~3ms` warm vs `~3500ms` cold)
-- Aho-Corasick automaton built over 1,335 keywords in `memgar/core/`
+- 2,271 keywords matched by per-keyword compiled regex, cached process-wide
 - `_RestrictedUnpickler` allowlist prevents pickle RCE on cache load
-
-### SemanticGuard (`memgar/semantic_guard.py`)
-
-Optional Layer 1.5:
-- Embeds content with `all-MiniLM-L6-v2`
-- Compares against K-means cluster centroids fitted on known attack embeddings
-- Similarity score calibrated with sigmoid: `1 / (1 + exp(-10 * (sim - 0.55)))`
-- 84% zero-shot recall on novel attack categories; 0% FPR
 
 ### Behavioral Baseline (`memgar/behavioral_baseline.py`)
 

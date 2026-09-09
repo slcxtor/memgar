@@ -35,9 +35,8 @@ from __future__ import annotations
 import json
 import random
 import re
-import sys
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 random.seed(2026)
 

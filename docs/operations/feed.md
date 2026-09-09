@@ -57,7 +57,7 @@ python scripts/publish_feed.py \
 
 This:
 
-1. Walks `memgar/patterns.py` + augments from `ml/data/feed_extensions.json`.
+1. Imports the `PATTERNS` list from `memgar/patterns.py` (backed by `memgar/data/patterns.yaml`).
 2. Builds the bundle, computes SHA-256, signs with the private key.
 3. Uploads to GitHub Release `feed-v1.3.0` with the signed `.json.gz`.
 

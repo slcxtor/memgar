@@ -709,7 +709,7 @@ class TestAttackScenario:
 
         # Step 6: Apply after confirmation
         plan.confirmed = True
-        restored = vault.apply_rollback(plan)
+        vault.apply_rollback(plan)
 
         # Step 7: Verify clean state
         assert vault._live["pref-2"].content == "Budget is $500/month"

@@ -25,14 +25,14 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set
+from typing import List, Optional, Set
 
 # Make `from scripts.intel.common import *` work when run as a script
 if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.intel.common import (
-    Candidate, CandidateSource, existing_pattern_ids, guess_severity,
+    Candidate, CandidateSource, guess_severity,
     normalize_text, read_seen_fingerprints, request_get, write_candidates,
 )
 

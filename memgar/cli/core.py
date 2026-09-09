@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
-import time
 from pathlib import Path
 from typing import Optional
 
 import click
 from rich import box
-from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table

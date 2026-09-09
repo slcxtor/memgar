@@ -20,24 +20,31 @@ pytest -v --tb=short
 
 ## Test Suite Overview
 
-```
-tests/
-├── test_analyzer.py          # 4-layer pipeline, Layer 3+4 integration
-├── test_hunter.py            # MemoryHunter — background daemon, factory constructors
-├── test_memory_store.py      # MemoryStore, PersistentMemoryStore, bulk_scan
-├── test_zero_shot_generalization.py  # SemanticGuard, 10 novel attack categories
-├── test_semantic_guard.py    # SemanticGuard unit tests
-├── test_feed.py              # Threat feed — loader, cache, verifier (3 skip: pyo3)
-├── test_observability.py     # Prometheus metrics, drift monitor
-├── test_adversarial.py       # Red-team loop — AttackGenerator, VariantCurator
-├── test_ml_integration.py    # ML model integration (skips if model absent)
-├── test_continuous_learning.py  # AutoRetrainer, StorageManager, DriftDetector
-├── test_security_tier1.py    # 167 real-world Tier-1 security tests
-├── test_security_tier2.py    # 212 real-world Tier-2 security tests
-└── test_load_benchmark.py    # Throughput benchmarks (marked `slow`)
+The suite is one file per subsystem under `tests/`. Rather than duplicate the
+listing here (it drifted badly enough to name five files that no longer exist),
+read it from the tree:
+
+```bash
+ls tests/
+python -m pytest --collect-only -q | tail -1
 ```
 
-**Current totals:** 1,024 passed, 3 skipped (Ed25519 pyo3 panic — environment limit), 1 deselected (slow).
+Landmarks:
+
+| File | Covers |
+|---|---|
+| `test_analyzer.py` | 4-layer pipeline, Layer 3+4 integration |
+| `test_cli_commands.py` | Every CLI entry point, end to end through click |
+| `test_normalization_integrity.py` | De-obfuscation must not corrupt the values it scans |
+| `test_feed.py` | Threat feed — loader, cache, Ed25519 verifier |
+| `test_observability.py` | Prometheus metrics, drift monitor |
+| `test_adversarial.py` | Red-team loop — AttackGenerator, VariantCurator |
+| `test_continuous_learning.py` | AutoRetrainer, StorageManager, DriftDetector |
+| `test_load.py` | Throughput benchmarks (marked `slow`, deselected by default) |
+
+**Current totals:** 1,143 passed, 64 skipped, 1 deselected (slow). Skips are
+optional-dependency paths — `sentence-transformers` for Layer 2.5, and the
+Ed25519 tests when the system `cryptography` build panics under pyo3.
 
 ---
 
@@ -112,8 +119,10 @@ Covers:
 - Benchmark script integrity (callable, returns dict, correct structure)
 - Dataset sanity (no benign text should score ≥ 90 on Layer 1)
 
-### Security Tiers (test_security_tier1.py, test_security_tier2.py)
-Real-world attack strings across:
+### Real-world attack coverage
+`test_real_world_attacks.py` (20), `test_documented_attacks.py` (13),
+`test_security_deep.py` (18), `test_security_hardening.py` (12) and
+`test_evasion_hardening.py` (8) carry real attack strings across:
 - Prompt injection, IBAN fraud, credential theft, data exfiltration
 - Sleeper payloads, code injection, supply chain, DoW
 - MINJA variants, AgentPoison, MemoryGraft patterns
@@ -186,7 +195,7 @@ Skipped in CI:
 
 To run the full suite locally including benchmarks:
 ```bash
-pytest -m slow -v tests/test_load_benchmark.py
+pytest -m slow -v tests/test_load.py
 ```
 
 ---

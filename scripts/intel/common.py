@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set
 
 logger = logging.getLogger("memgar.intel")
 
