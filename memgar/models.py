@@ -112,6 +112,35 @@ class AnalysisResult:
     category: Optional[str] = None
 
     @property
+    def primary_threat(self) -> Optional[ThreatMatch]:
+        """Highest-severity threat match, or None when nothing matched."""
+        if not self.threats:
+            return None
+        order = {
+            Severity.CRITICAL: 0,
+            Severity.HIGH: 1,
+            Severity.MEDIUM: 2,
+            Severity.LOW: 3,
+            Severity.INFO: 4,
+        }
+        return min(
+            self.threats,
+            key=lambda t: (order.get(t.threat.severity, 5), -t.confidence),
+        )
+
+    @property
+    def threat_name(self) -> Optional[str]:
+        """Name of the primary threat, or None."""
+        top = self.primary_threat
+        return top.threat.name if top else None
+
+    @property
+    def severity(self) -> Optional[str]:
+        """Severity of the primary threat, or None."""
+        top = self.primary_threat
+        return top.threat.severity.value if top else None
+
+    @property
     def is_threat(self) -> bool:
         """Check if result contains threats."""
         return self.decision != Decision.ALLOW or len(self.threats) > 0
@@ -202,6 +231,11 @@ class ScanResult:
     results: list[AnalysisResult] = field(default_factory=list)
     scan_time_ms: float = 0.0
     files_scanned: list[str] = field(default_factory=list)
+
+    @property
+    def entries_scanned(self) -> int:
+        """Number of entries analyzed, whichever field set the scanner used."""
+        return self.total_entries or self.total
 
     @property
     def threat_count(self) -> int:

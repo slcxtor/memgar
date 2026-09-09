@@ -31,7 +31,7 @@ Layer 4   — Behavioral Baseline          <1ms    auto (per-agent, after warm-u
 > need ML detection later, retrain from production traffic on a fresh
 > architecture rather than reviving the v2 weights.
 
-**Layer 1** (`_layer1_pattern_matching`): Regex + keyword matching against 736 threat patterns loaded from `memgar/patterns.py` (pickle-cached for 3ms load vs 3500ms cold).
+**Layer 1** (`_layer1_pattern_matching`): Regex + keyword matching against 814 threat patterns loaded from `memgar/data/patterns.yaml` via `memgar/patterns.py` (pickle-cached for 3ms load vs 3500ms cold).
 
 **Layer 2** (`_layer2_semantic_analysis`): Claude LLM call for sophisticated attacks. Runs independently of Layer 1 (catches obfuscation Layer 1 misses).
 
@@ -184,7 +184,8 @@ python scripts/check_expanded_gate.py              # Merged: 6 regression-only g
 | Path | Purpose |
 |------|---------|
 | `memgar/analyzer.py` | Core 4-layer analysis engine |
-| `memgar/patterns.py` | 736 threat patterns (source of truth) |
+| `memgar/data/patterns.yaml` | 814 threat patterns (source of truth) |
+| `memgar/patterns.py` | Pattern loader + pickle cache over that YAML |
 | `memgar/feed/verifier.py` | Ed25519 public key for feed verification |
 | `memgar/config.py` | `MemgarConfig`, `FeedConfig`, `ObservabilityConfig` |
 | `memgar/behavioral_baseline.py` | Layer 4 BehavioralBaseline, SIGNAL_REGISTRY |

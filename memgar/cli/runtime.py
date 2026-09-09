@@ -16,6 +16,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
+from rich.markup import escape
 
 from memgar.analyzer import Analyzer
 from memgar.cli import main
@@ -62,8 +63,9 @@ def gateway(upstream: str, host: str, port: int, use_llm: bool,
     try:
         from memgar.gateway.app import run as run_gateway
     except ImportError as exc:
-        console.print(f"[red]Gateway requires fastapi+uvicorn+httpx: {exc}[/red]")
-        return
+        console.print(f"[red]Gateway requires fastapi+uvicorn+httpx: {escape(str(exc))}[/red]")
+        console.print("[dim]Run: pip install 'memgar\\[gateway]'[/dim]")
+        raise SystemExit(1)
     run_gateway(
         host=host, port=port, upstream=upstream,
         use_llm=use_llm,
@@ -91,8 +93,8 @@ def mcp_proxy(upstream: tuple) -> None:
     try:
         from memgar.gateway.mcp_proxy import MCPProxy, run_stdio_proxy
     except ImportError as exc:
-        console.print(f"[red]MCP proxy unavailable: {exc}[/red]")
-        return
+        console.print(f"[red]MCP proxy unavailable: {escape(str(exc))}[/red]")
+        raise SystemExit(1)
     proxy = MCPProxy()
     rc = asyncio.run(run_stdio_proxy(list(upstream), proxy=proxy))
     raise SystemExit(rc)
@@ -192,6 +194,7 @@ def guard(content: Optional[str], file: Optional[str], source: str, session: Opt
     table.add_column("Value")
 
     table.add_row("Risk Score", f"[{'red' if result.risk_score > 70 else 'yellow' if result.risk_score > 40 else 'green'}]{result.risk_score}/100[/]")
+    table.add_row("Risk (before → after)", f"{result.risk_score_before} → {result.risk_score_after}")
     table.add_row("Source Type", source_type.value)
     table.add_row("Trust Level", str(result.trust_level))
     table.add_row("Threats Found", str(result.threat_count))
@@ -246,7 +249,7 @@ def semantic(content: Optional[str], file: Optional[str], layers: str, llm_provi
         from memgar.semantic import SemanticAnalyzer, check_available_layers
     except ImportError:
         console.print("[red]Error: Semantic analysis requires additional dependencies[/red]")
-        console.print("[dim]Run: pip install memgar[semantic][/dim]")
+        console.print("[dim]Run: pip install 'memgar\\[semantic]'[/dim]")
         raise SystemExit(1)
 
     # Get content
@@ -395,9 +398,9 @@ def sanitize(content: Optional[str], file: Optional[str], output: Optional[str],
             "original": content,
             "sanitized": result.sanitized_content,
             "was_modified": result.was_modified,
-            "removed_count": len(result.removed_instructions),
-            "removed_instructions": result.removed_instructions,
-            "categories_found": result.categories_found,
+            "removed_count": len(result.removed_segments),
+            "removed_segments": result.removed_segments,
+            "removal_reasons": result.removal_reasons,
         }
         console.print_json(json.dumps(output_data, indent=2))
         return
@@ -420,12 +423,13 @@ def sanitize(content: Optional[str], file: Optional[str], output: Optional[str],
     ))
 
     if result.was_modified:
-        console.print(f"[bold]Removed:[/bold] {len(result.removed_instructions)} instruction(s)")
-        console.print(f"[bold]Categories:[/bold] {', '.join(result.categories_found)}")
+        console.print(f"[bold]Removed:[/bold] {len(result.removed_segments)} segment(s)")
+        if result.removal_reasons:
+            console.print(f"[bold]Reasons:[/bold] {', '.join(dict.fromkeys(result.removal_reasons))}")
 
         if show_removed:
             console.print("\n[bold red]Removed Instructions:[/bold red]")
-            for i, instruction in enumerate(result.removed_instructions[:10], 1):
+            for i, instruction in enumerate(result.removed_segments[:10], 1):
                 preview = instruction[:80] + "..." if len(instruction) > 80 else instruction
                 console.print(f"  {i}. [dim]{preview}[/dim]")
 
@@ -791,14 +795,14 @@ def serve(
     except ImportError:
         console.print(
             "[red]uvicorn not installed.[/red] "
-            "Run: [bold]pip install 'memgar[server]'[/bold]"
+            "Run: [bold]pip install 'memgar\\[server]'[/bold]"
         )
         raise SystemExit(1)
 
     try:
         from memgar.server import create_app
     except ImportError as exc:
-        console.print(f"[red]FastAPI not available:[/red] {exc}")
+        console.print(f"[red]FastAPI not available:[/red] {escape(str(exc))}")
         raise SystemExit(1)
 
     require_api_key = not no_auth

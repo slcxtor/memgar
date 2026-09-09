@@ -190,7 +190,10 @@ def scan(path: str, recursive: bool, output_json: bool, verbose: bool) -> None:
         transient=True,
     ) as progress:
         progress.add_task(f"Scanning {path}...", total=None)
-        result = scanner.scan(path_obj, recursive=recursive)
+        if path_obj.is_dir():
+            result = scanner.scan_directory(str(path_obj), recursive=recursive)
+        else:
+            result = scanner.scan_file(str(path_obj))
 
     if output_json:
         output = {
@@ -234,7 +237,7 @@ def scan(path: str, recursive: bool, output_json: bool, verbose: bool) -> None:
     summary = f"""
 {status}
 
-Files Scanned: {result.files_scanned}
+Files Scanned: {len(result.files_scanned)}
 Entries Analyzed: {result.entries_scanned}
 Threats Found: {result.threat_count}
 Scan Time: {result.scan_time_ms:.2f}ms
@@ -671,8 +674,8 @@ def info() -> None:
         ("Layer 2: Provenance", info_data.get("layer2_provenance", False), "included"),
         ("Layer 3: Retrieval", info_data.get("layer3_retrieval", False), "included"),
         ("Layer 4: Monitoring", info_data.get("layer4_monitoring", False), "included"),
-        ("Semantic Analysis", info_data.get("semantic", False), "pip install memgar[semantic]"),
-        ("LLM Analysis", info_data.get("llm", False), "pip install memgar[llm]"),
+        ("Semantic Analysis", info_data.get("semantic", False), "pip install 'memgar\\[semantic]'"),
+        ("LLM Analysis", info_data.get("llm", False), "pip install 'memgar\\[llm]'"),
     ]
 
     for name, status, install in features:
