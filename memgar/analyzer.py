@@ -114,10 +114,14 @@ def _load_patterns_fast() -> list:
             except Exception as exc:
                 logger.debug("feed health snapshot unavailable: %s", exc)
             if bundle:
+                # Track ids as we append: a bundle that carries the same id
+                # twice would otherwise land both copies, re-creating the
+                # duplicate-id collisions the local corpus was cleaned of.
                 existing_ids = {t.id for t in patterns}
                 for threat in bundle.to_threat_objects():
                     if threat.id not in existing_ids:
                         patterns.append(threat)
+                        existing_ids.add(threat.id)
         else:
             _LAST_FEED_HEALTH = {"status": "disabled", "reason": "feed.enabled=False"}
     except BaseException as exc:  # pyo3_runtime.PanicException is BaseException, not Exception
