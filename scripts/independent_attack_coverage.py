@@ -151,7 +151,9 @@ def _blocked(r) -> bool:
 
 
 def main() -> int:
-    a = Analyzer(use_llm=False)
+    # Warm the process-wide pattern cache once, so the fresh per-entry
+    # analyzers below do not each pay a cold load.
+    Analyzer(use_llm=False)
 
     # attacks — fresh analyzer per entry to avoid cross-entry correlation
     # inflating the score (we want each technique's standalone detection)

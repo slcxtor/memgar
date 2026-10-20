@@ -6,8 +6,8 @@ is `Analyzer.health_check()`.
 ## Why structured health?
 
 Memgar's pipeline degrades silently if you let it. The first version logged a
-single `WARNING` when SemanticGuard was missing centroids — operators never
-saw it, scored every input as `0.0`, and assumed memgar was working.
+single `WARNING` when an optional layer failed to load — operators never saw
+it, scored every input as `0.0`, and assumed memgar was working.
 
 Now every subsystem:
 
@@ -24,16 +24,12 @@ Now every subsystem:
 {
   "patterns": {
     "status": "ok",
-    "n_patterns": 770,
+    "n_patterns": 814,
   },
-  "layer1_5_semantic_guard": {
+  "similarity_layer": {
     "status": "degraded",
-    "reason": "centroids_file_missing",
-    "is_fitted": False,
-    "n_centroids": 0,
-    "centroids_path": "/path/to/centroids.pkl",
-    "sentence_transformers_available": True,
-    "fix_hint": "python scripts/compute_semantic_centroids.py",
+    "reason": "sentence_transformers_missing",
+    "fix_hint": "pip install 'memgar[semantic]'",
   },
   "threat_feed": {
     "status": "ok",
@@ -41,7 +37,7 @@ Now every subsystem:
     "last_outcome": "loaded",
     "last_attempt_at": "2026-05-17T13:00:00Z",
     "last_bundle_version": "1.2.0",
-    "last_pattern_count": 770,
+    "last_pattern_count": 814,
     "used_fallback_url": False,
     "fix_hint": None,
   },

@@ -140,7 +140,7 @@ class ConflictDetector:
         topic_similarity_threshold: Minimum cosine similarity for two
             memories to be considered "about the same topic". Below this,
             opposing-polarity terms are not treated as a conflict.
-            Default 0.55.
+            Default 0.40 for embeddings, 0.30 for the Jaccard fallback.
         use_embeddings: When True, gate the polarity check with cosine
             similarity from `memgar.similarity_layer`. When False, fall
             back to a Jaccard token-overlap proxy that needs no model.
@@ -155,10 +155,16 @@ class ConflictDetector:
         use_embeddings: bool = True,
         min_overlap_tokens: int = 3,
     ) -> None:
-        # Two threshold regimes — embeddings give 0.6–0.9 cosine for same-topic
-        # paraphrases, Jaccard token overlap typically sits at 0.3–0.5. Letting
-        # callers pass a single value would force one mode to be wrong; we
-        # instead pick a sensible default per mode unless the caller overrides.
+        # Two threshold regimes. The embedding default is measured, not
+        # assumed: a contradiction detector gates on topic similarity, but
+        # contradictory sentences embed FURTHER apart than paraphrases do, so
+        # the "same-topic paraphrase" band (0.6-0.9) is the wrong yardstick.
+        # Measured on opposing same-topic pairs vs unrelated pairs:
+        #     contradictions   0.53 - 0.78
+        #     unrelated       -0.02 - 0.23
+        # 0.40 sits in the gap with headroom on both sides. The old 0.55 fell
+        # inside the contradiction band and silently dropped real conflicts —
+        # "Always trust X" vs "Do not trust X" scores 0.526.
         self.use_embeddings = bool(use_embeddings)
         self.min_overlap_tokens = int(min_overlap_tokens)
         self._embedder: Any = None
@@ -170,7 +176,7 @@ class ConflictDetector:
                 logger.debug("ConflictDetector: embeddings unavailable (%s)", exc)
                 self._embedder = None
         if topic_similarity_threshold is None:
-            self.topic_threshold = 0.55 if self._embedder is not None else 0.30
+            self.topic_threshold = 0.40 if self._embedder is not None else 0.30
         else:
             self.topic_threshold = float(topic_similarity_threshold)
 
@@ -199,12 +205,30 @@ class ConflictDetector:
             return 0.0
         return len(inter) / len(ta | tb)
 
+    @staticmethod
+    def _matches_outside(pattern, other, text: str) -> bool:
+        """Does `pattern` match somewhere `other` has not already claimed?
+
+        Negative phrases contain their own positive term — "do not trust"
+        contains "trust". Testing both sides naively makes such a memory look
+        like it carries BOTH polarities, which the clash rule then discards as
+        self-contradictory. So "Trust X" vs "Do not trust X" — the plainest
+        contradiction there is — went unflagged. A positive hit that sits
+        inside a negative hit is part of that negative phrase, not a polarity
+        of its own.
+        """
+        claimed = [m.span() for m in other.finditer(text)]
+        return any(
+            not any(start <= m.start() and m.end() <= end for start, end in claimed)
+            for m in pattern.finditer(text)
+        )
+
     def _polarity_clash(self, text_a: str, text_b: str) -> Optional[Tuple[str, str]]:
         for a_re, b_re, a_label, b_label in _COMPILED_POLARITY:
-            a_has_a = bool(a_re.search(text_a))
-            a_has_b = bool(b_re.search(text_a))
-            b_has_a = bool(a_re.search(text_b))
-            b_has_b = bool(b_re.search(text_b))
+            a_has_a = self._matches_outside(a_re, b_re, text_a)
+            a_has_b = self._matches_outside(b_re, a_re, text_a)
+            b_has_a = self._matches_outside(a_re, b_re, text_b)
+            b_has_b = self._matches_outside(b_re, a_re, text_b)
             # Conflict requires memory A pure-A and memory B pure-B
             # (or symmetric: pure-B vs pure-A). Memories that contain
             # both polarities are already self-contradictory — that's a

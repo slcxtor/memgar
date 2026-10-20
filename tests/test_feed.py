@@ -301,7 +301,6 @@ class TestFeedLoader:
         loader = FeedLoader(cache_dir=str(tmp_path), verify_signature=False)
         # Patch sync to detect if called
         called = []
-        original_sync = loader.sync
         loader.sync = lambda: called.append(True) or None
 
         result = loader.load(auto_sync=True)
@@ -437,3 +436,65 @@ class TestCLIFeedCommands:
         assert "sync" in result.output
         assert "status" in result.output
         assert "verify" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Feed merge — id collisions
+# ---------------------------------------------------------------------------
+
+class TestFeedMergeDoesNotIntroduceDuplicateIds:
+    """The merge tracks ids as it appends, not just before the loop.
+
+    `existing_ids` used to be computed once up front, so a bundle carrying the
+    same id twice landed both copies. That re-creates the duplicate-id
+    collisions the local corpus was cleaned of: one id resolving to two
+    different threats, `get_pattern_by_id` seeing only the first.
+    """
+
+    def test_bundle_with_a_repeated_id_lands_once(self, monkeypatch, tmp_path):
+        import memgar.analyzer as analyzer_mod
+        from memgar.models import Severity, Threat, ThreatCategory
+
+        def _threat(name):
+            return Threat(
+                id="FEED-DUP-001",
+                name=name,
+                description=name,
+                category=ThreatCategory.INJECTION,
+                severity=Severity.HIGH,
+                patterns=[r"feed-dup-marker"],
+            )
+
+        class _Bundle:
+            def to_threat_objects(self):
+                return [_threat("first"), _threat("second")]
+
+        class _Loader:
+            def __init__(self, **kwargs):
+                pass
+
+            def load(self, auto_sync=True):
+                return _Bundle()
+
+            def health(self):
+                return {"status": "ok"}
+
+        import memgar.feed.loader as loader_mod
+
+        monkeypatch.setattr(loader_mod, "FeedLoader", _Loader)
+        monkeypatch.setenv("MEMGAR_FEED_ENABLED", "true")
+        monkeypatch.setenv("MEMGAR_CACHE_DIR", str(tmp_path))
+
+        import memgar.config as config_mod
+
+        # get_config() caches globally; drop it so the env vars above apply.
+        monkeypatch.setattr(config_mod, "_global_config", None)
+        patterns = analyzer_mod._load_patterns_fast()
+        monkeypatch.setattr(config_mod, "_global_config", None)
+
+        landed = [t for t in patterns if t.id == "FEED-DUP-001"]
+        assert len(landed) == 1, "a repeated feed id must land only once"
+
+        ids = [t.id for t in patterns]
+        duplicates = {i for i in ids if ids.count(i) > 1}
+        assert not duplicates, f"merged corpus has duplicate ids: {sorted(duplicates)}"

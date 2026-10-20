@@ -30,7 +30,7 @@ Combined:                  →  complements each other
 
 ## Feature Engineering
 
-40 features across 4 categories extracted by `ml/feature_extractor.py`:
+40 features across 4 categories extracted by `ml/training/ml_feature_extractor.py`:
 
 ### Lexical (10 features)
 - Word count, character count
@@ -83,7 +83,7 @@ Combined:                  →  complements each other
 
 ## Zero-Shot Generalization
 
-The SemanticGuard module (`memgar/semantic_guard.py`) extends detection to novel attack categories using embedding similarity rather than trained features.
+The Layer 2.5 similarity layer (`memgar/similarity_layer.py`) extends detection to novel attack categories using embedding similarity rather than trained features. It replaced the removed Layer 1.5 SemanticGuard, which an ablation showed added no recall over it.
 
 **Benchmark results** (`scripts/zero_shot_benchmark.py`):
 
@@ -168,7 +168,7 @@ Pipeline:
 
 ### StorageManager
 
-`StorageManager.save_prediction()` is called automatically by `Analyzer.analyze()` for every prediction. Predictions are written to `ml/predictions.jsonl` and used as training signal.
+`StorageManager.save_prediction()` is called automatically by `Analyzer.analyze()` for every prediction. Predictions are written under the storage manager's data directory and used as training signal.
 
 ### DriftDetector
 
@@ -215,7 +215,7 @@ python rebuild_model.py
 ```
 
 The script:
-1. Loads `ml/artifacts/training_data.jsonl` + `adversarial_variants.jsonl`
+1. Loads `ml/data/training_data.json` + `adversarial_variants.jsonl`
 2. Extracts 40 features from each example
 3. Trains XGBoost classifier with cross-validation
 4. Runs quality gate — aborts if thresholds not met

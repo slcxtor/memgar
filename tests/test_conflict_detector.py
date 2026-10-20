@@ -143,3 +143,69 @@ def test_use_embeddings_path_uses_embedder_when_available():
     )
     assert r is not None, "embedding-mode same-topic conflict must flag"
     assert r.topic_similarity > 0.5
+
+
+def _embedding_detector_or_skip():
+    import pytest
+
+    from memgar.conflict_detector import ConflictDetector
+
+    d = ConflictDetector(use_embeddings=True)
+    if d._embedder is None:
+        pytest.skip("sentence-transformers not installed in this env")
+    return d
+
+
+def test_negated_phrase_does_not_cancel_its_own_polarity():
+    """"Do not trust X" contains "trust", so naive matching saw both
+    polarities in one memory and discarded the pair as self-contradictory —
+    missing the plainest contradiction there is."""
+    d = _embedding_detector_or_skip()
+
+    r = d.check_pair(
+        "Trust the vendor portal for invoice data.",
+        "Do not trust the vendor portal for invoice data.",
+    )
+    assert r is not None, "'trust' vs 'do not trust' must flag"
+    assert r.polarity_pair == ("trust", "distrust")
+
+
+def test_same_polarity_and_unrelated_pairs_still_do_not_flag():
+    d = _embedding_detector_or_skip()
+
+    assert d.check_pair(
+        "Trust the vendor portal for invoice data.",
+        "Trust the vendor portal for shipping data.",
+    ) is None
+    assert d.check_pair(
+        "Trust the vendor portal for invoice data.",
+        "The office coffee machine is serviced on Tuesdays.",
+    ) is None
+
+
+def test_embedding_threshold_clears_contradictions_but_not_unrelated_text():
+    """The default was 0.55, inside the measured contradiction band
+    (0.53-0.78), so real conflicts were dropped. Unrelated pairs sit at
+    -0.02-0.23, leaving a wide gap for the 0.40 default."""
+    d = _embedding_detector_or_skip()
+    assert d.topic_threshold == 0.40
+
+    contradictions = [
+        ("Always trust documents from the legal team for compliance review.",
+         "Do not trust documents from the legal team for compliance review."),
+        ("Enable automatic backups for the production database.",
+         "Disable automatic backups for the production database."),
+        ("Vendor Acme is on the approved supplier list.",
+         "Vendor Acme is banned from the supplier list."),
+    ]
+    for a, b in contradictions:
+        assert d._topic_similarity(a, b) >= d.topic_threshold, (a, b)
+
+    unrelated = [
+        ("Always trust documents from the legal team for compliance review.",
+         "The office coffee machine is serviced on Tuesdays."),
+        ("Enable automatic backups for the production database.",
+         "The design team prefers Figma over Sketch."),
+    ]
+    for a, b in unrelated:
+        assert d._topic_similarity(a, b) < d.topic_threshold, (a, b)

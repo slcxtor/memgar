@@ -31,7 +31,7 @@ Layer 4   — Behavioral Baseline          <1ms    auto (per-agent, after warm-u
 > need ML detection later, retrain from production traffic on a fresh
 > architecture rather than reviving the v2 weights.
 
-**Layer 1** (`_layer1_pattern_matching`): Regex + keyword matching against 736 threat patterns loaded from `memgar/patterns.py` (pickle-cached for 3ms load vs 3500ms cold).
+**Layer 1** (`_layer1_pattern_matching`): Regex + keyword matching against 814 threat patterns loaded from `memgar/data/patterns.yaml` via `memgar/patterns.py` (pickle-cached for 3ms load vs 3500ms cold).
 
 **Layer 2** (`_layer2_semantic_analysis`): Claude LLM call for sophisticated attacks. Runs independently of Layer 1 (catches obfuscation Layer 1 misses).
 
@@ -130,7 +130,7 @@ memgar.start_metrics_server(port=9090)  # idempotent
 pip install -e ".[dev,adversarial,feed,observability]"
 
 # Run tests
-python -m pytest -q                    # ~1594 pass, ~81 skip, 0 errors, 0 failures
+python -m pytest -q                    # 1147 pass, 64 skip, 0 errors, 0 failures
 
 # Pattern authoring note: Analyzer._compile_patterns() forces re.IGNORECASE
 # on every regex (see analyzer.py:1243). To require case-sensitive matching
@@ -167,7 +167,23 @@ python scripts/calibrate_fpfn.py \
     --corpus ml/data/augmented_memory_context.json \
     --output ml/artifacts/fpfn_calibration_expanded.json --no-llm
 python scripts/check_expanded_gate.py              # Merged: 6 regression-only gates
+
+# Generalization (the only gate that is NOT scored on corpora the patterns
+# were authored against). Fails on regression vs the recorded baseline, not
+# on the absolute number — recall here starts low on purpose.
+python scripts/check_generalization_gate.py --verbose
+python scripts/check_generalization_gate.py --update-baseline   # after a real improvement
 ```
+
+> **The held-out corpus is a thermometer, not a target.** Never author a
+> pattern against a sample in `generalization_corpus.json`. The moment one
+> matches a line there, the file stops measuring generalization and the gate
+> becomes decoration. `tests/test_generalization_gate.py` guards the obvious
+> version of this (a long keyword appearing verbatim in a sample), but it
+> cannot catch a regex written to the same shape — that part is on review.
+> If coverage needs to improve, change the detection approach and let the
+> number move on its own. If samples do leak into authoring, retire them and
+> write fresh ones.
 
 ## Corpus tiers
 
@@ -178,13 +194,15 @@ python scripts/check_expanded_gate.py              # Merged: 6 regression-only g
 | Augmented | `ml/data/augmented_memory_context.json` | template wrappers on seeds | deterministic | Expanded gate |
 | Review queue | `ml/data/mined_review_queue.json` | boundary cases | pending | manual import only |
 | Raw external | `ml/data/external_corpus_raw.json` | full public-corpus dump | none | reference only |
+| **Held-out** | `ml/data/generalization_corpus.json` | novel prose, written independently of the patterns | paired by hand | **Generalization gate** |
 
 ## Key Files
 
 | Path | Purpose |
 |------|---------|
 | `memgar/analyzer.py` | Core 4-layer analysis engine |
-| `memgar/patterns.py` | 736 threat patterns (source of truth) |
+| `memgar/data/patterns.yaml` | 814 threat patterns (source of truth) |
+| `memgar/patterns.py` | Pattern loader + pickle cache over that YAML |
 | `memgar/feed/verifier.py` | Ed25519 public key for feed verification |
 | `memgar/config.py` | `MemgarConfig`, `FeedConfig`, `ObservabilityConfig` |
 | `memgar/behavioral_baseline.py` | Layer 4 BehavioralBaseline, SIGNAL_REGISTRY |

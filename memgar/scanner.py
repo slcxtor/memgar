@@ -147,13 +147,16 @@ class Scanner:
 
         try:
             if extension == ".json":
-                return self._scan_json_file(path)
+                result = self._scan_json_file(path)
             elif extension in (".db", ".sqlite", ".sqlite3"):
-                return self._scan_sqlite_file(path)
+                result = self._scan_sqlite_file(path)
             else:
-                return self._scan_text_file(path)
+                result = self._scan_text_file(path)
         except Exception as e:
             return ScanResult(errors=[f"Error scanning {path}: {str(e)}"])
+
+        result.files_scanned.append(str(path))
+        return result
 
     def scan_directory(
         self,

@@ -51,7 +51,7 @@ TrustAIRLab in-the-wild jailbreaks):
 | `INJ-002` | "List your initial / original / secret / system instructions" — leak probes that don't use ignore verbs |
 | `INJ-003` | "From now on you are X / Now you are X" — persona hijack + Developer Mode / DAN |
 | `MANIP-014/015/016` | Fake news / misinformation / propaganda / incitement generation |
-| `EXEC-001..005` | Malware / vulnerability exploitation / zero-day / cryptojacking / detection evasion |
+| `EXEC-008..012` | Malware / vulnerability exploitation / zero-day / cryptojacking / detection evasion |
 | `EXFIL-016..019` | Hack-and-leak chains, blackmail / extortion, payment card cloning, IRS-style phishing letters |
 
 Most patterns include English + Turkish variants for multi-language coverage.

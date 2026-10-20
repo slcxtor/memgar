@@ -20,10 +20,9 @@ import gzip
 import importlib.util
 import json
 import sys
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Dict, List, Set
 
 
 CHANGELOG = Path("CHANGELOG-FEED.md")

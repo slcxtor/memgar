@@ -690,7 +690,6 @@ class TestFactoryConstructors:
         conn.commit()
         conn.close()
 
-        entries_seen = []
         def provider():
             import sqlite3 as _sq
             c = _sq.connect(str(db))

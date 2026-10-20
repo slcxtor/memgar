@@ -153,6 +153,8 @@ nav:
           - LangChain: integration/langchain.md
           - Memory Frameworks: integration/memory-frameworks.md
           - Configuration: integration/configuration.md
+          - Node SDK: integration/node-sdk.md
+          - Codex / Claude Code Plugins: integration/plugins.md
       - Operations:
           - Health Monitoring: operations/health.md
           - Observability: operations/observability.md

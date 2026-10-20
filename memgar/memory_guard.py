@@ -105,6 +105,32 @@ class GuardResult:
     tracked_entry: Optional[TrackedMemoryEntry] = None
     threats_detected: List[Any] = field(default_factory=list)  # ThreatMatch list
 
+    @property
+    def risk_score(self) -> int:
+        """
+        Risk of what the caller is left holding.
+
+        Allowed writes report the residual risk of ``safe_content``; rejected
+        writes report the risk detected in the incoming content (their
+        ``risk_score_after`` is 0 only because the content was discarded).
+        """
+        return self.risk_score_after if self.allowed else self.risk_score_before
+
+    @property
+    def threats(self) -> List[Any]:
+        """Alias for threats_detected."""
+        return self.threats_detected
+
+    @property
+    def threat_count(self) -> int:
+        """Number of threats matched on this write."""
+        return len(self.threats_detected)
+
+    @property
+    def trust_level(self) -> int:
+        """Alias for trust_score."""
+        return self.trust_score
+
     def to_dict(self) -> Dict:
         return {
             "decision": self.decision.value,

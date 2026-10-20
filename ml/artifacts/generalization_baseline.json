@@ -1,0 +1,18 @@
+{
+  "corpus": "generalization_corpus.json",
+  "n_attack": 38,
+  "n_benign": 38,
+  "recall": 0.0263,
+  "fpr": 0.0,
+  "per_category_recall": {
+    "authority_role_confusion": 0.0,
+    "exfiltration_habit": 0.0,
+    "financial_redirect": 0.0,
+    "minja_bridging": 0.0,
+    "persistence_policy_erosion": 0.0,
+    "recommendation_poisoning": 0.0,
+    "tool_scope_creep": 0.0,
+    "trust_manipulation": 0.2
+  },
+  "slack_samples": 2
+}

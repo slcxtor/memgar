@@ -30,14 +30,20 @@ Usage:
 
 __version__ = "1.0.0"
 
-# Import main detector when module is available
-# TODO: Uncomment when detector classes are implemented
-# from .multi_stage_detector import MultiStageDetector
-# from .advanced_multi_stage_detector import AdvancedMultiStageDetector
+from .multi_stage_detector import (
+    AttackPhase,
+    AttackVector,
+    MultiStageDetector,
+    SessionContext,
+    ThreatLevel,
+)
 
 __all__ = [
-    # 'MultiStageDetector',
-    # 'AdvancedMultiStageDetector',
+    "MultiStageDetector",
+    "AttackPhase",
+    "AttackVector",
+    "SessionContext",
+    "ThreatLevel",
 ]
 
 # Attack stage definitions

@@ -2,33 +2,13 @@
 
 from __future__ import annotations
 
-import json
-import os
-import sys
-import time
-from pathlib import Path
-from typing import Optional
-
 import click
-from rich import box
-from rich.console import Console
-from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.table import Table
-from rich.text import Text
+from rich.markup import escape
 
-from memgar.analyzer import Analyzer
 from memgar.cli import main
 from memgar.cli._banner import (
-    DECISION_STYLES,
-    SEVERITY_COLORS,
-    SEVERITY_ICONS,
     console,
-    print_banner,
 )
-from memgar.models import Decision, Severity
-from memgar.patterns import PATTERNS, pattern_stats
-from memgar.scanner import Scanner
 
 
 @main.group()
@@ -49,10 +29,10 @@ def feed_sync(repo: str, no_verify: bool) -> None:
     try:
         bundle = loader.sync()
     except FeedSignatureError as exc:
-        console.print(f"[red]Signature verification FAILED:[/red] {exc}")
+        console.print(f"[red]Signature verification FAILED:[/red] {escape(str(exc))}")
         raise SystemExit(1) from exc
     except Exception as exc:
-        console.print(f"[red]Sync error:[/red] {exc}")
+        console.print(f"[red]Sync error:[/red] {escape(str(exc))}")
         raise SystemExit(1) from exc
 
     if bundle is None:
@@ -102,7 +82,7 @@ def feed_verify() -> None:
         verifier = FeedVerifier()
         ok = verifier.verify_manifest(bundle.manifest, bundle.bundle_bytes())
     except ImportError as exc:
-        console.print(f"[yellow]cryptography not installed:[/yellow] {exc}")
+        console.print(f"[yellow]cryptography not installed:[/yellow] {escape(str(exc))}")
         return
 
     if ok:

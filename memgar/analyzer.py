@@ -20,7 +20,8 @@ import threading
 import time
 import unicodedata
 from difflib import SequenceMatcher
-from typing import Any
+from functools import lru_cache
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -114,10 +115,14 @@ def _load_patterns_fast() -> list:
             except Exception as exc:
                 logger.debug("feed health snapshot unavailable: %s", exc)
             if bundle:
+                # Track ids as we append: a bundle that carries the same id
+                # twice would otherwise land both copies, re-creating the
+                # duplicate-id collisions the local corpus was cleaned of.
                 existing_ids = {t.id for t in patterns}
                 for threat in bundle.to_threat_objects():
                     if threat.id not in existing_ids:
                         patterns.append(threat)
+                        existing_ids.add(threat.id)
         else:
             _LAST_FEED_HEALTH = {"status": "disabled", "reason": "feed.enabled=False"}
     except BaseException as exc:  # pyo3_runtime.PanicException is BaseException, not Exception
@@ -725,6 +730,33 @@ def _remove_spacing_tricks(text: str) -> str:
     return " ".join(result)
 
 
+def _looks_like_identifier(tok: str) -> bool:
+    """Is this token a machine identifier rather than a (possibly leet) word?
+
+    Crypto addresses, hex digests, API keys and long IDs are alphanumeric runs
+    that mix letters and digits. Leet-decoding them corrupts the value, so
+    address/hash-shaped patterns can never match the normalized text.
+    """
+    core = tok.strip(".,;:!?()[]{}\"'").rstrip("=")
+    if core.lower().startswith("0x"):
+        core = core[2:]
+    if len(core) < 16:
+        return False
+    if not core.isalnum() or not core.isascii():
+        return False
+    return any(c.isdigit() for c in core) and any(c.isalpha() for c in core)
+
+
+_CRYPTO_ADDRESS_RE = re.compile(
+    r"^(?:0x[a-fA-F0-9]{40}|[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-z0-9]{39,59})$"
+)
+
+
+def _looks_like_crypto_address(tok: str) -> bool:
+    """Exact crypto-address shapes, which are never base64 payloads."""
+    return bool(_CRYPTO_ADDRESS_RE.match(tok.strip(".,;:!?()[]{}\"'")))
+
+
 def _decode_leet_speak(text: str) -> str:
     """Decode leet speak (3->e 1->i 0->o 4->a 5->s 7->t, @->a $->s).
 
@@ -778,6 +810,13 @@ def _decode_leet_speak(text: str) -> str:
             tok = re.sub(r"'5\b", "'s", tok)
             tok = re.sub(r"'0\b", "'o", tok)
         if not any(c.isascii() and c.isalpha() for c in tok):
+            return tok
+        if _looks_like_identifier(tok):
+            # Machine identifiers (crypto addresses, hex digests, API keys)
+            # mix letters and digits, so both leet gates pass and the token is
+            # shredded: 0x742d35Cc...44e -> oxta2desCc...faae. That destroyed
+            # every address-shaped pattern on the normalized path. Real leet
+            # evasion targets short English words, never 20+ char blobs.
             return tok
         protect_at = _looks_like_email(tok)
         cur = tok
@@ -881,6 +920,22 @@ def _normalize_homoglyphs(text: str) -> str:
     for homoglyph, latin in homoglyph_map.items():
         result = result.replace(homoglyph, latin)
     return result
+
+
+@lru_cache(maxsize=8192)
+def _compile_cached(pattern: str) -> Optional[re.Pattern]:
+    """Compile one threat regex, memoized process-wide.
+
+    Compiled patterns are immutable and read-only after construction, so every
+    Analyzer can share them. Without this each instance recompiled all 3103
+    regexes — ~0.7s per construction, which makes any loop that builds a fresh
+    Analyzer per entry (the correct way to measure single memory writes, since
+    Layer 4 accumulates across calls) cost a minute instead of seconds.
+    """
+    try:
+        return re.compile(pattern, re.IGNORECASE | re.MULTILINE)
+    except re.error:
+        return None
 
 
 def _normalize_content(content: str) -> str:
@@ -1084,6 +1139,12 @@ def _decode_base64_payloads(text: str) -> str:
 
     def decode_match(match):
         encoded = match.group()
+        # A crypto address, hex digest or API key is a valid base64 alphabet
+        # run, so it used to be "decoded" into binary garbage that replaced the
+        # real value — address-shaped patterns could then never match the
+        # normalized text. Identifiers are never base64 payloads.
+        if _looks_like_crypto_address(encoded):
+            return encoded
         try:
             # Add padding if needed
             padding = 4 - (len(encoded) % 4)
@@ -1092,10 +1153,15 @@ def _decode_base64_payloads(text: str) -> str:
 
             decoded = base64.b64decode(encoded).decode("utf-8", errors="ignore")
 
-            # Only use decoded if it looks like text (mostly printable ASCII)
-            printable_ratio = sum(1 for c in decoded if c.isprintable() or c.isspace()) / len(decoded) if decoded else 0
-            if printable_ratio > 0.8 and len(decoded) > 5:
-                return decoded
+            # Only use decoded if it really reads as text. Plain "printable"
+            # accepted arbitrary Unicode garbage; a hidden directive is ASCII
+            # prose, so require ASCII printable characters and a real word.
+            if len(decoded) > 5:
+                ascii_ratio = sum(
+                    1 for c in decoded if c.isascii() and (c.isprintable() or c.isspace())
+                ) / len(decoded)
+                if ascii_ratio > 0.9 and re.search(r"[A-Za-z]{3}", decoded):
+                    return decoded
         except Exception:
             pass
         return match.group()
@@ -1332,7 +1398,13 @@ class Analyzer:
             self.patterns.extend(custom_patterns)
 
         # Pre-compile regex patterns for performance
-        self._compiled_patterns: dict[str, list[re.Pattern[str]]] = {}
+        # Keyed by the threat's index in ``self.patterns``, not by its id:
+        # 21 ids are defined more than once with different names, and an
+        # id-keyed dict gave every one of those entries the union of the
+        # others' regexes, so a single hit was reported as two or three
+        # threats with conflicting names and counted two or three times
+        # toward the risk score.
+        self._compiled_patterns: dict[int, list[re.Pattern[str]]] = {}
         self._compile_patterns()
 
         # Layer 3: per-source trust scores (populated via register_source_trust)
@@ -1498,18 +1570,13 @@ class Analyzer:
 
     def _compile_patterns(self) -> None:
         """Pre-compile all regex patterns and pre-warm keyword cache."""
-        for threat in self.patterns:
-            # Compile regex patterns
+        for index, threat in enumerate(self.patterns):
             compiled = []
             for pattern in threat.patterns:
-                try:
-                    compiled.append(re.compile(pattern, re.IGNORECASE | re.MULTILINE))
-                except re.error:
-                    continue
-            if threat.id in self._compiled_patterns:
-                self._compiled_patterns[threat.id].extend(compiled)
-            else:
-                self._compiled_patterns[threat.id] = compiled
+                regex = _compile_cached(pattern)
+                if regex is not None:
+                    compiled.append(regex)
+            self._compiled_patterns[index] = compiled
 
             # Pre-warm keyword cache so first analyze() has zero compile cost
             for keyword in threat.keywords:
@@ -2183,11 +2250,30 @@ class Analyzer:
             else:
                 # For long content, only check head/tail for hidden critical threats.
                 # Payloads are almost always injected at the start or end of a document.
-                if len(check_content) > 2000:
-                    head_tail = check_content[:1500] + check_content[-500:]
-                    critical_threats = self._check_critical_only(head_tail)
-                else:
-                    critical_threats = self._check_critical_only(check_content)
+                #
+                # Scan the original text as well as the normalized one: de-obfuscation
+                # is lossy (it rewrites addresses, digests and encoded blobs), so a
+                # critical pattern that matches the raw content can be invisible in the
+                # normalized copy. Checking only one of the two let an attacker clear
+                # this whitelist branch with a single safe-looking phrase.
+                def _slice(text: str) -> str:
+                    if len(text) > 2000:
+                        return text[:1500] + text[-500:]
+                    return text
+
+                haystack = _slice(check_content)
+                # Only worth re-scanning the raw text when normalization rewrote
+                # actual characters (the case that can hide a pattern); a
+                # whitespace-only difference cannot change what matches.
+                materially_rewritten = "".join(check_content.split()) != "".join(
+                    content.split()
+                )
+                if materially_rewritten:
+                    # One pass over a joined haystack, not two passes over the
+                    # pattern set: the separator ends a sentence and a line, so
+                    # no pattern can match across the seam.
+                    haystack = haystack + "\n.\n" + _slice(content)
+                critical_threats = self._check_critical_only(haystack)
                 if not critical_threats:
                     elapsed_ms = (time.perf_counter() - start_time) * 1000
                     return AnalysisResult(
@@ -2416,11 +2502,11 @@ class Analyzer:
         """Quick check for critical threats only (used after whitelist match)."""
         matches = []
 
-        for threat in self.patterns:
+        for index, threat in enumerate(self.patterns):
             if threat.severity != Severity.CRITICAL:
                 continue
 
-            compiled_patterns = self._compiled_patterns.get(threat.id, [])
+            compiled_patterns = self._compiled_patterns.get(index, [])
             for pattern in compiled_patterns:
                 match = pattern.search(content)
                 if match:
@@ -2445,9 +2531,9 @@ class Analyzer:
         matches: list[ThreatMatch] = []
         content.lower()
 
-        for threat in self.patterns:
+        for index, threat in enumerate(self.patterns):
             # Check regex patterns first (these are more precise)
-            compiled_patterns = self._compiled_patterns.get(threat.id, [])
+            compiled_patterns = self._compiled_patterns.get(index, [])
             pattern_matched = False
 
             for pattern in compiled_patterns:

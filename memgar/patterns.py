@@ -159,4 +159,5 @@ def pattern_stats() -> dict[str, int]:
         "medium": len(get_patterns_by_severity(Severity.MEDIUM)),
         "low": len(get_patterns_by_severity(Severity.LOW)),
         "info": len(get_patterns_by_severity(Severity.INFO)),
+        "categories": len({p.category for p in PATTERNS}),
     }

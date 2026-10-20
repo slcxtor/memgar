@@ -582,8 +582,10 @@ from memgar.secure_memory_store import (
     DLPRedactor,
     DLPResult,
     SecureMemoryBoundaryError,
+    SecureMemoryBypassError,
     SecureMemoryStore,
     SecureMemoryStorePolicy,
+    SecureMemoryWriteError,
     SecureWriteResult,
 )
 from memgar.secure_retriever import (
@@ -937,6 +939,13 @@ def check_installation() -> dict:
     except Exception:
         pass
 
+    _embeddings_ok = False
+    try:
+        from memgar.semantic import check_available_layers as _cal
+        _embeddings_ok = bool(_cal().get("embeddings", False))
+    except Exception:
+        pass
+
     return {
         "version": __version__,
         "core": True,
@@ -948,7 +957,9 @@ def check_installation() -> dict:
         "layer4_behavioral_baseline": _layer4_ok,
         "async_analyze": True,
         # Optional features
-        "semantic": SEMANTIC_AVAILABLE,
+        # SEMANTIC_AVAILABLE only says the module imported; the embedding
+        # backend is a separate optional dependency, so report that.
+        "semantic": _embeddings_ok,
         "multimodal": MULTIMODAL_AVAILABLE,
         "agents": True,
         "feed": FEED_AVAILABLE,
@@ -1104,6 +1115,14 @@ __all__ = [
     "MemgarIngestionPipelineSecurity",
     "MemgarNodeFilter",
     "create_secure_query_pipeline",
+
+    # Secure memory write boundary
+    "SecureMemoryStore",
+    "SecureMemoryStorePolicy",
+    "SecureWriteResult",
+    "SecureMemoryWriteError",
+    "SecureMemoryBoundaryError",
+    "SecureMemoryBypassError",
 
     # Memory Forensics (v0.5.1)
     "MemoryForensicsEngine",

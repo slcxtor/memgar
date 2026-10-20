@@ -176,8 +176,10 @@ class ReportGenerator:
                 Decision.QUARANTINE: "⚠️",
             }.get(r.decision, "")
 
-            threat_info = f"{r.threat_type}: {r.threat_name}" if r.threat_type else "-"
-            category = r.category or "-"
+            top = r.primary_threat
+            threat_type = r.threat_type or (top.threat.id if top else None)
+            threat_info = f"{threat_type}: {r.threat_name}" if threat_type else "-"
+            category = r.category or (top.threat.category.value if top else None) or "-"
             severity = r.severity or "-"
 
             results_html += f"""

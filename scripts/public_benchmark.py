@@ -52,9 +52,9 @@ import logging
 import random
 import sys
 import time
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -417,6 +417,16 @@ def main() -> int:
 
     attacks = load_attacks(limit=limit)
     benigns = load_benigns(limit=limit)
+    if not any(attacks.values()) and not any(benigns.values()):
+        # Reporting "0.0000 recall" over an empty corpus reads as a catastrophic
+        # detection failure rather than a missing download.
+        print(
+            f"[bench] no corpora found under {CORPUS_DIR}.\n"
+            "[bench] Fetch the public datasets first:\n"
+            "[bench]     python scripts/import_public_corpora.py",
+            file=sys.stderr,
+        )
+        return 1
     if args.threat_model_only:
         attacks = {k: v for k, v in attacks.items() if k.startswith("memgar_")}
         benigns = {k: v for k, v in benigns.items() if k.startswith("memgar_")}
@@ -463,14 +473,18 @@ def main() -> int:
             print(f"[bench] wrote {args.output_md}", file=sys.stderr)
         return 0
 
-    print("[bench] loading analyzer (this includes ONNX INT8 model load) ...",
-          file=sys.stderr, flush=True)
+    print("[bench] loading analyzer ...", file=sys.stderr, flush=True)
     t0 = time.perf_counter()
     analyzer = Analyzer(use_llm=False)
     load_ms = (time.perf_counter() - t0) * 1000
     print(f"[bench] analyzer loaded in {load_ms:.0f} ms", file=sys.stderr)
-    print(f"[bench] transformer ready: {analyzer._transformer is not None and analyzer._transformer.is_ready}",
-          file=sys.stderr)
+    # The semantic layer is an optional extra; say which configuration these
+    # numbers came from, since recall differs between the two.
+    similarity = getattr(analyzer, "similarity_layer", None)
+    print(
+        f"[bench] similarity layer: {'on' if similarity is not None else 'off (pip install memgar[semantic])'}",
+        file=sys.stderr,
+    )
 
     per_corpus = _evaluate_with(analyzer, attacks, benigns, progress=args.progress)
 

@@ -191,12 +191,9 @@ class TestRedTeamQualityGateRollback:
         # Patch to skip the actual training entirely
         import ml.continuous_learning as cl_module
 
-        original_retrain = AutoRetrainer.retrain
 
         def _fast_retrain(self, min_new_samples=500):
             # Bypass sample count check and training; call gate directly
-            import shutil
-            from pathlib import Path
             production = Path("ml/artifacts/gradient_boost_model.pkl")
             backup = production.with_suffix(".pkl.backup")
             # Create a fake production model
@@ -215,7 +212,6 @@ class TestRedTeamQualityGateRollback:
                 )
             except Exception:
                 code = 2
-                summary = {"reason": "error"}
             if code != 0:
                 if backup.exists():
                     shutil.copyfile(backup, production)

@@ -168,9 +168,8 @@ variation-selector smuggling landed under the shield** — payload bytes
 hidden in the Unicode variation-selector *supplement* (U+E0100-U+E01EF)
 survived because the existing `UNICODE-TAG` pattern only covered the Tag
 block (U+E0000-U+E007F). The pattern was extended to the supplement
-range; the fix is pinned by
-`tests/test_simulation_gap_patterns.py::test_variation_selector_supplement_smuggling_blocked`
-and verified to introduce no false positives (gold calibration gate
+range; the fix lives in the `UNICODE-TAG` pattern itself
+and was verified to introduce no false positives (gold calibration gate
 stays 8/8, FPR 0.000). After the fix, all 10 cross-company attacks are
 neutralised and the benign partner control still passes.
 
@@ -207,9 +206,8 @@ when this control still passes.
 ## Gap closures shipped this run
 
 Earlier passes of the simulation exposed three classes Memgar v1.0 was
-not yet detecting. They are closed in this commit and verified by both
-the simulation and a dedicated regression test
-(`tests/test_simulation_gap_patterns.py`):
+not yet detecting. They are closed by the patterns listed below and
+exercised by the simulation runs above:
 
 - **S15 ASCII Smuggling** → new `UNICODE-TAG` pattern (CRITICAL)
   detects Unicode Tag-block codepoints (U+E0000-U+E007F) when ≥2
