@@ -288,7 +288,12 @@ jobs:
       # whether detection generalises. Recall starts low on purpose; the gate
       # fails on regression against the recorded baseline, not on the absolute
       # number, so it reports the truth without blocking every build.
+      # always(): this sits after the expanded gate, which is red on main
+      # today for reasons unrelated to generalization. Without it the step is
+      # skipped on every run where that one fails, and the number this gate
+      # exists to publish is never measured.
       - name: Assert generalization gate (held-out novel prose)
+        if: always()
         run: python scripts/check_generalization_gate.py --verbose
 
       - name: Upload calibration reports
