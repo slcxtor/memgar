@@ -167,7 +167,23 @@ python scripts/calibrate_fpfn.py \
     --corpus ml/data/augmented_memory_context.json \
     --output ml/artifacts/fpfn_calibration_expanded.json --no-llm
 python scripts/check_expanded_gate.py              # Merged: 6 regression-only gates
+
+# Generalization (the only gate that is NOT scored on corpora the patterns
+# were authored against). Fails on regression vs the recorded baseline, not
+# on the absolute number — recall here starts low on purpose.
+python scripts/check_generalization_gate.py --verbose
+python scripts/check_generalization_gate.py --update-baseline   # after a real improvement
 ```
+
+> **The held-out corpus is a thermometer, not a target.** Never author a
+> pattern against a sample in `generalization_corpus.json`. The moment one
+> matches a line there, the file stops measuring generalization and the gate
+> becomes decoration. `tests/test_generalization_gate.py` guards the obvious
+> version of this (a long keyword appearing verbatim in a sample), but it
+> cannot catch a regex written to the same shape — that part is on review.
+> If coverage needs to improve, change the detection approach and let the
+> number move on its own. If samples do leak into authoring, retire them and
+> write fresh ones.
 
 ## Corpus tiers
 
@@ -178,6 +194,7 @@ python scripts/check_expanded_gate.py              # Merged: 6 regression-only g
 | Augmented | `ml/data/augmented_memory_context.json` | template wrappers on seeds | deterministic | Expanded gate |
 | Review queue | `ml/data/mined_review_queue.json` | boundary cases | pending | manual import only |
 | Raw external | `ml/data/external_corpus_raw.json` | full public-corpus dump | none | reference only |
+| **Held-out** | `ml/data/generalization_corpus.json` | novel prose, written independently of the patterns | paired by hand | **Generalization gate** |
 
 ## Key Files
 

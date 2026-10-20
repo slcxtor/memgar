@@ -282,6 +282,15 @@ jobs:
       - name: Assert expanded-corpus regression gates
         run: python scripts/check_expanded_gate.py
 
+      # Every gate above scores memgar against corpora the pattern library was
+      # authored against, so they measure corpus fit. This one runs held-out
+      # novel prose the patterns never saw, and is the only signal here for
+      # whether detection generalises. Recall starts low on purpose; the gate
+      # fails on regression against the recorded baseline, not on the absolute
+      # number, so it reports the truth without blocking every build.
+      - name: Assert generalization gate (held-out novel prose)
+        run: python scripts/check_generalization_gate.py --verbose
+
       - name: Upload calibration reports
         if: always()
         uses: actions/upload-artifact@v4

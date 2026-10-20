@@ -20,7 +20,8 @@ import threading
 import time
 import unicodedata
 from difflib import SequenceMatcher
-from typing import Any
+from functools import lru_cache
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -921,6 +922,22 @@ def _normalize_homoglyphs(text: str) -> str:
     return result
 
 
+@lru_cache(maxsize=8192)
+def _compile_cached(pattern: str) -> Optional[re.Pattern]:
+    """Compile one threat regex, memoized process-wide.
+
+    Compiled patterns are immutable and read-only after construction, so every
+    Analyzer can share them. Without this each instance recompiled all 3103
+    regexes — ~0.7s per construction, which makes any loop that builds a fresh
+    Analyzer per entry (the correct way to measure single memory writes, since
+    Layer 4 accumulates across calls) cost a minute instead of seconds.
+    """
+    try:
+        return re.compile(pattern, re.IGNORECASE | re.MULTILINE)
+    except re.error:
+        return None
+
+
 def _normalize_content(content: str) -> str:
     """
     Normalize content by removing all forms of obfuscation.
@@ -1554,13 +1571,11 @@ class Analyzer:
     def _compile_patterns(self) -> None:
         """Pre-compile all regex patterns and pre-warm keyword cache."""
         for index, threat in enumerate(self.patterns):
-            # Compile regex patterns
             compiled = []
             for pattern in threat.patterns:
-                try:
-                    compiled.append(re.compile(pattern, re.IGNORECASE | re.MULTILINE))
-                except re.error:
-                    continue
+                regex = _compile_cached(pattern)
+                if regex is not None:
+                    compiled.append(regex)
             self._compiled_patterns[index] = compiled
 
             # Pre-warm keyword cache so first analyze() has zero compile cost

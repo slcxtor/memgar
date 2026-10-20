@@ -52,6 +52,23 @@ Reproducible end-to-end with `python scripts/public_benchmark.py` and `python sc
 | Adversarial in-scope (10 obfuscation families) | 740 variants | 98.6% | — |
 | `gandalf` (system-prompt extraction) | 1000 attacks | 84.1% | — |
 | `trustairlab_jb` (in-the-wild jailbreaks) | 1405 attacks | 81.6% | — |
+| **`generalization_corpus` (held-out novel prose)** | **38 attacks + 38 matched benigns** | **2.6%** | **0.0%** |
+
+### Read the last row first
+
+Every corpus above it was assembled alongside the pattern library that scores
+it, so those numbers measure corpus fit. `generalization_corpus` is written
+independently and never used for pattern authoring, and each attack is paired
+with a benign on the same sentence frame. It is the only number here that
+answers "does this catch an attack nobody enumerated?", and today the answer is
+**1 of 38** — seven of its eight categories score zero. The matched benigns stay
+clean (0.0% FPR), so the detector is not over-firing; it does not see this
+phrasing at all.
+
+That is what pattern matching is: strong on attack shapes someone wrote down,
+weak on fresh prose. Plan around it — memgar is a layer, not a boundary. The
+number is enforced by `scripts/check_generalization_gate.py`, which fails on
+regression rather than on the absolute value, so it cannot be quietly dropped.
 
 On a core install (`pip install memgar`, no semantic extra) the gold-corpus recall is 89.3% at the same 0.0% FPR: the six misses are all direct credential requests ("What's the API key?"), which Layer 2.5 catches by paraphrase similarity and pattern matching alone does not.
 
