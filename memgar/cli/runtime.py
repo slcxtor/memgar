@@ -10,9 +10,9 @@ from typing import Optional
 
 import click
 from rich import box
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
-from rich.markup import escape
 
 from memgar.cli import main
 from memgar.cli._banner import (
